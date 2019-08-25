@@ -1,41 +1,8 @@
-# ---------------------------------------------
-# Production log lik
-# ---------------------------------------------
-
-function abc_loglik_pdxn(pdxn_parm)
-
-    T = _nobs(pdxn_parm)
-    a = _a(pdxn_parm)
-    b = _b(pdxn_parm)
-    c = _c(pdxn_parm)
-    vpv = sumsq_nu(pdxn_parm)
-    vp1 = sum_nu(pdxn_parm)
-    vp1sq = sum_nusq(pdxn_parm)
-    α = alpha(pdxn_parm)
-
-    A0 = (-T*log2π - (T-1)*log(a) - log(a+bT) - vpv/a + c*vp1sq) / 2
-    A1 = α*vp1*(1/a + c*T)
-    A2 = (α^2*T*(1/a - c*T))/2
-
-    return A0, A1, A2
-end
-
-loglik_pdxn(psi1, a, b, c) = a + b*psi1 + b*psi1^2
-
-# ---------------------------------------------
-# Production gradient
-# ---------------------------------------------
 
 "Tmp scalars for production computations"
-struct ProductionComputations{V2<:AbstractVector{Float64}, V1<:AbstractVector{Float64}, M<:AbstractMatrix{Float64}} <: AbstractIntermediateComputations
+struct ProductionLikelihoodComputations{V2<:AbstractVector{Float64}, V1<:AbstractVector{Float64}, M<:AbstractMatrix{Float64}} <: AbstractIntermediateComputations
     T::Int
-    @addStructFields(Float64, a, b, c, vpv, vp1, α)
-
-    Xpv::Vector{Float64}
-    Xp1::V2
-
-    v::V1
-    X::M
+    @addStructFields(Float64, a, b, c, αψ, vpv, vp1)
 end
 
 function ψbar_ψ2bar(ψ, qm)
@@ -44,60 +11,92 @@ function ψbar_ψ2bar(ψ, qm)
     return ψbar, ψ2bar
 end
 
-function ProductionComputations(tempvars, data, model, theta)
+function ProductionLikelihoodComputations(tempvars, data, model, theta)
     T = length(y)
 
-    α = theta_pdxn_ψ(  model, theta)
-    β = theta_pdxn_β(  model, theta)
     a = theta_pdxn_σ2η(model, theta)
     b = theta_pdxn_σ2u(model, theta)
-
+    αψ = theta_pdxn_ψ(model, theta)
     v = view(_v(tempvars), 1:T)
 
-    # TODO: move this to outside of computation....
-    v .= y
-    BLAS.gemv!('T', -1.0, X, β, 1.0, v)
-
-    vpv = dot(v,v)  # FIXME??
+    vpv = dot(v,v)
     vp1 = sum(v)
-    # Xpv = X*v  # FIXME
 
-    return ProductionComputations(T, a, b, c, vpv, vp1, α, _Xpv(tempvars), v, _Xsum(data, i, w))
+    return ProductionComputations(T, a, b, αψ, vpv, vp1)
 end
 
 
-_nobs(   pc::ProductionComputations) = pc.T
-_a(      pc::ProductionComputations) = pc.a
-_b(      pc::ProductionComputations) = pc.b
-_c(      pc::ProductionComputations) = pc.c
-_alpha(  pc::ProductionComputations) = pc.α
-_vpv(    pc::ProductionComputations) = pc.vpv
-_vp1(    pc::ProductionComputations) = pc.vp1
-_vp1sq(  pc::ProductionComputations) = vp1(pc)^2
-_Xpv(    pc::ProductionComputations) = pc.Xpv
-_v(      pc::ProductionComputations) = pc.v
+_nobs(   pc::ProductionLikelihoodComputations) = pc.T
+_a(      pc::ProductionLikelihoodComputations) = pc.a
+_b(      pc::ProductionLikelihoodComputations) = pc.b
+_c(      pc::ProductionLikelihoodComputations) = nothing # FIXME
+_vpv(    pc::ProductionLikelihoodComputations) = pc.vpv
+_vp1(    pc::ProductionLikelihoodComputations) = pc.vp1
+_αψ(     pc::ProductionLikelihoodComputations) = pc.αψ
 
+_vp1sq(  pc::ProductionLikelihoodComputations) = vp1(pc)^2
+_Xpv(    pc::ProductionLikelihoodComputations) = pc.Xpv
 
-function dloglik_production!(grad::AbstractVector, model, pdxn_parm::ProductionComputations, pdxn_grad_parm::ProductionGradientComputations, ψbar, ψ2bar)
+# ---------------------------------------------
+# Production log lik
+# ---------------------------------------------
 
-    T     = _nobs(pdxn_parm)
-    a     = _a(pdxn_parm)
-    b     = _b(pdxn_parm)
-    c     = _c(pdxn_parm)
-    α     = alpha(pdxn_parm)
-    vpv   = _vpv(  pdxn_parm)
-    vp1   = _vp1(  pdxn_parm)
-    vp1sq = _vp1sq(pdxn_parm)
+function loglik_pdxn_scalars(model::ProductionModel, theta::AbstractVector, v::AbstractVector)
 
-    update_Xpv!(tmp_pdxn)
+    T = qlength(pdxn_parm)
+
+    a = theta_pdxn_σ2η(model, theta)
+    b = theta_pdxn_σ2u(model, theta)
+    α = theta_pdxn_ψ(model, theta)
+
+    abT = a + b*T
+    c = b / (a * abT)
+    cT = c*T
+    ainv = 1/a
+
+    vpv = dot(v,v)
+    vp1 = sum(v)
+    vp1sq = vp1^2
+
+    A0 = (-T*log2π - (T-1)*log(a) - log(abT) - vpv/a + c*vp1sq) / 2
+    A1 =  α*vp1*(ainv + cT)
+    A2 = (α^2*T*(ainv - cT))/2
+
+    return A0, A1, A2
+end
+
+loglik_pdxn(a::Real, b::Real, c::Real, ψ::Real) = a + b*ψ + c*ψ^2
+
+loglik_pdxn(model, theta, v, ψ::Number) = loglik_pdxn(loglik_pdxn_scalars(model, theta, v)..., ψ)
+
+# ---------------------------------------------
+# Production gradient
+# ---------------------------------------------
+
+function dloglik_production!(grad::AbstractVector, model)
+
+    T = qlength(pdxn_parm)
+
+    α = theta_pdxn_ψ(  model, theta)
+    a = theta_pdxn_σ2η(model, theta)
+    b = theta_pdxn_σ2u(model, theta)
 
     bT = b*T
+    abT = a + bT
+    c = b / (a * abT)
     αT = α*T
     cT = c*T
     ainv = 1/a
     binv = 1/b
-    abT = a + bT
     abTinv = 1/abT
+
+    vpv = dot(v,v)
+    vp1 = sum(v)
+    vp1sq = vp1^2
+
+    update_Xpv!(tmp_pdxn, data)
+    update_Xp1!(tmp_pdxn, data)
+    ψbar, ψ2bar = ψbar_ψ2bar(ψ, qm)
 
     # ∂log L / ∂α_ψ
     B = (ainv - cT)
