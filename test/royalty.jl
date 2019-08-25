@@ -7,7 +7,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     theta_roy_check,
     llthreads!,
     loglik_royalty!,
-    update_grad_royalty!
+    update_grad_roy!,
+    _LLm
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -62,21 +63,22 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     # check that it solves
     res = optimize(OnceDifferentiable(f, fg!, fg!, theta), theta*0.1, BFGS(), Optim.Options(time_limit = 1.0))
-    @test maximum(abs.(res.minimizer .- theta)) < 0.21
+    @test maximum(abs.(res.minimizer .- theta)) < 0.22
 end
 
 @testset "RoyaltyModel" begin
 
-    k = 3
-    nobs = 1_000
-    L = 3
-    M = 10
+    nobs = 500  # observations
+    k = 3       # number of x
+    L = 3       # ordered choices
+    M = 15      # simulations
+
     RM = RoyaltyModel(L,k)
 
     # make data
     X      = randn(k,nobs)
     eps    = randn(nobs)
-    theta  = [0.0, 1.0, -2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
+    theta  = [0.0, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
 
     # check indexing is correct
     @test all(theta_roy_β(RM, theta) .== theta[2 .+ (1:k)])
@@ -89,39 +91,30 @@ end
     # simulations
     u = randn(M,nobs)
     v = randn(M,nobs)
-    Q = fill(Float64(1/M), M, nobs)
 
-    A = similar(u)
-    B = similar(u)
-    C = similar(u)
-    LL = similar(u)
+    qm = fill(Float64(1/M), M)
+    am  = similar(qm)
+    bm  = similar(qm)
+    cm  = similar(qm)
+    llm = similar(qm)
 
-    rc = RoyaltyComputation(l, X, A, B, C, LL, Q, u, v, 1)
-    loglik_royalty!(rc, RM, theta, false)
+    rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, 1)
+    # @code_warntype loglik_royalty!(rc, RM, theta, false)
 
-    function f(θ::AbstractVector)
-        lse = zeros(nobs)
+    function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
+        LL = zero(eltype(θ))
         for i in 1:nobs
-            rc = RoyaltyComputation(l, X, A, B, C, LL, Q, u, v, i)
-            loglik_royalty!(rc, RM, θ, true)
-            @views lse[i] = logsumexp(LL[:,i]) - log(M)
-            @views softmax!(Q[:,i], LL[:,i])
+            rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, i)
+            loglik_royalty!(rc, RM, θ, dograd)
+            LL += logsumexp(_LLm(rc))
+            softmax!(qm, _LLm(rc))
+            dograd && update_grad_roy!(grad, RM, θ, rc)
         end
-        return sum(lse)
-    end
-
-    function fg!(grad, θ)
-        loglik = f(θ)
-        @threads for i in 1:nobs
-            rc = RoyaltyComputation(l, X, A, B, C, LL, Q, u, v, i)
-            update_grad_royalty!(grad, RM, θ, rc)
-        end
-        return loglik
+        return LL - nobs*log(M)
     end
 
     gradtmp = zeros(size(theta))
-
-    fg!(gradtmp, theta)
-    fd = Calculus.gradient(f, theta)
+    fd = Calculus.gradient(x -> fg!(gradtmp, x, false), theta)
+    fg!(gradtmp, theta, true)
     @test gradtmp ≈ fd
 end

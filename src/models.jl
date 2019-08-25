@@ -49,8 +49,8 @@ function choice_in_model(m::AbstractRoyaltyModel, l::Integer)
 end
 
 # length of RoyaltyModel parameters & gradient
-length(m::RoyaltyModelNoHet) = -1 + num_x(m) + num_choices(m)
-length(m::RoyaltyModel)      =  1 + num_x(m) + num_choices(m)
+length(m::RoyaltyModelNoHet) = num_x(m) + num_choices(m) - 1
+length(m::RoyaltyModel)      = num_x(m) + num_choices(m) + 1
 
 # parameter vector
 idx_roy_ρ(m::RoyaltyModelNoHet) = 1:0

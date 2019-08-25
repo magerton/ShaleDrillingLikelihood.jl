@@ -10,8 +10,7 @@ function η12(model::AbstractRoyaltyModel, theta::AbstractVector, l::Integer, zm
     L = num_choices(model)
     η1 = l == 1 ? typemin(zm) : theta_roy_κ(model, theta, l-1) - zm
     η2 = l == L ? typemax(zm) : theta_roy_κ(model, theta, l)   - zm
-
-    η1 < η2 || throw(error("η1 < η2 is FALSE. $η1 ≰ $η2"))
+    @assert η1 < η2
     return η1, η2
 end
 
@@ -67,52 +66,32 @@ end
 # ---------------------------------------------
 
 "Tempvars for royalty simulations with `i`"
-struct RoyaltyComputation{V0<:AbstractVector, V1<:AbstractVector, V2<:AbstractVector} <: AbstractIntermediateComputations
-    choice::Int
+struct RoyaltyComputation{V0<:AbstractVector, V1<:Vector, V2<:AbstractVector} <: AbstractIntermediateComputations
+    choice::Int # data
+    x::V0       # data
+    am::V1      # tmp
+    bm::V1      # tmp
+    cm::V1      # tmp
+    LLm::V1     # tmp
+    qm::V1      # tmp
+    u::V2       # simulation
+    v::V2       # simulation
 
-    x::V0
-
-    am::V1
-    bm::V1
-    cm::V1
-    LLm::V1
-    qm::V1
-
-    u::V2
-    v::V2
-
-    # inner constructor checks the length
     function RoyaltyComputation(
-        choice::Int,
-        x::V0,
-        am::V1, bm::V1, cm::V1, LLm::V1, qm::V1,
-        u::V2, v::V2
+        choice::Int, x::V0, am::V1, bm::V1, cm::V1, LLm::V1, qm::V1, u::V2, v::V2
     ) where {
         V0<:AbstractVector, V1<:AbstractVector, V2<:AbstractVector
     }
-
-        length(am)==length(bm)==length(cm)==
-            length(qm) == length(LLm)==
-            length(u)==length(v) || throw(DimensionMismatch())
-
+        @assert length(am)==length(bm)==length(cm)==length(qm)==length(LLm)==length(u)==length(v)
         return new{V0,V1,V2}(choice, x, am, bm, cm, LLm, qm, u, v)
     end
 end
 
-
-# TODO make tempvars
-function RoyaltyComputation(l::AbstractVector, X::AbstractMatrix, a::Matrix, b::Matrix, c::Matrix, LL::Matrix, Q::Matrix, u::Matrix, v::Matrix, i::Integer)
-
-    # data
-    li = l[i]
-    xi = view(X, :, i)
-
-    # tmpvars
-    am, bm, cm, LL, qm, = view.( (a,b,c,LL,Q), :, i )
-
-    # simulations
-    u, v = view.( (u,v), :, i )
-    return RoyaltyComputation(li, xi, am, bm, cm, LL, qm, u, v)
+function RoyaltyComputation(l::AbstractVector, X::AbstractMatrix, am, bm, cm, llm, qm, u, v, i::Integer)
+    li = l[i]                     # data
+    xi = view(X, :, i)            # data
+    um, vm = view.( (u,v), :, i ) # simulations
+    return RoyaltyComputation(li, xi, am, bm, cm, llm, qm, um, vm)
 end
 
 _choice(rc::RoyaltyComputation) = rc.choice
@@ -125,8 +104,7 @@ _qm(    rc::RoyaltyComputation) = rc.qm
 _u(     rc::RoyaltyComputation) = rc.u
 _v(     rc::RoyaltyComputation) = rc.v
 
-length( rc::RoyaltyComputation) = length(_u(rc))
-
+length( rc::RoyaltyComputation ) = length(_u(rc))
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
 function loglik_royalty!(rc, model, theta, dograd::Bool)
@@ -135,21 +113,19 @@ function loglik_royalty!(rc, model, theta, dograd::Bool)
     bm = _bm(rc)
     cm = _cm(rc)
     LLm = _LLm(rc)
-
     u = _u(rc)
     v = _v(rc)
-
     l = _choice(rc)
 
-    choice_in_model(model, l) || throw(DomainError(l))
+    @assert choice_in_model(model, l)
 
     ρ  = theta_roy_ρ(model,theta)
-    βψ = theta_roy_ψ(model, theta)
+    βψ = theta_roy_ψ(model,theta)
     βx = theta_roy_β(model,theta)
 
     xbeta = dot( _x(rc), βx )
 
-    for m = 1:length(rc)
+    @inbounds @threads for m = 1:length(rc)
         psi = _ψ1(u[m], v[m], ρ)
         zm  = xbeta + βψ * psi
         eta12 = η12(model, theta, l, zm)
@@ -161,38 +137,49 @@ function loglik_royalty!(rc, model, theta, dograd::Bool)
             F, LLm[m] = lik_loglik_royalty(model, l, eta12)
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
-            cm[m] = dlogcdf_trunc(η1,η2)
+            cm[m] = dlogcdf_trunc(η1, η2)
         end
     end
-
     return nothing
 end
 
 "integrates over royalty"
-function update_grad_royalty!(grad::AbstractVector, model::AbstractRoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
+function update_grad_roy!(grad::AbstractVector, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
 
-    # unpack stuff
-    am = _am(rc)
-    bm = _bm(rc)
-    cm = _cm(rc)
-    um = _u(rc)
-    vm = _v(rc)
-    qm = _qm(rc)
+    @assert length(grad) == length(theta) == length(model)
 
-    # parameters
-    ρ  = theta_roy_ρ(model,theta)
-    βψ = theta_roy_ψ(model, theta)
+    am = _am(rc) # computed in likelihood
+    bm = _bm(rc) # computed in likelihood
+    cm = _cm(rc) # computed in likelihood
+    um = _u(rc)  # halton draws
+    vm = _v(rc)  # halton draws
+    qm = _qm(rc) # Pr(um,vm | data) already computed!!!
 
-    l = _choice(rc)
-    L = num_choices(model)
+    l = _choice(rc)         # discrete choice info
+    L = num_choices(model)  # discrete choice info
+
+    ρ  = theta_roy_ρ(model, theta) # parameters
+    βψ = theta_roy_ψ(model, theta) # parameters
+
+    dψdρ(u,v) = dpsidrho(model, theta, u, v)  # for below
+    ψ1(u,v) = _ψ1(u,v,ρ)                      # for below
 
     # gradient
-    grad[idx_roy_ρ(model)] -= sum(qm .* cm .* dpsidrho.((model,), (theta,), um, vm) ) * βψ
-    grad[idx_roy_ψ(model)] -= sum(qm .* cm .* _ψ1.(um, vm, ρ))
-    grad[idx_roy_β(model)] -= dot(qm, cm) * _x(rc)
+    grad[idx_roy_ρ(model)] -= sumprod(dψdρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
+    grad[idx_roy_ψ(model)] -= sumprod(ψ1,   qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_roy_β(model)] -= dot(qm, cm) .* _x(rc)
+    l > 1 && ( grad[idx_roy_κ(model,l-1)] -= dot(qm, am) )
+    l < L && ( grad[idx_roy_κ(model,l)]   += dot(qm, bm) )
+end
 
-    l > 1 && ( grad[idx_roy_κ(model,l-1)] -= sum(qm .* am) )
-    l < L && ( grad[idx_roy_κ(model,l)]   += sum(qm .* bm) )
+# TODO would be good to evaluate whether I can do better with tmapreduce
+function sumprod(f::Function, x::AbstractArray{T}, y::AbstractArray{T}, u::AbstractArray{T}, v::AbstractArray{T}) where {T<:Real}
+    @assert length(x)==length(y)==length(u)==length(v)
+    s = zero(T)
+    @inbounds @simd for i in eachindex(x)
+        s += x[i] * y[i] * f(u[i], v[i])
+    end
+    return s
 end
 
 # ---------------------------------------------
@@ -207,7 +194,7 @@ function llthreads!(grad, θ, RM::AbstractRoyaltyModel, l, xx, dograd::Bool=true
 
     k,n = size(xx)
     nparm = length(RM)
-    nparm == length(grad) || throw(DimensionMismatch())
+    @assert nparm == length(grad)
 
     L = num_choices(RM)
 
