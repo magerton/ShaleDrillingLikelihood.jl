@@ -1,0 +1,6 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+sftp-config.json
+*.sublime-project
+*.sublime-workspace

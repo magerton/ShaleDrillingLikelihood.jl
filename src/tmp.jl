@@ -1,0 +1,9 @@
+_xroy(data,i) = view(data, :, i)
+
+_ψ1(u::Real,v::Real, ρ::Real) = ρ*u + sqrt(1-ρ^2)*v
+_ψ2(u::Real,v::Real, ρ::Real) = _ψ2(u,v)
+_ψ2(u::Real,v::Real) = u
+
+_dψ1dρ(u::Real,v::Real,ρ::Real) = u - ρ/sqrt(1-ρ^2)*v
+
+dpsidrho(model, theta, u, v) = _dψ1dρ(u,v,theta_roy_ρ(model,theta))
