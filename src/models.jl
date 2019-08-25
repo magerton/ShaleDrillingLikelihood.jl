@@ -19,11 +19,12 @@ drill(  m::BigModel) = m.drill
 produce(m::BigModel) = m.produce
 
 
-
 "No model"
 struct NoModel <: AbstractModel end
 
-
+# ----------------------------------------------
+# Royalty Model
+# ----------------------------------------------
 
 "Royalty rates"
 abstract type AbstractRoyaltyModel <: AbstractModel end
@@ -81,6 +82,28 @@ theta_roy_κ(m::AbstractRoyaltyModel, theta, l) = theta[idx_roy_κ(m,l)]
 
 dpsidrhom(m::AbstractRoyaltyModel, theta, ψ0)  = 0.0
 
-
 # check if theta is okay
 theta_roy_check(m::AbstractRoyaltyModel, theta) = issorted(theta_roy_κ(m,theta))
+
+
+# ----------------------------------------------
+# Production Model
+# ----------------------------------------------
+
+"Production"
+struct ProductionModel <: AbstractModel
+    num_x::Int
+end
+
+num_x(m::ProductionModel) = m.num_x
+
+idx_pdxn_ψ(  m::ProductionModel) = 1
+idx_pdxn_β(  m::ProductionModel) = 1 .+ (1:num_x(m))
+idx_pdxn_σ2η(m::ProductionModel) = 2 + num_x(m)
+idx_pdxn_σ2u(m::ProductionModel) = 3 + num_x(m)
+
+theta_pdxn(    m::ProductionModel, theta) = theta
+theta_pdxn_ψ( m::ProductionModel, theta) = theta[idx_pdxn_αψ( m)]
+theta_pdxn_β(  m::ProductionModel, theta) = view(theta, idx_pdxn_β(m))
+theta_pdxn_σ2η(m::ProductionModel, theta) = theta[idx_pdxn_σ2η(m)]
+theta_pdxn_σ2u(m::ProductionModel, theta) = theta[idx_pdxn_σ2u(m)]

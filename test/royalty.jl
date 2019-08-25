@@ -63,7 +63,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     # check that it solves
     res = optimize(OnceDifferentiable(f, fg!, fg!, theta), theta*0.1, BFGS(), Optim.Options(time_limit = 1.0))
-    @test maximum(abs.(res.minimizer .- theta)) < 0.22
+    @test maximum(abs.(res.minimizer .- theta)) < 0.25
 end
 
 @testset "RoyaltyModel" begin
@@ -105,9 +105,10 @@ end
         LL = zero(eltype(θ))
         for i in 1:nobs
             rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, i)
-            loglik_royalty!(rc, RM, θ, dograd)
-            LL += logsumexp(_LLm(rc))
-            softmax!(qm, _LLm(rc))
+            fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
+            loglik_royalty!(rc, RM, θ, dograd)    # update LLm
+            LL += logsumexp(_LLm(rc))             # b/c integrating
+            softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
             dograd && update_grad_roy!(grad, RM, θ, rc)
         end
         return LL - nobs*log(M)

@@ -2,20 +2,6 @@
 # Production log lik
 # ---------------------------------------------
 
-"Production"
-struct ProductionModel <: AbstractModel
-    num_x::Int
-end
-
-num_x(m::ProductionModel) = m.num_x
-
-idx_pdxn_αψ( m::ProductionModel) = 1
-idx_pdxn_β(  m::ProductionModel) = 1 .+ (1:num_x(m))
-idx_pdxn_σ2η(m::ProductionModel) = 2 + num_x(m)
-idx_pdxn_σ2u(m::ProductionModel) = 3 + num_x(m)
-
-theta_pdxn(m::ProductionModel, theta) = theta
-
 function abc_loglik_pdxn(pdxn_parm)
 
     T = _nobs(pdxn_parm)
@@ -40,56 +26,45 @@ loglik_pdxn(psi1, a, b, c) = a + b*psi1 + b*psi1^2
 # Production gradient
 # ---------------------------------------------
 
-
-struct EstimationTempVars
-    v::Vector{Float64}
-    Xpv::Vector{Float64}
-end
-
-_v(e::EstimationTempVars) = e.nu
-_Xpv(e::EstimationTempVars) = e.Xpv
-
 "Tmp scalars for production computations"
 struct ProductionComputations{V2<:AbstractVector{Float64}, V1<:AbstractVector{Float64}, M<:AbstractMatrix{Float64}} <: AbstractIntermediateComputations
     T::Int
     @addStructFields(Float64, a, b, c, vpv, vp1, α)
+
     Xpv::Vector{Float64}
-    v::V1
     Xp1::V2
+
+    v::V1
     X::M
 end
 
-function ψbar_ψ2bar(ψ1, qm)
-    # https://github.com/jw3126/ThreadingTools.jl
-    # https://discourse.julialang.org/t/how-to-speed-up-this-simple-code-multithreading-simd-inbounds/19681/39
-    # https://discourse.julialang.org/t/parallelizing-for-loop-in-the-computation-of-a-gradient/9154/7?u=tkoolen
-    # https://discourse.julialang.org/t/innefficient-paralellization-need-some-help-optimizing-a-simple-dot-product/9723/31
-    # https://discourse.julialang.org/t/for-loops-acceleration/24011/7
-    ψbar  = sum(ψ1 .* qm)    # TODO threaded
-    ψ2bar = sum(ψ1.^2 .* qm) # TODO threaded
+function ψbar_ψ2bar(ψ, qm)
+    ψbar  = dot(ψ, qm)
+    ψ2bar = sumprod3(ψ, ψ, qm)
     return ψbar, ψ2bar
 end
 
 function ProductionComputations(tempvars, data, model, theta)
     T = length(y)
 
-    α = theta_αψ(      model, theta)
-    β = theta_pdxn_β(   model, theta)
+    α = theta_pdxn_ψ(  model, theta)
+    β = theta_pdxn_β(  model, theta)
     a = theta_pdxn_σ2η(model, theta)
     b = theta_pdxn_σ2u(model, theta)
 
     v = view(_v(tempvars), 1:T)
+
+    # TODO: move this to outside of computation....
     v .= y
     BLAS.gemv!('T', -1.0, X, β, 1.0, v)
 
-    # TODO threaded
-    vpv = sum(v.^2)
+    vpv = dot(v,v)  # FIXME??
     vp1 = sum(v)
+    # Xpv = X*v  # FIXME
 
     return ProductionComputations(T, a, b, c, vpv, vp1, α, _Xpv(tempvars), v, _Xsum(data, i, w))
 end
 
-update_Xpv!(tmp_pdxn) = mul!(Xpv(tmp_pdxn), X(tmp_pdxn), v(tmp_pdxn))
 
 _nobs(   pc::ProductionComputations) = pc.T
 _a(      pc::ProductionComputations) = pc.a
@@ -126,11 +101,11 @@ function dloglik_production!(grad::AbstractVector, model, pdxn_parm::ProductionC
 
     # ∂log L / ∂α_ψ
     B = (ainv - cT)
-    grad[idx_αψ(model)] += vp1*B*ψbar - α*T*B*ψ2bar
+    grad[idx_pdxn_ψ(model)] += vp1*B*ψbar - α*T*B*ψ2bar
 
     # ∂log L / ∂β
     H = (c*vp1 + α*B*ψbar)
-    @. grad[idx_βpdxn(model)] += Xpv*ainv - H*Xp1
+    @. grad[idx_pdxn_β(model)] += Xpv*ainv - H*Xp1
 
     # ∂log L / ∂σ²η
     E0 = -((T-1)*ainv + abTinv)

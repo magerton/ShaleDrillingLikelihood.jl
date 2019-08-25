@@ -123,6 +123,7 @@ function loglik_royalty!(rc, model, theta, dograd::Bool)
     βψ = theta_roy_ψ(model,theta)
     βx = theta_roy_β(model,theta)
 
+    # TODO move this outside of computation....
     xbeta = dot( _x(rc), βx )
 
     @inbounds @threads for m = 1:length(rc)
@@ -131,10 +132,11 @@ function loglik_royalty!(rc, model, theta, dograd::Bool)
         eta12 = η12(model, theta, l, zm)
 
         if dograd == false
-            LLm[m] = loglik_royalty(model, l, eta12)
+            LLm[m] += loglik_royalty(model, l, eta12)
         else
             η1, η2 = eta12
-            F, LLm[m] = lik_loglik_royalty(model, l, eta12)
+            F,LL  = lik_loglik_royalty(model, l, eta12)
+            LLm[m] += LL
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
             cm[m] = dlogcdf_trunc(η1, η2)
@@ -170,16 +172,6 @@ function update_grad_roy!(grad::AbstractVector, model::RoyaltyModel, theta::Abst
     grad[idx_roy_β(model)] -= dot(qm, cm) .* _x(rc)
     l > 1 && ( grad[idx_roy_κ(model,l-1)] -= dot(qm, am) )
     l < L && ( grad[idx_roy_κ(model,l)]   += dot(qm, bm) )
-end
-
-# TODO would be good to evaluate whether I can do better with tmapreduce
-function sumprod(f::Function, x::AbstractArray{T}, y::AbstractArray{T}, u::AbstractArray{T}, v::AbstractArray{T}) where {T<:Real}
-    @assert length(x)==length(y)==length(u)==length(v)
-    s = zero(T)
-    @inbounds @simd for i in eachindex(x)
-        s += x[i] * y[i] * f(u[i], v[i])
-    end
-    return s
 end
 
 # ---------------------------------------------
