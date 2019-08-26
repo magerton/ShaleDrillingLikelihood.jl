@@ -1,3 +1,13 @@
+module ShaleDrillingLikelihood_Production_Test
+
+using ShaleDrillingLikelihood
+using Test
+using StatsFuns
+using Calculus
+using Optim
+using Random
+
+
 using ShaleDrillingLikelihood: num_x,
     idx_pdxn_ψ, idx_pdxn_β, idx_pdxn_σ2η, idx_pdxn_σ2u,
     theta_pdxn, theta_pdxn_ψ, theta_pdxn_β, theta_pdxn_σ2η, theta_pdxn_σ2u,
@@ -114,3 +124,14 @@ using ShaleDrillingLikelihood: num_x,
     fill!(gradtmp, 0)
     ffgg!(gradtmp, theta*2)
 end
+
+
+# TODO
+@testset "Production likelihood integration" begin
+    @warn "Have not implemented this yet!!!"
+
+    println("\n\n\t\tImplement test that gradient is all OK\n\n")
+end
+
+
+end # module

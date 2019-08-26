@@ -1,3 +1,12 @@
+module ShaleDrillingLikelihood_Royalty_Test
+
+using ShaleDrillingLikelihood
+using Test
+using StatsFuns
+using Calculus
+using Optim
+using Random
+
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_roy_ρ, idx_roy_ψ, idx_roy_β, idx_roy_κ,
     theta_roy_ρ, theta_roy_ψ, theta_roy_β, theta_roy_κ,
@@ -119,3 +128,6 @@ end
     fg!(gradtmp, theta, true)
     @test gradtmp ≈ fd
 end
+
+
+end # module
