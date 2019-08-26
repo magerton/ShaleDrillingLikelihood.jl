@@ -14,4 +14,5 @@ using Calculus
 
 using Optim
 
-include("royalty.jl")
+# include("royalty.jl")
+include("production.jl")

@@ -96,6 +96,7 @@ struct ProductionModel <: AbstractModel
 end
 
 num_x(m::ProductionModel) = m.num_x
+length(m::ProductionModel) = num_x(m) + 3
 
 idx_pdxn_ψ(  m::ProductionModel) = 1
 idx_pdxn_β(  m::ProductionModel) = 1 .+ (1:num_x(m))
@@ -103,7 +104,7 @@ idx_pdxn_σ2η(m::ProductionModel) = 2 + num_x(m)
 idx_pdxn_σ2u(m::ProductionModel) = 3 + num_x(m)
 
 theta_pdxn(    m::ProductionModel, theta) = theta
-theta_pdxn_ψ( m::ProductionModel, theta) = theta[idx_pdxn_αψ( m)]
+theta_pdxn_ψ( m::ProductionModel, theta) = theta[idx_pdxn_ψ( m)]
 theta_pdxn_β(  m::ProductionModel, theta) = view(theta, idx_pdxn_β(m))
 theta_pdxn_σ2η(m::ProductionModel, theta) = theta[idx_pdxn_σ2η(m)]
 theta_pdxn_σ2u(m::ProductionModel, theta) = theta[idx_pdxn_σ2u(m)]

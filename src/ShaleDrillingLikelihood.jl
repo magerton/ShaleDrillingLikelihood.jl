@@ -26,7 +26,7 @@ end
 
 # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
 
-function sumprod3(f::Function, x::AbstractArray{T}, y::AbstractArray{T}, z::AbstractArray{T}) where {T<:Real}
+function sumprod3(x::AbstractArray{T}, y::AbstractArray{T}, z::AbstractArray{T}) where {T<:Real}
     @assert length(x)==length(y)==length(z)
     s = zero(T)
     @inbounds @simd for i in eachindex(x)
@@ -41,7 +41,7 @@ end
 include("tmp.jl")
 include("models.jl")
 include("royalty.jl")
-# include("production.jl")
+include("production.jl")
 # include("drilling.jl")
 
 end # module
