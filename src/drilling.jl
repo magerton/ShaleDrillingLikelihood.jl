@@ -33,8 +33,6 @@ function loglik_drilling_history()
         end # m/ψ
     end # time
 
-
-
 end
 
 

@@ -30,8 +30,8 @@ _vp1sq(plc::ProductionLikelihoodComputations) = _vp1(plc)^2
 function loglik_pdxn_scalars(model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations)
 
     αψ = theta_pdxn_ψ(  model, theta)
-    a  = exp(theta_pdxn_σ2η(model, theta))
-    b  = exp(theta_pdxn_σ2u(model, theta))
+    a  = theta_pdxn_σ2η(model, theta)
+    b  = theta_pdxn_σ2u(model, theta)
 
     T     = _T(    plc)
     vpv   = _vpv(  plc)
@@ -84,10 +84,8 @@ end
 function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations, pgc::ProductionGradientComputations)
 
     αψ = theta_pdxn_ψ( model, theta)
-    σ2η = theta_pdxn_σ2η(model, theta)
-    σ2u = theta_pdxn_σ2u(model, theta)
-    a = exp(σ2η)
-    b = exp(σ2u)
+    a = theta_pdxn_σ2η(model, theta)
+    b = theta_pdxn_σ2u(model, theta)
 
     ψbar  = _ψbar( pgc)
     ψ2bar = _ψ2bar(pgc)
@@ -119,10 +117,10 @@ function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta
     E2 = ( -c * (ainv + abTinv) ) / 2
     E1_TE2 = E1 + T*E2
 
-    grad[idx_pdxn_σ2η(model)] += ((E0 + E1*vpv + E2*vp1sq) - 2*αψ*vp1*E1_TE2*ψbar + αψ^2*T*E1_TE2*ψ2bar)*a
+    grad[idx_pdxn_σ2η(model)] += (E0 + E1*vpv + E2*vp1sq) - 2*αψ*vp1*E1_TE2*ψbar + αψ^2*T*E1_TE2*ψ2bar
 
     # ∂log L / σ²u
     G0 = -T * abTinv / 2
     G1 =  c * ( 1/b - T*abTinv ) / 2
-    grad[idx_pdxn_σ2u(model)] += ((G0 + G1*vp1sq) + αψT*G1*(-2*vp1*ψbar + αψT*ψ2bar))*b
+    grad[idx_pdxn_σ2u(model)] += (G0 + G1*vp1sq) + αψT*G1*(-2*vp1*ψbar + αψT*ψ2bar)
 end
