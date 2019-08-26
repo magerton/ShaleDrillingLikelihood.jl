@@ -8,8 +8,8 @@ using ShaleDrillingLikelihood: num_x,
 @testset "Production basics" begin
 
     k = 3
-    num_i = 50
-    num_t = 7
+    num_i = 500
+    num_t = 11
     nobs = num_i * num_t
     pm = ProductionModel(k)
     M = 1
@@ -18,7 +18,7 @@ using ShaleDrillingLikelihood: num_x,
     u = repeat(randn(num_i), inner=num_t)  # random effect
     η = randn(nobs)                        # idiosyncratic shock
     ψ = ones(M, num_i)
-    theta = [1.0, 2.0, 3.0, 4.0, 0.25, 0.5]
+    theta = [1.0, 2.0, 3.0, 4.0, sqrt(0.25), sqrt(0.5)]
 
     @test length(theta) == length(pm)
     @test num_x(pm) == k
@@ -28,7 +28,7 @@ using ShaleDrillingLikelihood: num_x,
     @test theta_pdxn_σ2η(pm, theta) == theta[end-1]
     @test theta_pdxn_σ2u(pm, theta) == theta[end]
 
-    v = sqrt(theta_pdxn_σ2u(pm,theta)) .* u .+ sqrt(theta_pdxn_σ2η(pm,theta)) .* η
+    v = sqrt(theta_pdxn_σ2u(pm,theta)^2) .* u .+ sqrt(theta_pdxn_σ2η(pm,theta)^2) .* η
     v .+= repeat(ψ[1,:], inner = num_t)
     y = v .+ X'*theta_pdxn_β(pm,theta)
 
@@ -51,10 +51,10 @@ using ShaleDrillingLikelihood: num_x,
         qm = llm
         vi = zeros(Float64, num_t)
 
-        if any(θ[end-1:end] .<= 0)
-            @warn "NEGATIVE σ^2η, σ^2_u = $(θ[end-1:end])"
-            throw(error("NEGATIVE σ^2η, σ^2_u = $(θ[end-1:end])"))
-        end
+        # if any(θ[end-1:end] .<= 0)
+        #     @warn "NEGATIVE σ^2η, σ^2_u = $(θ[end-1:end])"
+        #     throw(error("NEGATIVE σ^2η, σ^2_u = $(θ[end-1:end])"))
+        # end
 
         @assert length(llm) == size(ψ,1)
 
@@ -95,12 +95,20 @@ using ShaleDrillingLikelihood: num_x,
         grad .*= -1
         return LL
     end
-    res = optimize(ff, theta*2, NelderMead(), Optim.Options(time_limit = 5.0))
-    @test maximum(abs.(res.minimizer .- theta)) < 0.25
+    println("\n\nNelder Mead\n\n")
+    theta_translated =
+    @show res = optimize(ff, theta*2, NelderMead(), Optim.Options(time_limit = 5.0))
+    @show (res.minimizer, theta,)
+    @test maximum(abs.(res.minimizer[1:end-2] .- theta[1:end-2])) < 0.25
+    @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.25
 
+
+    println("\n\nBFGS\n\n")
     od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
-    res = optimize(ff, res.minimizer, BFGS(), Optim.Options(time_limit = 5.0))
-    @test maximum(abs.(res.minimizer .- theta)) < 0.14
+    @show res = optimize(ff, theta*1.5, BFGS(), Optim.Options(time_limit = 20.0))
+    @show (res.minimizer, theta,)
+    @test maximum(abs.(res.minimizer[1:end-2] .- theta[1:end-2])) < 0.2
+    @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.2
 
     fd = Calculus.gradient(ff, theta*2)
     fill!(gradtmp, 0)
