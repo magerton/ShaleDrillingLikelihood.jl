@@ -25,8 +25,8 @@ using ShaleDrillingLikelihood: num_x,
 
     @test theta_pdxn_ψ(pm, theta) == theta[1]
     @test all(theta_pdxn_β(pm, theta) .== theta[1 .+ (1:k)])
-    @test theta_pdxn_σ2η(pm, theta) == 0.25
-    @test theta_pdxn_σ2u(pm, theta) == 0.5
+    @test theta_pdxn_σ2η(pm, theta) == theta[end-1]
+    @test theta_pdxn_σ2u(pm, theta) == theta[end]
 
     v = sqrt(theta_pdxn_σ2u(pm,theta)) .* u .+ sqrt(theta_pdxn_σ2η(pm,theta)) .* η
     v .+= repeat(ψ[1,:], inner = num_t)
@@ -93,18 +93,10 @@ using ShaleDrillingLikelihood: num_x,
         grad .*= -1
         return LL
     end
-    res = optimize(ff, theta*0.8, NelderMead(), Optim.Options(time_limit = 5.0))
-    # res = optimize(ff, theta*0.8, BFGS(), Optim.Options(time_limit = 5.0))
+    res = optimize(ff, theta*2, NelderMead(), Optim.Options(time_limit = 5.0))
     @test maximum(abs.(res.minimizer .- theta)) < 0.1
-    # @show res
 
-
-    fd = Calculus.gradient(ff, theta)
+    fd = Calculus.gradient(ff, theta*2)
     fill!(gradtmp, 0)
-    ffgg!(gradtmp, theta)
-
-    od = OnceDifferentiable(ff, ffgg!, theta)
-    res = optimize(od, theta*2.0, BFGS(), Optim.Options(time_limit = 5.0))
-    @show res
-
+    ffgg!(gradtmp, theta*2)
 end
