@@ -7,6 +7,8 @@ using ShaleDrillingLikelihood: num_x,
 
 @testset "Production basics" begin
 
+    Random.seed!(1234)
+
     k = 3
     num_i = 500
     num_t = 11
@@ -95,21 +97,19 @@ using ShaleDrillingLikelihood: num_x,
         grad .*= -1
         return LL
     end
-    println("\n\nNelder Mead\n\n")
-    theta_translated =
-    @show res = optimize(ff, theta*2, NelderMead(), Optim.Options(time_limit = 5.0))
-    @show (res.minimizer, theta,)
+
+    # println("\n\nNelder Mead\n\n")
+    res = optimize(ff, theta*2, NelderMead(), Optim.Options(time_limit = 5.0))
     @test maximum(abs.(res.minimizer[1:end-2] .- theta[1:end-2])) < 0.25
     @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.25
 
-
-    println("\n\nBFGS\n\n")
+    # println("\n\nBFGS\n\n")
     od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
-    @show res = optimize(ff, theta*1.5, BFGS(), Optim.Options(time_limit = 20.0))
-    @show (res.minimizer, theta,)
+    res = optimize(ff, theta*1.5, BFGS(), Optim.Options(time_limit = 20.0))
     @test maximum(abs.(res.minimizer[1:end-2] .- theta[1:end-2])) < 0.2
     @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.2
 
+    # check gradient
     fd = Calculus.gradient(ff, theta*2)
     fill!(gradtmp, 0)
     ffgg!(gradtmp, theta*2)

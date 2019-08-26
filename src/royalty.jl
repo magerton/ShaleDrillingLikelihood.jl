@@ -3,6 +3,51 @@ using Distributions: _F1
 using Base.Threads
 
 # ---------------------------------------------
+# Royalty computations for individual `i`
+# ---------------------------------------------
+
+"Tempvars for royalty simulations with `i`"
+struct RoyaltyComputation{V0<:AbstractVector, V1<:Vector, V2<:AbstractVector} <: AbstractIntermediateComputations
+    choice::Int # data
+    x::V0       # data
+    am::V1      # tmp
+    bm::V1      # tmp
+    cm::V1      # tmp
+    LLm::V1     # tmp
+    qm::V1      # tmp
+    u::V2       # simulation
+    v::V2       # simulation
+
+    function RoyaltyComputation(
+        choice::Int, x::V0, am::V1, bm::V1, cm::V1, LLm::V1, qm::V1, u::V2, v::V2
+    ) where {
+        V0<:AbstractVector, V1<:AbstractVector, V2<:AbstractVector
+    }
+        @assert length(am)==length(bm)==length(cm)==length(qm)==length(LLm)==length(u)==length(v)
+        return new{V0,V1,V2}(choice, x, am, bm, cm, LLm, qm, u, v)
+    end
+end
+
+function RoyaltyComputation(l::AbstractVector, X::AbstractMatrix, am, bm, cm, llm, qm, u, v, i::Integer)
+    li = l[i]                     # data
+    xi = view(X, :, i)            # data
+    um, vm = view.( (u,v), :, i ) # simulations
+    return RoyaltyComputation(li, xi, am, bm, cm, llm, qm, um, vm)
+end
+
+_choice(rc::RoyaltyComputation) = rc.choice
+_x(     rc::RoyaltyComputation) = rc.x
+_am(    rc::RoyaltyComputation) = rc.am
+_bm(    rc::RoyaltyComputation) = rc.bm
+_cm(    rc::RoyaltyComputation) = rc.cm
+_LLm(   rc::RoyaltyComputation) = rc.LLm
+_qm(    rc::RoyaltyComputation) = rc.qm
+_u(     rc::RoyaltyComputation) = rc.u
+_v(     rc::RoyaltyComputation) = rc.v
+
+length( rc::RoyaltyComputation ) = length(_u(rc))
+
+# ---------------------------------------------
 # Royalty low level computations
 # ---------------------------------------------
 
@@ -62,49 +107,8 @@ function lik_loglik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTupl
 end
 
 # ---------------------------------------------
-# Royalty computations for individual `i`
+# Royalty likelihood
 # ---------------------------------------------
-
-"Tempvars for royalty simulations with `i`"
-struct RoyaltyComputation{V0<:AbstractVector, V1<:Vector, V2<:AbstractVector} <: AbstractIntermediateComputations
-    choice::Int # data
-    x::V0       # data
-    am::V1      # tmp
-    bm::V1      # tmp
-    cm::V1      # tmp
-    LLm::V1     # tmp
-    qm::V1      # tmp
-    u::V2       # simulation
-    v::V2       # simulation
-
-    function RoyaltyComputation(
-        choice::Int, x::V0, am::V1, bm::V1, cm::V1, LLm::V1, qm::V1, u::V2, v::V2
-    ) where {
-        V0<:AbstractVector, V1<:AbstractVector, V2<:AbstractVector
-    }
-        @assert length(am)==length(bm)==length(cm)==length(qm)==length(LLm)==length(u)==length(v)
-        return new{V0,V1,V2}(choice, x, am, bm, cm, LLm, qm, u, v)
-    end
-end
-
-function RoyaltyComputation(l::AbstractVector, X::AbstractMatrix, am, bm, cm, llm, qm, u, v, i::Integer)
-    li = l[i]                     # data
-    xi = view(X, :, i)            # data
-    um, vm = view.( (u,v), :, i ) # simulations
-    return RoyaltyComputation(li, xi, am, bm, cm, llm, qm, um, vm)
-end
-
-_choice(rc::RoyaltyComputation) = rc.choice
-_x(     rc::RoyaltyComputation) = rc.x
-_am(    rc::RoyaltyComputation) = rc.am
-_bm(    rc::RoyaltyComputation) = rc.bm
-_cm(    rc::RoyaltyComputation) = rc.cm
-_LLm(   rc::RoyaltyComputation) = rc.LLm
-_qm(    rc::RoyaltyComputation) = rc.qm
-_u(     rc::RoyaltyComputation) = rc.u
-_v(     rc::RoyaltyComputation) = rc.v
-
-length( rc::RoyaltyComputation ) = length(_u(rc))
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
 function loglik_royalty!(rc, model, theta, dograd::Bool)
@@ -145,6 +149,10 @@ function loglik_royalty!(rc, model, theta, dograd::Bool)
     return nothing
 end
 
+# ---------------------------------------------
+# Royalty gradient
+# ---------------------------------------------
+
 "integrates over royalty"
 function update_grad_roy!(grad::AbstractVector, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
 
@@ -180,7 +188,7 @@ end
 
 
 "for testing only"
-function llthreads!(grad, θ, RM::AbstractRoyaltyModel, l, xx, dograd::Bool=true)
+function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
 
     theta_roy_check(RM, θ) || return -Inf
 

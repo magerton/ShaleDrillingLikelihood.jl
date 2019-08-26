@@ -13,6 +13,7 @@ using BenchmarkTools
 using Calculus
 
 using Optim
+using Random
 
 include("royalty.jl")
 include("production.jl")

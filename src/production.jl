@@ -1,10 +1,8 @@
-function ψbar_ψ2bar(ψ, qm)
-    ψbar  = dot(ψ, qm)
-    ψ2bar = sumprod3(ψ, ψ, qm)
-    return ψbar, ψ2bar
-end
+# ---------------------------------------------
+# Tmp for liklihood
+# ---------------------------------------------
 
-"Tmp scalars for production computations"
+"Tmp scalars for production liklihood"
 struct ProductionLikelihoodComputations <: AbstractIntermediateComputations
     T::Int
     vpv::Float64
@@ -22,6 +20,40 @@ _T(    plc::ProductionLikelihoodComputations) = plc.T
 _vpv(  plc::ProductionLikelihoodComputations) = plc.vpv
 _vp1(  plc::ProductionLikelihoodComputations) = plc.vp1
 _vp1sq(plc::ProductionLikelihoodComputations) = _vp1(plc)^2
+
+# ---------------------------------------------
+# Tmp for gradient
+# ---------------------------------------------
+
+"Tmp scalars + Vectors for production gradient"
+struct ProductionGradientComputations <: AbstractIntermediateComputations
+    ψbar::Float64
+    ψ2bar::Float64
+    Xpv::Vector{Float64}
+    Xp1::Vector{Float64}
+    function ProductionGradientComputations(ψbar::T, ψ2bar::T, Xpv::Vector{T}, Xp1::Vector{T}) where {T<:Float64}
+        @assert length(Xpv)==length(Xp1)
+        return new(ψbar, ψ2bar, Xpv, Xp1)
+    end
+end
+
+_ψbar( pgc::ProductionGradientComputations) = pgc.ψbar
+_ψ2bar(pgc::ProductionGradientComputations) = pgc.ψ2bar
+_Xpv(  pgc::ProductionGradientComputations) = pgc.Xpv
+_Xp1(  pgc::ProductionGradientComputations) = pgc.Xp1
+
+function ψbar_ψ2bar(ψ, qm)
+    ψbar  = dot(ψ, qm)
+    ψ2bar = sumprod3(ψ, ψ, qm)
+    return ψbar, ψ2bar
+end
+
+function ProductionGradientComputations(qm::AbstractVector,ψ::AbstractVector,X::AbstractMatrix,v::AbstractVector)
+    psi_psi2 = ψbar_ψ2bar(ψ, qm)
+    Xpv = X*v
+    Xp1 = vec(sum(X; dims=2))
+    return ProductionGradientComputations(psi_psi2..., Xpv, Xp1)
+end
 
 # ---------------------------------------------
 # Production log lik
@@ -54,34 +86,9 @@ end
 
 loglik_pdxn(a::Real, b::Real, c::Real, ψ::Real) = a + b*ψ + c*ψ^2
 
-loglik_pdxn(model, theta, v, ψ::Number) = loglik_pdxn(loglik_pdxn_scalars(model, theta, v)..., ψ)
-
 # ---------------------------------------------
 # Production gradient
 # ---------------------------------------------
-
-struct ProductionGradientComputations <: AbstractIntermediateComputations
-    ψbar::Float64
-    ψ2bar::Float64
-    Xpv::Vector{Float64}
-    Xp1::Vector{Float64}
-    function ProductionGradientComputations(ψbar::T, ψ2bar::T, Xpv::Vector{T}, Xp1::Vector{T}) where {T<:Float64}
-        @assert length(Xpv)==length(Xp1)
-        return new(ψbar, ψ2bar, Xpv, Xp1)
-    end
-end
-
-_ψbar( pgc::ProductionGradientComputations) = pgc.ψbar
-_ψ2bar(pgc::ProductionGradientComputations) = pgc.ψ2bar
-_Xpv(  pgc::ProductionGradientComputations) = pgc.Xpv
-_Xp1(  pgc::ProductionGradientComputations) = pgc.Xp1
-
-function ProductionGradientComputations(qm::AbstractVector,ψ::AbstractVector,X::AbstractMatrix,v::AbstractVector)
-    psi_psi2 = ψbar_ψ2bar(ψ, qm)
-    Xpv = X*v
-    Xp1 = vec(sum(X; dims=2))
-    return ProductionGradientComputations(psi_psi2..., Xpv, Xp1)
-end
 
 function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations, pgc::ProductionGradientComputations)
 
