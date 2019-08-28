@@ -24,8 +24,8 @@ using Base.Threads
 
 Random.seed!(1234)
 
-num_i = 10_000
-num_t = 500
+num_i = 100
+num_t = 50
 nobs = num_i *num_t
 β = [1.0, -2.0, 1.0, 2.0]
 k = length(β)
@@ -94,16 +94,21 @@ function loglik(y::AbstractVector, x::AbstractArray, psi::AbstractArray, theta::
     @assert minimum(y) == 1
     @assert size(psi,2) == num_i
 
+    # @assert length(LLthread) == nthreads()
+    # fill!(LLthread, zero(T))
+
     LL = Atomic{T}(zero(T))
-    for i in 1:num_i
+    @threads for i in 1:num_i
         rng = irng(num_t,i)
-        @views atomic_add!(LL, loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L))
+        atomic_add!(LL, loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L))
+        # LLthread[threadid()] += loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L)
     end
     return LL[]
 end
 
 ubvtmp = Array{Float64}(undef, L, nthreads())
 llmtmp = Array{Float64}(undef, M, nthreads())
+LLthread = zeros(Float64, nthreads())
 
 f(θ) = -loglik(choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
 @btime f(theta)
