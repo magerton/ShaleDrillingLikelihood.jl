@@ -4,12 +4,13 @@
 # using Test
 using StatsFuns
 using Distributions
-# using Calculus
-using Optim
 using Random
-using LinearAlgebra
 using BenchmarkTools
 using Base.Threads
+
+# using Calculus
+# using Optim
+# using LinearAlgebra
 
 # @testset "Drilling Likelihood" begin
 
@@ -115,11 +116,10 @@ let y = choices[irng(num_t,1)], x = X[irng(num_t,1)], psii = psisim[:,1], ubv = 
 end
 
 
-
-res = optimize(f, theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-
-@show res
-@show res.minimizer
+# res = optimize(f, theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
+#
+# @show res
+# @show res.minimizer
 
 # end
 #
