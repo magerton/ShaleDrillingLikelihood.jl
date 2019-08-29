@@ -2,15 +2,23 @@
 #
 # using ShaleDrillingLikelihood
 # using Test
+# using Revise
+
+using Revise
+
+using ShaleDrillingLikelihood
 using StatsFuns
 using Distributions
 using Random
 using BenchmarkTools
 using Base.Threads
+using Profile
+using ProfileView
 
-# using Calculus
-# using Optim
-# using LinearAlgebra
+
+using Calculus
+using Optim
+using LinearAlgebra
 
 # @testset "Drilling Likelihood" begin
 
@@ -56,79 +64,46 @@ drng = 1:L
 M = 100
 psisim = randn(M,num_i)
 
-function flow(d::Integer,theta::AbstractVector,x::Real,ψ::Real,L::Integer)
-    @assert 1 <= d <= L  # FIXME with L
-    d==1 && return zero(x)
-    return theta[d-1]*x + theta[d+1]*ψ
-end
-
-function loglik_i(yi::AbstractVector{Int}, xi::AbstractVector{<:Real}, psii::AbstractVector{<:Real}, theta::AbstractVector{<:Real}, ubv::AbstractArray{<:Real}, llm::AbstractVector{T}, L::Integer) where {T}
-    M = length(psii)
-    L = size(ubv,1)
-    num_t = length(yi)
-    @assert num_t == length(xi)
-    @assert M == length(llm)
-
-    fill!(llm, zero(T))
-
-    @inbounds begin
-        @threads for m in 1:M
-            local ubvtmp = Vector{Float64}(undef,L)
-
-            for t in 1:num_t
-                @simd for d in 1:L
-                    ubvtmp[d] = flow(d, theta, xi[t], psii[m], L)
-                end
-                d_choice = yi[t]
-                @views llm[m] += ubvtmp[d_choice] - logsumexp(ubvtmp)
-            end
-        end
-    end
-    return logsumexp(llm)
-end
-
-
-irng(num_t::Int,i::Int) = ((i-1)*num_t) .+ 1:num_t
-
-function loglik(y::AbstractVector, x::AbstractArray, psi::AbstractArray, theta::AbstractVector{T}, ubv::AbstractArray, llm::AbstractArray, num_t::Integer, num_i::Integer) where {T}
-    @assert length(y) == length(x) == num_i * num_t
-    L = maximum(y)
-    M = size(psi,1)
-    @assert size(ubv) == (L,nthreads())
-    @assert minimum(y) == 1
-    @assert size(psi,2) == num_i
-
-    # @assert length(LLthread) == nthreads()
-    # fill!(LLthread, zero(T))
-
-    LL = Atomic{T}(zero(T))
-    for i in 1:num_i
-        rng = irng(num_t,i)
-        atomic_add!(LL, loglik_i(y[rng], x[rng], psi[:,i], theta, ubv, llm, L))
-        # LLthread[threadid()] += loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L)
-    end
-    return LL[]
-end
 
 ubvtmp = Array{Float64}(undef, L, nthreads())
 llmtmp = Array{Float64}(undef, M)
 LLthread = zeros(Float64, nthreads())
 
-f(θ) = -loglik(choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
-@btime f(theta)
+f(g, θ) = -loglik(g, choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
+# @code_warntype loglik(loglik_i_thread, choices, X, psisim, theta, ubvtmp, llmtmp, num_t, num_i)
+
+yi, Xi, psii = choices[irng(num_t,1)], X[irng(num_t,1)], psisim[:,1]
 
 
 
-@code_warntype loglik(choices, X, psisim, theta, ubvtmp, llmtmp, num_t, num_i)
-let y = choices[irng(num_t,1)], x = X[irng(num_t,1)], psii = psisim[:,1], ubv = ubvtmp[:,1], llm = llmtmp[:,1]
-    @code_warntype loglik_i(y, x, psii, theta, ubv, llm, L)
-end
+@show @benchmark  f(loglik_i_thread, theta)
+@show @benchmark  f(loglik_i_serial, theta)
 
 
-# res = optimize(f, theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-#
-# @show res
-# @show res.minimizer
+println("\n\n------- Threaded ---------\n\n")
+@benchmark       loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@code_warntype   loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@profile         loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@profile       f(loglik_i_thread, theta)
+Profile.print()
+ProfileView.view()
+
+println("\n\n-------- Serial --------\n\n")
+@benchmark     loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@code_warntype loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@profile       loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@profile     f(loglik_i_serial, theta)
+Profile.print()
+ProfileView.view()
+
+
+res = optimize(x -> f(loglik_i_serial, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
+@show res
+@show res.minimizer
+
+res = optimize(x -> f(loglik_i_thread, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
+@show res
+@show res.minimizer
 
 # end
 #
