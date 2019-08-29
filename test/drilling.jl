@@ -72,13 +72,13 @@ function loglik_i(yi::AbstractVector{Int}, xi::AbstractVector{<:Real}, psii::Abs
     fill!(llm, zero(T))
 
     @inbounds begin
-        for m in 1:M
+        @threads for m in 1:M
             for t in 1:num_t
                 @simd for d in 1:L
-                    ubv[d] = flow(d, theta, xi[t], psii[m], L)
+                    ubv[d,threadid()] = flow(d, theta, xi[t], psii[m], L)
                 end
                 d_choice = yi[t]
-                @views llm[m] += ubv[d_choice] - logsumexp(ubv)
+                @views llm[m] += ubv[d_choice,threadid()] - logsumexp(ubv[:,threadid()])
             end
         end
     end
@@ -100,16 +100,16 @@ function loglik(y::AbstractVector, x::AbstractArray, psi::AbstractArray, theta::
     # fill!(LLthread, zero(T))
 
     LL = Atomic{T}(zero(T))
-    @threads for i in 1:num_i
+    for i in 1:num_i
         rng = irng(num_t,i)
-        atomic_add!(LL, loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L))
+        atomic_add!(LL, loglik_i(y[rng], x[rng], psi[:,i], theta, ubv, llm, L))
         # LLthread[threadid()] += loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L)
     end
     return LL[]
 end
 
 ubvtmp = Array{Float64}(undef, L, nthreads())
-llmtmp = Array{Float64}(undef, M, nthreads())
+llmtmp = Array{Float64}(undef, M)
 LLthread = zeros(Float64, nthreads())
 
 f(θ) = -loglik(choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
