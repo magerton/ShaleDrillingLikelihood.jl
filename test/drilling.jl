@@ -1,15 +1,8 @@
-# module ShaleDrillingLikelihood_Drilling_Test
-
-using Revise
-using Test
-
-# look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
-# https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
-# https://discourse.julialang.org/t/two-questions-about-multithreading/14564/2
-# https://discourse.julialang.org/t/question-about-multi-threading-performance/12075/3
+module ShaleDrillingLikelihood_Drilling_Test
 
 using ShaleDrillingLikelihood
 
+using Test
 using StatsFuns
 using Distributions
 using Random
@@ -19,66 +12,61 @@ using Base.Threads
 # using ProfileView
 using InteractiveUtils
 
-
 using Calculus
 using Optim
 using LinearAlgebra
 
-# @testset "Drilling Likelihood" begin
+@testset "Drilling Likelihood" begin
 
+    # -----------------------------------------------
+    # simulate data
+    # -----------------------------------------------
 
-# check out this??
-# https://discourse.julialang.org/t/anyone-developing-multinomial-logistic-regression/23222
+    Random.seed!(1234)
 
-# -----------------------------------------------
-# simulate data
-# -----------------------------------------------
+    num_i = 1_000
+    num_t = 500
+    nobs = num_i *num_t
+    β = [1.0, -2.0, 1.0, 2.0]
+    k = length(β)
+    L = 3
 
-Random.seed!(1234)
+    # exogenous variable
+    X = randn(nobs)
+    psi = repeat(randn(num_i), inner=num_t)
 
-num_i = 1_000
-num_t = 500
-nobs = num_i *num_t
-β = [1.0, -2.0, 1.0, 2.0]
-k = length(β)
-L = 3
+    # choice utilities
+    u = vcat(zeros(nobs)', β[1:2]*X' .+ β[3:4]*psi')
 
-# exogenous variable
-X = randn(nobs)
-psi = repeat(randn(num_i), inner=num_t)
+    # multinomial logit probabilities
+    Pr0 = mapslices(softmax, u; dims=1)
+    cum_Pr0 = cumsum(Pr0; dims=1)
 
-# choice utilities
-u = vcat(zeros(nobs)', β[1:2]*X' .+ β[3:4]*psi')
+    # random choice given multinomial probabilites
+    e_quantile = rand(nobs)
+    choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:length(e_quantile) ]
 
-# multinomial logit probabilities
-Pr0 = mapslices(softmax, u; dims=1)
-cum_Pr0 = cumsum(Pr0; dims=1)
+    # -----------------------------------------------
+    # form likelihood
+    # -----------------------------------------------
 
-# random choice given multinomial probabilites
-e_quantile = rand(nobs)
-choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:length(e_quantile) ]
+    theta = rand(k)
+    ubV = zeros(L, nobs)
+    drng = 1:L
+    M = 1_000*nthreads()
+    psisim = randn(M,num_i)
 
-# -----------------------------------------------
-# form likelihood
-# -----------------------------------------------
+    loglik_serial(choices, X, psisim, theta, num_t, num_i)
+    loglik_threaded(choices, X, psisim, theta, num_t, num_i)
 
-theta = rand(k)
-ubV = zeros(L, nobs)
-drng = 1:L
-M = 1_000*nthreads()
-psisim = randn(M,num_i)
+    @code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
+    @code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
 
-loglik_serial(choices, X, psisim, theta, num_t, num_i)
-loglik_threaded(choices, X, psisim, theta, num_t, num_i)
+    println("\n\n-------- Serial --------\n\n")
+    println(@btime loglik_serial(choices, X, psisim, theta, num_t, num_i))
 
-@code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
-@code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
-
-println("\n\n-------- Serial --------\n\n")
-println(@btime loglik_serial(choices, X, psisim, theta, num_t, num_i))
-
-println("\n\n-------- Threaded --------\n\n")
-println(@btime loglik_threaded(choices, X, psisim, theta, num_t, num_i))
+    println("\n\n-------- Threaded --------\n\n")
+    println(@btime loglik_threaded(choices, X, psisim, theta, num_t, num_i))
 
 # ubvs = Vector{Vector{Float64}}(undef,nthreads())
 #
@@ -145,4 +133,8 @@ println(@btime loglik_threaded(choices, X, psisim, theta, num_t, num_i))
 #
 # # end
 # #
-# end # module
+
+
+
+end # testset
+end # module

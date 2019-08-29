@@ -70,6 +70,13 @@ function loglik(f::Function, y::AbstractVector, x::AbstractArray, psi::AbstractA
     return LL
 end
 
+# look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
+# https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
+# https://discourse.julialang.org/t/two-questions-about-multithreading/14564/2
+# https://discourse.julialang.org/t/question-about-multi-threading-performance/12075/3
+
+# check out this??
+# https://discourse.julialang.org/t/anyone-developing-multinomial-logistic-regression/23222
 
 @noinline function init_ubvs(ubvs::Vector{Vector{T}}, L::Integer) where {T}
     # Allocate the tmpvars the thread's own heap lazily
