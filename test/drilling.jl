@@ -71,13 +71,15 @@ function loglik_i(yi::AbstractVector{Int}, xi::AbstractVector{<:Real}, psii::Abs
 
     fill!(llm, zero(T))
 
-    for t in 1:num_t
+    @inbounds begin
         for m in 1:M
-            @simd for d in 1:L
-                @inbounds ubv[d] = flow(d, theta, xi[t], psii[m], L)
+            for t in 1:num_t
+                @simd for d in 1:L
+                    ubv[d] = flow(d, theta, xi[t], psii[m], L)
+                end
+                d_choice = yi[t]
+                @views llm[m] += ubv[d_choice] - logsumexp(ubv)
             end
-            d_choice = yi[t]
-            @views llm[m] += ubv[d_choice] - logsumexp(ubv)
         end
     end
     return logsumexp(llm)
