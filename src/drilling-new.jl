@@ -22,7 +22,7 @@ function inner_loop!(llmview, yi, xi, psii_m, thet, ubvview)
     L = length(ubvview)
 
     for t in 1:num_t
-        for d in 1:L
+        @simd for d in 1:L
             @inbounds ubvview[d] = flow(d, thet, xi[t], psii_m, L)
         end
         @views llmview[1] += ubvview[ yi[t] ] - logsumexp(ubvview)

@@ -1,10 +1,10 @@
-# module ShaleDrillingLikelihood_Drilling_Test
+module ShaleDrillingLikelihood_Drilling_Test
 #
 # using ShaleDrillingLikelihood
-# using Test
+using Test
 # using Revise
 
-using Revise
+# using Revise
 
 using ShaleDrillingLikelihood
 using StatsFuns
@@ -14,6 +14,7 @@ using BenchmarkTools
 using Base.Threads
 using Profile
 using ProfileView
+using InteractiveUtils
 
 
 using Calculus
@@ -61,7 +62,7 @@ choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:leng
 theta = rand(k)
 ubV = zeros(L, nobs)
 drng = 1:L
-M = 1_000
+M = 100*nthreads()
 psisim = randn(M,num_i)
 
 
@@ -97,15 +98,15 @@ println("\n\n------- Threaded ---------\n\n")
 @profile       f(loglik_i_thread, theta)
 Profile.print()
 ProfileView.view()
-
-res = optimize(x -> f(loglik_i_serial, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-@show res
-@show res.minimizer
-
-res = optimize(x -> f(loglik_i_thread, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-@show res
-@show res.minimizer
+#
+# res = optimize(x -> f(loglik_i_serial, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
+# @show res
+# @show res.minimizer
+#
+# res = optimize(x -> f(loglik_i_thread, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
+# @show res
+# @show res.minimizer
 
 # end
 #
-# end # module
+end # module
