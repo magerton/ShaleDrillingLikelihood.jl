@@ -6,69 +6,62 @@ function flow(d::Integer,theta::AbstractVector{T},x::Real,ψ::Real,L::Integer) w
     return T(theta[d-1]*x + theta[d+1]*ψ)
 end
 
-const cache_pad = Int(2)
+const cache_pad = Int(100)
 
-function loglik_i_thread(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
+function do_assertions(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
     M = length(psii)
-    L = size(ubv,1)
     num_t = length(yi)
     @assert num_t == length(xi)
     @assert length(llm) == M
     @assert size(ubv,2) == nthreads()
-
-    fill!(llm, zero(T))
-
-    @threads for m in 1:M
-        for t in 1:num_t
-            for d in 1:L
-                ubv[d,threadid()] = flow(d, thet, xi[t], psii[m], L)
-            end
-            d_choice = yi[t]
-            @views llm[m] += ubv[d_choice,threadid()] - logsumexp(ubv[:, threadid()])
-        end
-    end
-    return logsumexp(llm)
+    return M, num_t
 end
 
+function inner_loop!(llmview, yi, xi, psii_m, thet, ubvview)
+    num_t = length(yi)
+    L = length(ubvview)
+
+    for t in 1:num_t
+        for d in 1:L
+            @inbounds ubvview[d] = flow(d, thet, xi[t], psii_m, L)
+        end
+        @views llmview[1] += ubvview[ yi[t] ] - logsumexp(ubvview)
+    end
+
+end
+
+function loglik_i_thread(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
+    M, num_t = do_assertions(yi,xi,psii,thet,ubv,llm,L)
+    fill!(llm, zero(T))
+    @threads for m in 1:M
+        inner_loop!( view(llm, m), yi, xi, psii[m], thet, view(ubv, 1:L, threadid()))
+        # inner_loop!( view(llm, m), yi, xi, psii[m], thet, Vector{Float64}(undef, L))
+    end
+    return logsumexp(llm) - log(M)
+end
 
 
 function loglik_i_serial(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
-    M = length(psii)
-    L = size(ubv,1)
-    num_t = length(yi)
-    @assert num_t == length(xi)
-    @assert length(llm) == M
-    @assert size(ubv,2) == nthreads()
-
+    M, num_t = do_assertions(yi,xi,psii,thet,ubv,llm,L)
     fill!(llm, zero(T))
-
     for m in 1:M
-        for t in 1:num_t
-            @simd for d in 1:L
-                ubv[d,threadid()] = flow(d, thet, xi[t], psii[m], L)
-            end
-            d_choice = yi[t]
-            @views llm[m] += ubv[d_choice,threadid()] - logsumexp(ubv[:, threadid()])
-        end
+        inner_loop!( view(llm, m), yi, xi, psii[m], thet, view(ubv, 1:L, threadid()))
     end
-    return logsumexp(llm)
+    return logsumexp(llm) - log(M)
 end
 
-irng(num_t::Int,i::Int) = ((i-1)*num_t) .+ 1:num_t
+irng(num_t::Int,i::Int) = (i-1)*num_t .+ (1:num_t)
 
 function loglik(f::Function, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, ubv::AbstractArray, llm::AbstractArray, num_t::Integer, num_i::Integer) where {T}
     @assert length(y) == length(x) == num_i * num_t
     L = maximum(y)
     M = size(psi,1)
-    @assert size(ubv,1) == L
+    @assert size(ubv,1) == L+cache_pad
     @assert size(ubv,2) == nthreads()
     @assert minimum(y) == 1
     @assert size(psi,2) == num_i
 
-    # @assert length(LLthread) == nthreads()
-    # fill!(LLthread, zero(T))
-
-    LL = 0.0 # Atomic{T}(zero(T))
+    LL = zero(T) # Atomic{T}(zero(T))
     for i in 1:num_i
         rng = irng(num_t,i)
         @views LL += f(y[rng], x[rng], psi[:,i], thet, ubv, llm, L)

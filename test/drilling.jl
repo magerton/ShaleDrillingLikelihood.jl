@@ -61,24 +61,34 @@ choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:leng
 theta = rand(k)
 ubV = zeros(L, nobs)
 drng = 1:L
-M = 100
+M = 1_000
 psisim = randn(M,num_i)
 
 
-ubvtmp = Array{Float64}(undef, L, nthreads())
+ubvtmp = Array{Float64}(undef, L+cache_pad, nthreads())
 llmtmp = Array{Float64}(undef, M)
 LLthread = zeros(Float64, nthreads())
+
+yi, Xi, psii = choices[irng(num_t,1)], X[irng(num_t,1)], psisim[:,1]
 
 f(g, θ) = -loglik(g, choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
 # @code_warntype loglik(loglik_i_thread, choices, X, psisim, theta, ubvtmp, llmtmp, num_t, num_i)
 
-yi, Xi, psii = choices[irng(num_t,1)], X[irng(num_t,1)], psisim[:,1]
+f(loglik_i_serial, theta)
+f(loglik_i_thread, theta)
 
-
-
-@show @benchmark  f(loglik_i_thread, theta)
 @show @benchmark  f(loglik_i_serial, theta)
+@show @benchmark  f(loglik_i_thread, theta)
 
+
+println("\n\n-------- Serial --------\n\n")
+@benchmark     loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@code_warntype loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@profile       loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
+@benchmark   f(loglik_i_serial, theta)
+@profile     f(loglik_i_serial, theta)
+Profile.print()
+ProfileView.view()
 
 println("\n\n------- Threaded ---------\n\n")
 @benchmark       loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
@@ -87,15 +97,6 @@ println("\n\n------- Threaded ---------\n\n")
 @profile       f(loglik_i_thread, theta)
 Profile.print()
 ProfileView.view()
-
-println("\n\n-------- Serial --------\n\n")
-@benchmark     loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-@code_warntype loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-@profile       loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-@profile     f(loglik_i_serial, theta)
-Profile.print()
-ProfileView.view()
-
 
 res = optimize(x -> f(loglik_i_serial, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
 @show res
