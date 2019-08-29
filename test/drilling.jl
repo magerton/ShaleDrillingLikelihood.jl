@@ -73,12 +73,14 @@ function loglik_i(yi::AbstractVector{Int}, xi::AbstractVector{<:Real}, psii::Abs
 
     @inbounds begin
         @threads for m in 1:M
+            local ubvtmp = Vector{Float64}(undef,L)
+
             for t in 1:num_t
                 @simd for d in 1:L
-                    ubv[d,threadid()] = flow(d, theta, xi[t], psii[m], L)
+                    ubvtmp[d] = flow(d, theta, xi[t], psii[m], L)
                 end
                 d_choice = yi[t]
-                @views llm[m] += ubv[d_choice,threadid()] - logsumexp(ubv[:,threadid()])
+                @views llm[m] += ubvtmp[d_choice] - logsumexp(ubvtmp)
             end
         end
     end
