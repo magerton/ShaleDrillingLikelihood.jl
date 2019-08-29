@@ -6,6 +6,12 @@ using Test
 
 # using Revise
 
+# look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
+# https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
+# https://discourse.julialang.org/t/two-questions-about-multithreading/14564/2
+# https://discourse.julialang.org/t/question-about-multi-threading-performance/12075/3
+
+
 using ShaleDrillingLikelihood
 using StatsFuns
 using Distributions
