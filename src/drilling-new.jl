@@ -72,6 +72,9 @@ end
 
 
 @noinline function init_ubvs(ubvs::Vector{Vector{T}}, L::Integer) where {T}
+    # Allocate the tmpvars the thread's own heap lazily
+    # instead of the master thread heap to minimize memory conflict.
+    # https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
     @threads for id in 1:nthreads()
         tid = threadid()
         ubvs[tid] = fill(T(tid), L)

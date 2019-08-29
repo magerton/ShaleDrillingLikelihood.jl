@@ -36,8 +36,8 @@ using LinearAlgebra
 
 Random.seed!(1234)
 
-num_i = 100
-num_t = 50
+num_i = 1_000
+num_t = 500
 nobs = num_i *num_t
 β = [1.0, -2.0, 1.0, 2.0]
 k = length(β)
@@ -65,13 +65,18 @@ choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:leng
 theta = rand(k)
 ubV = zeros(L, nobs)
 drng = 1:L
-M = 100*nthreads()
+M = 1_000*nthreads()
 psisim = randn(M,num_i)
 
+loglik_serial(choices, X, psisim, theta, num_t, num_i)
+loglik_threaded(choices, X, psisim, theta, num_t, num_i)
 
+@code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
+@code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
 
 println("\n\n-------- Serial --------\n\n")
 println(@btime loglik_serial(choices, X, psisim, theta, num_t, num_i))
+
 println("\n\n-------- Threaded --------\n\n")
 println(@btime loglik_threaded(choices, X, psisim, theta, num_t, num_i))
 
