@@ -4,13 +4,12 @@ using ShaleDrillingLikelihood
 
 using Test
 using StatsFuns
-using Distributions
 using Random
 using BenchmarkTools
 using Base.Threads
 # using Profile
 # using ProfileView
-using InteractiveUtils
+# using InteractiveUtils
 
 using Calculus
 using Optim
@@ -24,8 +23,8 @@ using LinearAlgebra
 
     Random.seed!(1234)
 
-    num_i = 1_000
-    num_t = 500
+    num_i = 100
+    num_t = 50
     nobs = num_i *num_t
     β = [1.0, -2.0, 1.0, 2.0]
     k = length(β)
@@ -53,88 +52,41 @@ using LinearAlgebra
     theta = rand(k)
     ubV = zeros(L, nobs)
     drng = 1:L
-    M = 1_000*nthreads()
+    M = 10*nthreads()
     psisim = randn(M,num_i)
 
-    loglik_serial(choices, X, psisim, theta, num_t, num_i)
-    loglik_threaded(choices, X, psisim, theta, num_t, num_i)
+    @test true == true
 
-    @code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
-    @code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
+    println("\n\nmade simulations... run serial once")
+    llserl = loglik_serial(choices, X, psisim, theta, num_t, num_i)
+    println("run threaded once")
+    llthrd = loglik_threaded(choices, X, psisim, theta, num_t, num_i)
+    @test llserl == llthrd
+
+    # # @code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
+    # # @code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
 
     println("\n\n-------- Serial --------\n\n")
-    println(@btime loglik_serial(choices, X, psisim, theta, num_t, num_i))
+    @show @btime loglik_serial($choices, $X, $psisim, $theta, $num_t, $num_i)
 
-    println("\n\n-------- Threaded --------\n\n")
-    println(@btime loglik_threaded(choices, X, psisim, theta, num_t, num_i))
+    println("\n\n-------- Threaded using $(nthreads()) threads --------\n\n")
+    @show @btime loglik_threaded($choices, $X, $psisim, $theta, $num_t, $num_i)
 
-# ubvs = Vector{Vector{Float64}}(undef,nthreads())
-#
-# @noinline function init_ubvs(ubvs::Vector{Vector{T}}) where {T}
-#     @threads for id in 1:nthreads()
-#         tid = threadid()
-#         ubvs[tid] = fill(T(tid), 1)
-#     end
-# end
-#
-# function put_threadids(ubvs::Vector{Vector{T}}) where {T}
-#     @threads for id in 1:nthreads()
-#         tid = threadid()
-#         ubvs[tid] .= 2*tid
-#     end
-# end
-#
-# init_ubvs(ubvs)
-# println(vcat(ubvs...))
-# put_threadids(ubvs)
-# println(vcat(ubvs...))
+    println("\n\n-------- older benchmarks --------\n\n")
+    ubvtmp = Array{Float64}(undef, L+cache_pad, nthreads())
+    llmtmp = Array{Float64}(undef, M)
+    f(g, θ) = loglik(g, choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
+    llserl_old = f(loglik_i_serial, theta)
+    llthrd_old = f(loglik_i_thread, theta)
+    @test llserl_old == llserl
+    @test llthrd_old == llserl
 
+    println("\nSerial:")
+    @show @btime  loglik(loglik_i_serial, $choices, $X, $psisim, $theta, $ubvtmp, $llmtmp, $num_t, $num_i)
+    println("\nThreaded:")
+    @show @btime  loglik(loglik_i_thread, $choices, $X, $psisim, $theta, $ubvtmp, $llmtmp, $num_t, $num_i)
 
-# ubvtmp = Array{Float64}(undef, L+cache_pad, nthreads())
-# llmtmp = Array{Float64}(undef, M)
-# LLthread = zeros(Float64, nthreads())
-#
-# yi, Xi, psii = choices[irng(num_t,1)], X[irng(num_t,1)], psisim[:,1]
-#
-# f(g, θ) = -loglik(g, choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
-# # @code_warntype loglik(loglik_i_thread, choices, X, psisim, theta, ubvtmp, llmtmp, num_t, num_i)
-#
-# f(loglik_i_serial, theta)
-# f(loglik_i_thread, theta)
-#
-# @show @benchmark  f(loglik_i_serial, theta)
-# @show @benchmark  f(loglik_i_thread, theta)
-#
-#
-# println("\n\n-------- Serial --------\n\n")
-# @benchmark     loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @code_warntype loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @profile       loglik_i_serial(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @benchmark   f(loglik_i_serial, theta)
-# @profile     f(loglik_i_serial, theta)
-# Profile.print()
-# ProfileView.view()
-#
-# println("\n\n------- Threaded ---------\n\n")
-# @benchmark       loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @code_warntype   loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @profile         loglik_i_thread(yi, Xi, psii, theta, ubvtmp, llmtmp, L)
-# @profile       f(loglik_i_thread, theta)
-# Profile.print()
-# ProfileView.view()
-# #
-# # res = optimize(x -> f(loglik_i_serial, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-# # @show res
-# # @show res.minimizer
-# #
-# # res = optimize(x -> f(loglik_i_thread, x), theta, BFGS(), Optim.Options(time_limit=60.0*5, show_trace=true))
-# # @show res
-# # @show res.minimizer
-#
-# # end
-# #
-
-
+    @test true == true
 
 end # testset
 end # module

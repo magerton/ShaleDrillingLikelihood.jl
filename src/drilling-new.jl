@@ -6,7 +6,7 @@ function flow(d::Integer,theta::AbstractVector{T},x::Real,ψ::Real,L::Integer) w
     return T(theta[d-1]*x + theta[d+1]*ψ)
 end
 
-const cache_pad = Int(100)
+const cache_pad = Int(10)
 
 function do_assertions(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
     M = length(psii)
