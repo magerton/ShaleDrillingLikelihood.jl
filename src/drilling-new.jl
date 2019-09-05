@@ -108,13 +108,15 @@ function loglik_threaded(y::AbstractVector, x::AbstractArray, psi::AbstractArray
         rng = irng(num_t,i)
         xi = view(x, rng)
         yi = view(y, rng)
-        @threads for m in 1:M
-            local ubv = ubvs[threadid()]
-            for t in 1:num_t
-                @simd for d in 1:L
-                    @inbounds ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+        let M=M, num_t=num_t, L=L, ubvs=ubvs, thet=thet, xi=xi, psi=psi, llm=llm
+            @threads for m in 1:M
+                local ubv = ubvs[threadid()]
+                for t in 1:num_t
+                    @simd for d in 1:L
+                        @inbounds ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+                    end
+                    llm[m] += ubv[yi[t]] - logsumexp(ubv)
                 end
-                llm[m] += ubv[yi[t]] - logsumexp(ubv)
             end
         end
         LL += logsumexp(llm) - log(M)
