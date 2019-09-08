@@ -1,73 +1,51 @@
-export flow, loglik_i_thread, loglik_i_serial, cache_pad, irng, loglik, loglik_threaded, loglik_serial
+using Base: OneTo
 
-function flow(d::Integer,theta::AbstractVector{T},x::Real,ψ::Real,L::Integer) where {T}
+export flow, irng, loglik_threaded!, loglik_serial!
+
+
+"""
+    logsumexp_and_softmax!(r, x)
+
+Set `r` = softmax(x) and return `logsumexp(x)`.
+"""
+function logsumexp_and_softmax!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
+    n = length(x)
+    @assert length(r) == n
+    isempty(x) && return -T(Inf)
+
+    u = maximum(x)                                       # max value used to re-center
+    abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
+
+    s = zero(T)
+    @inbounds @simd for i in 1:n
+        s += ( r[i] = exp(x[i] - u) )
+    end
+    invs = one(T)/s
+    r .*= invs
+    return log(s) + u
+end
+
+logsumexp_and_softmax!(x) = logsumexp_and_softmax!(x,x)
+
+function flow(d::Integer, theta::AbstractVector{T}, x::Real, ψ::Real, L::Integer) where {T}
     @assert 1 <= d <= L  # FIXME with L
     d==1 && return zero(T)
     return T(theta[d-1]*x + theta[d+1]*ψ)
 end
 
-const cache_pad = Int(10)
-
-function do_assertions(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
-    M = length(psii)
-    num_t = length(yi)
-    @assert num_t == length(xi)
-    @assert length(llm) == M
-    @assert size(ubv,2) == nthreads()
-    return M, num_t
-end
-
-function inner_loop!(llmview, yi, xi, psii_m, thet, ubvview)
-    num_t = length(yi)
-    L = length(ubvview)
-
-    for t in 1:num_t
-        @simd for d in 1:L
-            @inbounds ubvview[d] = flow(d, thet, xi[t], psii_m, L)
-        end
-        @views llmview[1] += ubvview[ yi[t] ] - logsumexp(ubvview)
+function dflow(k::Integer, d::Integer, thet::AbstractVector{T}, x::Real, ψ::Real, L::Integer) where {T}
+    @assert 1 <= d <= L  # FIXME with L
+    @assert 1 <= k <= length(thet)
+    d==1 && return zero(T)
+    if d == 2
+        k == 1 && return T(x)
+        k == 3 && return T(ψ)
+        return zero(T)
+    else
+        k == 2 && return T(x)
+        k == 4 && return T(ψ)
+        return zero(T)
     end
-
-end
-
-function loglik_i_thread(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
-    M, num_t = do_assertions(yi,xi,psii,thet,ubv,llm,L)
-    fill!(llm, zero(T))
-    @threads for m in 1:M
-        inner_loop!( view(llm, m), yi, xi, psii[m], thet, view(ubv, 1:L, threadid()))
-        # inner_loop!( view(llm, m), yi, xi, psii[m], thet, Vector{Float64}(undef, L))
-    end
-    return logsumexp(llm) - log(M)
-end
-
-
-function loglik_i_serial(yi::AbstractVector{Int}, xi::AbstractVector, psii::AbstractVector, thet::AbstractVector, ubv::AbstractArray, llm::AbstractArray{T}, L::Integer) where {T}
-    M, num_t = do_assertions(yi,xi,psii,thet,ubv,llm,L)
-    fill!(llm, zero(T))
-    for m in 1:M
-        inner_loop!( view(llm, m), yi, xi, psii[m], thet, view(ubv, 1:L, threadid()))
-    end
-    return logsumexp(llm) - log(M)
-end
-
-irng(num_t::Int,i::Int) = (i-1)*num_t .+ (1:num_t)
-
-function loglik(f::Function, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, ubv::AbstractArray, llm::AbstractArray, num_t::Integer, num_i::Integer) where {T}
-    @assert length(y) == length(x) == num_i * num_t
-    L = maximum(y)
-    M = size(psi,1)
-    @assert size(ubv,1) == L+cache_pad
-    @assert size(ubv,2) == nthreads()
-    @assert minimum(y) == 1
-    @assert size(psi,2) == num_i
-
-    LL = zero(T) # Atomic{T}(zero(T))
-    for i in 1:num_i
-        rng = irng(num_t,i)
-        @views LL += f(y[rng], x[rng], psi[:,i], thet, ubv, llm, L)
-        # LLthread[threadid()] += loglik_i(y[rng], x[rng], psi[:,i], theta, ubv[:,threadid()], llm[:,threadid()], L)
-    end
-    return LL
 end
 
 # look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
@@ -88,73 +66,141 @@ end
     end
 end
 
+irng(num_t::Int,i::Int) = (i-1)*num_t .+ (1:num_t)
 
-
-function loglik_threaded(y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
+function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
     @assert length(y) == length(x) == num_i * num_t
     L = maximum(y)
     M = size(psi,1)
+    K = length(thet)
     @assert minimum(y) == 1
     @assert size(psi,2) == num_i
+    @assert length(grad) ∈ (0,K)
 
-    LL = zero(T) # Atomic{T}(zero(T))
+    dograd = length(grad) > 0
+
+    # for out
+    LL = zero(T)
+    fill!(grad, zero(T))
+
+    # tmpvar for sims
     llm = Vector{T}(undef, M)
+    gradm = Matrix{T}(undef, K, M)
 
+    # tmpvar for threads
     ubvs = Vector{Vector{T}}(undef,nthreads())
+    gradtmps = Vector{Vector{T}}(undef,nthreads())
     init_ubvs(ubvs, L)
+    init_ubvs(gradtmps, K)
 
-    for i in 1:num_i
+    for i in OneTo(num_i)
         fill!(llm, zero(Float64))
+
         rng = irng(num_t,i)
         xi = view(x, rng)
         yi = view(y, rng)
-        let M=M, num_t=num_t, L=L, ubvs=ubvs, thet=thet, xi=xi, psi=psi, llm=llm
-            @threads for m in 1:M
+        let M=M, num_t=num_t, L=L, K=K, dograd=dograd, ubvs=ubvs, gradtmps=gradtmps, thet=thet, xi=xi, psi=psi, llm=llm, gradm=gradm
+            @threads for m in OneTo(M)
                 local ubv = ubvs[threadid()]
-                for t in 1:num_t
-                    @simd for d in 1:L
-                        @inbounds ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+                local gradtmp = gradtmps[threadid()]
+                dograd && fill!(gradtmp, zero(T))
+
+                for t in OneTo(num_t)
+
+                    @fastmath @inbounds @simd for d in OneTo(L)
+                        ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
                     end
-                    llm[m] += ubv[yi[t]] - logsumexp(ubv)
-                end
-            end
+
+                    if !dograd
+                        llm[m] += ubv[yi[t]] - logsumexp(ubv)
+                    else
+                        llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
+                        for d in OneTo(L)
+                            local wt = T(d == yi[t]) - ubv[d]
+                            @fastmath @inbounds @simd for k in OneTo(K)
+                                gradtmp[k] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
+                            end # k
+                        end # d
+                    end # if
+
+                end # t
+                dograd && (gradm[:,m] .= gradtmp)
+            end # m
+        end # let
+
+        if !dograd
+            LL += logsumexp(llm) - log(M)
+        else
+            LL += logsumexp_and_softmax!(llm) - log(M)
+            mul!(gradtmps[1], gradm, llm)
+            grad .+= gradtmps[1]
         end
-        LL += logsumexp(llm) - log(M)
-    end
+
+    end # i
+
     return LL
+
 end
 
 
 
-
-
-
-function loglik_serial(y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
+function loglik_serial!(grad::AbstractVector, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
     @assert length(y) == length(x) == num_i * num_t
     L = maximum(y)
     M = size(psi,1)
+    K = length(thet)
     @assert minimum(y) == 1
     @assert size(psi,2) == num_i
+    @assert length(grad) ∈ (0,K)
 
-    LL = zero(T) # Atomic{T}(zero(T))
+    dograd = length(grad) > 0
 
-    ubv = Vector{Float64}(undef, L)
-    llm = Vector{Float64}(undef, M)
+    # LL + grad
+    LL = zero(T)
+    fill!(grad, zero(T))
 
-    for i in 1:num_i
-        fill!(llm, zero(Float64))
+    # tmpvars
+    ubv = Vector{T}(undef, L)
+    llm = Vector{T}(undef, M)
+    gradm = Matrix{T}(undef, K, M)
+
+    for i in OneTo(num_i)
+        fill!(llm, zero(T))
+        dograd && fill!(gradm, zero(T))
+
         rng = irng(num_t,i)
         xi = view(x, rng)
         yi = view(y, rng)
-        for m in 1:M
-            for t in 1:num_t
-                @simd for d in 1:L
-                    @inbounds ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+
+        for m in OneTo(M)
+            for t in OneTo(num_t)
+
+                # LL
+                @fastmath @inbounds @simd for d in OneTo(L)
+                    ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
                 end
-                llm[m] += ubv[yi[t]] - logsumexp(ubv)
-            end
+
+                if !dograd
+                    llm[m] += ubv[yi[t]] - logsumexp(ubv)
+                else
+                    llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
+                    for d in OneTo(L)
+                        local wt = T(d == yi[t]) - ubv[d]
+                        @fastmath @inbounds @simd for k in OneTo(K)
+                            gradm[k,m] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
+                        end # k
+                    end # d
+                end # if
+
+            end # t
+        end  # m
+
+        if !dograd
+            LL += logsumexp(llm) - log(M)
+        else
+            LL += logsumexp_and_softmax!(llm) - log(M)
+            grad .+= gradm * llm
         end
-        LL += logsumexp(llm) - log(M)
-    end
+    end # i
     return LL
 end

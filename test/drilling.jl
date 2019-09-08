@@ -1,5 +1,6 @@
 module ShaleDrillingLikelihood_Drilling_Test
 
+# using Revise
 using ShaleDrillingLikelihood
 
 using Test
@@ -9,7 +10,7 @@ using BenchmarkTools
 using Base.Threads
 # using Profile
 # using ProfileView
-# using InteractiveUtils
+using InteractiveUtils
 
 using Calculus
 using Optim
@@ -55,38 +56,31 @@ using LinearAlgebra
     M = 10*nthreads()
     psisim = randn(M,num_i)
 
+    grad = similar(theta)
+
     @test true == true
 
     println("\n\nmade simulations... run serial once")
-    llserl = loglik_serial(choices, X, psisim, theta, num_t, num_i)
-    println("run threaded once")
-    llthrd = loglik_threaded(choices, X, psisim, theta, num_t, num_i)
-    @test llserl == llthrd
+    llserl = loglik_serial!(grad, choices, X, psisim, theta, num_t, num_i)
+    gradan = copy(grad)
+    gradfd = Calculus.gradient( θ -> loglik_serial!(Vector{Float64}(undef,0), choices, X, psisim, θ, num_t, num_i), theta )
+    @test gradan ≈ gradfd
 
-    # # @code_warntype loglik_serial(choices, X, psisim, theta, num_t, num_i)
-    # # @code_warntype loglik_threaded(choices, X, psisim, theta, num_t, num_i)
+    println("run threaded once")
+    llthrd = loglik_threaded!(grad, choices, X, psisim, theta, num_t, num_i)
+    @test llserl == llthrd
+    gradan .= grad
+    gradfd = Calculus.gradient( θ -> loglik_serial!(Vector{Float64}(undef,0), choices, X, psisim, θ, num_t, num_i), theta )
+    @test gradan ≈ gradfd
+
+    # @code_warntype loglik_serial!(grad, choices, X, psisim, theta, num_t, num_i)
+    @code_warntype loglik_threaded!(grad, choices, X, psisim, theta, num_t, num_i)
 
     println("\n\n-------- Serial --------\n\n")
-    @show @btime loglik_serial($choices, $X, $psisim, $theta, $num_t, $num_i)
+    @show @btime loglik_serial!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)
 
     println("\n\n-------- Threaded using $(nthreads()) threads --------\n\n")
-    @show @btime loglik_threaded($choices, $X, $psisim, $theta, $num_t, $num_i)
-
-    println("\n\n-------- older benchmarks --------\n\n")
-    ubvtmp = Array{Float64}(undef, L+cache_pad, nthreads())
-    llmtmp = Array{Float64}(undef, M)
-    f(g, θ) = loglik(g, choices, X, psisim, θ, ubvtmp, llmtmp, num_t, num_i)
-    llserl_old = f(loglik_i_serial, theta)
-    llthrd_old = f(loglik_i_thread, theta)
-    @test llserl_old == llserl
-    @test llthrd_old == llserl
-
-    println("\nSerial:")
-    @show @btime  loglik(loglik_i_serial, $choices, $X, $psisim, $theta, $ubvtmp, $llmtmp, $num_t, $num_i)
-    println("\nThreaded:")
-    @show @btime  loglik(loglik_i_thread, $choices, $X, $psisim, $theta, $ubvtmp, $llmtmp, $num_t, $num_i)
-
-    @test true == true
+    @show @btime loglik_threaded!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)
 
 end # testset
 end # module
