@@ -74,7 +74,7 @@ using LinearAlgebra
     @test gradan ≈ gradfd
 
     # @code_warntype loglik_serial!(grad, choices, X, psisim, theta, num_t, num_i)
-    @code_warntype loglik_threaded!(grad, choices, X, psisim, theta, num_t, num_i)
+    # @code_warntype loglik_threaded!(grad, choices, X, psisim, theta, num_t, num_i)
 
     println("\n\n-------- Serial --------\n\n")
     @show @btime loglik_serial!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)

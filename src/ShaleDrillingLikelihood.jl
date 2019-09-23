@@ -39,10 +39,10 @@ end
 
 
 
-# include("tmp.jl")
-# include("models.jl")
-# include("royalty.jl")
-# include("production.jl")
+include("tmp.jl")
+include("models.jl")
+include("royalty.jl")
+include("production.jl")
 # include("drilling.jl")
 include("drilling-new.jl")
 
