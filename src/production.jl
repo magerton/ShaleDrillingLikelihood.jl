@@ -73,11 +73,11 @@ function loglik_pdxn_scalars(model::ProductionModel, theta::AbstractVector, plc:
     vp1sq = _vp1sq(plc)
 
     abT = a + b*T
-    c = b / (a * abT)
     ainv = 1/a
+    c = b *ainv / abT
     ainv_cT = ainv - c*T
 
-    A0 = (-T*log2π - (T-1)*log(a) - log(abT) - vpv*ainv + c*vp1sq) / 2
+    A0 = -(T*log2π + (T-1)*log(a) + log(abT) + vpv*ainv - c*vp1sq) / 2
     A1 =    αψ*vp1*ainv_cT
     A2 = - (αψ^2*T*ainv_cT)/2
 
@@ -108,12 +108,16 @@ function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta
     vp1   = _vp1(  plc)
     vp1sq = _vp1sq(plc)
 
-    abT = a + b*T
-    c = b / (a * abT)
-    ainv = 1/a
-    ainv_cT = ainv - c*T
-    αψT = αψ*T
-    abTinv = 1/abT
+    abT      = a + b*T
+    abTinv   = 1/abT
+    abTinvsq = abTinv^2
+    ainv     = 1/a
+    ainvsq   = ainv^2
+    c        = b * ainv * abTinv
+    ainv_cT  = ainv - c*T
+    αψT      = αψ*T
+    c_ainv_abTinv  = c*(ainv+abTinv)
+    cT_ainv_abTinv = T*c_ainv_abTinv
 
     # ∂log L / ∂α_ψ
     grad[idx_pdxn_ψ(model)] += ainv_cT * (vp1*ψbar - αψ*T*ψ2bar)
@@ -122,16 +126,15 @@ function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta
     H = (c*vp1 + αψ*ainv_cT*ψbar)
     grad[idx_pdxn_β(model)] .+= Xpv.*ainv .- H.*Xp1
 
-    # ∂log L / ∂σ²η
-    E0 = ( -(T-1)*ainv - abTinv ) / 2
-    E1 = ( ainv^2 ) / 2
-    E2 = ( -c * (ainv + abTinv) ) / 2
-    E1_TE2 = E1 + T*E2
+    # ∂log L / ∂σ²η * ∂σ²η/∂ση
+    E0 = -( (T-1)*ainv + abTinv - vpv*ainvsq + c_ainv_abTinv*vp1sq )/2
+    E1 =   αψ*vp1*(-ainvsq + cT_ainv_abTinv)
+    E2 = -(αψ^2*T*(-ainvsq + cT_ainv_abTinv))/2
+    grad[idx_pdxn_σ2η(model)] += 2*σ2η*(E0 + E1*ψbar + E2*ψ2bar)
 
-    grad[idx_pdxn_σ2η(model)] += ((E0 + E1*vpv + E2*vp1sq) - 2*αψ*vp1*E1_TE2*ψbar + αψ^2*T*E1_TE2*ψ2bar)*a*2
-
-    # ∂log L / σ²u
-    G0 = -T * abTinv / 2
-    G1 =  c * ( 1/b - T*abTinv ) / 2
-    grad[idx_pdxn_σ2u(model)] += ((G0 + G1*vp1sq) + αψT*G1*(-2*vp1*ψbar + αψT*ψ2bar))*2*b
+    # ∂log L / σ²u * * ∂σ²u/∂σu
+    G0 = -(T*abTinv - vp1sq*abTinvsq)/2
+    G1 = -αψT*vp1*abTinvsq
+    G2 = ((αψT*abTinv)^2)/2
+    grad[idx_pdxn_σ2u(model)] += 2*σ2u*(G0 + G1*ψbar + G2*ψ2bar)
 end
