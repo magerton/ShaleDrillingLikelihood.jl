@@ -67,6 +67,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     end
 
     # check gradient
+    println("Print me to prevent error on v1.2")
     fg!(grad, theta)
     @test grad ≈ Calculus.gradient(f, theta)
 
