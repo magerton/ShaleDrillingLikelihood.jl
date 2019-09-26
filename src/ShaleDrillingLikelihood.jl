@@ -44,6 +44,7 @@ include("models.jl")
 include("royalty.jl")
 include("production.jl")
 # include("drilling.jl")
+include("logsumexp-files.jl")
 include("drilling-new.jl")
 
 end # module

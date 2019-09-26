@@ -3,50 +3,8 @@ using Base: OneTo
 export flow, irng, loglik_threaded!, loglik_serial!
 
 
-"""
-    logsumexp_and_softmax!(r, x)
+irng(num_t::Int, i::Int) = (i-1)*num_t .+ (1:num_t)
 
-Set `r` = softmax(x) and return `logsumexp(x)`.
-"""
-function logsumexp_and_softmax!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
-    n = length(x)
-    @assert length(r) == n
-    isempty(x) && return -T(Inf)
-
-    u = maximum(x)                                       # max value used to re-center
-    abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
-
-    s = zero(T)
-    @inbounds @simd for i in 1:n
-        s += ( r[i] = exp(x[i] - u) )
-    end
-    invs = one(T)/s
-    r .*= invs
-    return log(s) + u
-end
-
-logsumexp_and_softmax!(x) = logsumexp_and_softmax!(x,x)
-
-function flow(d::Integer, theta::AbstractVector{T}, x::Real, ψ::Real, L::Integer) where {T}
-    @assert 1 <= d <= L  # FIXME with L
-    d==1 && return zero(T)
-    return T(theta[d-1]*x + theta[d+1]*ψ)
-end
-
-function dflow(k::Integer, d::Integer, thet::AbstractVector{T}, x::Real, ψ::Real, L::Integer) where {T}
-    @assert 1 <= d <= L  # FIXME with L
-    @assert 1 <= k <= length(thet)
-    d==1 && return zero(T)
-    if d == 2
-        k == 1 && return T(x)
-        k == 3 && return T(ψ)
-        return zero(T)
-    else
-        k == 2 && return T(x)
-        k == 4 && return T(ψ)
-        return zero(T)
-    end
-end
 
 # look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
 # https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
@@ -66,7 +24,6 @@ end
     end
 end
 
-irng(num_t::Int,i::Int) = (i-1)*num_t .+ (1:num_t)
 
 function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
     @assert length(y) == length(x) == num_i * num_t
@@ -107,12 +64,16 @@ function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::Abstrac
 
                 for t in OneTo(num_t)
 
+                    # loop over choices
                     @fastmath @inbounds @simd for d in OneTo(L)
                         ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
                     end
 
+                    # compute likliehood
                     if !dograd
                         llm[m] += ubv[yi[t]] - logsumexp(ubv)
+
+                    # compute liklihood + gradient
                     else
                         llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
                         for d in OneTo(L)

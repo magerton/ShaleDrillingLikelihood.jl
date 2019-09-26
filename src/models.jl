@@ -40,8 +40,8 @@ struct RoyaltyModel <: AbstractRoyaltyModel
 end
 
 # access fields
-num_choices(m::Union{RoyaltyModelNoHet,RoyaltyModel}) = m.num_choices
-num_x(m::Union{RoyaltyModelNoHet,RoyaltyModel}) = m.num_x
+num_choices(m::AbstractRoyaltyModel) = m.num_choices
+num_x(m::AbstractRoyaltyModel) = m.num_x
 
 "checks if the choice is valid"
 function choice_in_model(m::AbstractRoyaltyModel, l::Integer)

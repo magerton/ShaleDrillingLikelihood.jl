@@ -120,9 +120,10 @@ using ShaleDrillingLikelihood: num_x,
     @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.2
 
     # check gradient
-    fd = Calculus.gradient(ff, theta*2)
+    fd = Calculus.gradient(ff, theta)
     fill!(gradtmp, 0)
-    ffgg!(gradtmp, theta*2)
+    ffgg!(gradtmp, theta)
+    @test fd ≈ gradtmp
 end
 
 
