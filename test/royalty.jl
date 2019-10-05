@@ -6,6 +6,7 @@ using StatsFuns
 using Calculus
 using Optim
 using Random
+# using InteractiveUtils
 
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_roy_ρ, idx_roy_ψ, idx_roy_β, idx_roy_κ,

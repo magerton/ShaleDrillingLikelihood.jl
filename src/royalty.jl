@@ -59,13 +59,15 @@ function η12(model::AbstractRoyaltyModel, theta::AbstractVector, l::Integer, zm
     return η1, η2
 end
 
+const invsqrthalfπ = 1/sqrthalfπ
+
 function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/scipy/scipy/blob/a2ffe09aa751749f2372aa13c19c61b2dec5266f/scipy/stats/_continuous_distns.py
     # https://github.com/JuliaStats/Distributions.jl/blob/master/src/truncated/normal.jl
     # https://github.com/cossio/TruncatedNormal.jl/blob/master/notes/normal.pdf
     a == typemin(a) && return   normpdf(b) / normcdf(b)
     b == typemax(b) && return - normpdf(a) / normccdf(a)
-    return - _F1(a/sqrt2, b/sqrt2) / sqrthalfπ
+    return - _F1(a*invsqrt2, b*invsqrt2) * invsqrthalfπ
 end
 
 
@@ -111,7 +113,7 @@ end
 # ---------------------------------------------
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
-function loglik_royalty!(rc, model, theta, dograd::Bool)
+function loglik_royalty!(rc::RoyaltyComputation, model::AbstractRoyaltyModel, theta::AbstractVector, dograd::Bool)
 
     am = _am(rc)
     bm = _bm(rc)
