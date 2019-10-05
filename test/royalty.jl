@@ -9,15 +9,15 @@ using Random
 # using InteractiveUtils
 
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
-    idx_roy_ρ, idx_roy_ψ, idx_roy_β, idx_roy_κ,
-    theta_roy_ρ, theta_roy_ψ, theta_roy_β, theta_roy_κ,
+    idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
+    theta_royalty_ρ, theta_royalty_ψ, theta_royalty_β, theta_royalty_κ,
     RoyaltyComputation,
     η12,
     lik_royalty, lik_loglik_royalty,
-    theta_roy_check,
+    theta_royalty_check,
     llthreads!,
-    loglik_royalty!,
-    update_grad_roy!,
+    simloglik_royalty!,
+    grad_simloglik_royalty!,
     _LLm
 
 @testset "RoyaltyModelNoHet" begin
@@ -25,6 +25,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     nobs = 1_000
     L = 3
     RM = RoyaltyModelNoHet(L,k)
+    Random.seed!(1234)
 
     X      = randn(k,nobs)
     eps    = randn(nobs)
@@ -33,19 +34,19 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     @test length(theta) == length(RM)
 
-    @test theta_roy_ρ(RM, theta) == Float64[]
-    @test theta_roy_ψ(RM, theta) == Float64[]
-    @test all(theta_roy_β(RM, theta) .== theta[1:3])
-    @test theta_roy_κ(RM, theta, 1) == -0.5
-    @test theta_roy_κ(RM, theta, 2) ==  0.5
+    @test theta_royalty_ρ(RM, theta) == Float64[]
+    @test theta_royalty_ψ(RM, theta) == Float64[]
+    @test all(theta_royalty_β(RM, theta) .== theta[1:3])
+    @test theta_royalty_κ(RM, theta, 1) == -0.5
+    @test theta_royalty_κ(RM, theta, 2) ==  0.5
 
-    @test idx_roy_κ(RM, 1) == 4
-    @test idx_roy_κ(RM, 2) == 5
-    @test_throws DomainError idx_roy_κ(RM, L+1)
-    @test_throws DomainError idx_roy_κ(RM, 0)
+    @test idx_royalty_κ(RM, 1) == 4
+    @test idx_royalty_κ(RM, 2) == 5
+    @test_throws DomainError idx_royalty_κ(RM, L+1)
+    @test_throws DomainError idx_royalty_κ(RM, 0)
 
-    rstar = X'*theta_roy_β(RM, theta) .+ eps
-    l = map((r) ->  searchsortedfirst(theta_roy_κ(RM,theta), r), rstar)
+    rstar = X'*theta_royalty_β(RM, theta) .+ eps
+    l = map((r) ->  searchsortedfirst(theta_royalty_κ(RM,theta), r), rstar)
 
     M = 10
     am = Vector{Float64}(undef,M)
@@ -92,12 +93,12 @@ end
     theta  = [0.0, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
 
     # check indexing is correct
-    @test all(theta_roy_β(RM, theta) .== theta[2 .+ (1:k)])
-    @test all(theta_roy_κ(RM, theta) .== theta[end-L+2:end])
+    @test all(theta_royalty_β(RM, theta) .== theta[2 .+ (1:k)])
+    @test all(theta_royalty_κ(RM, theta) .== theta[end-L+2:end])
 
     # make more data
-    rstar  = X'*theta_roy_β(RM, theta) .+ eps
-    l = map((r) ->  searchsortedfirst(theta_roy_κ(RM,theta), r), rstar)
+    rstar  = X'*theta_royalty_β(RM, theta) .+ eps
+    l = map((r) ->  searchsortedfirst(theta_royalty_κ(RM,theta), r), rstar)
 
     # simulations
     u = randn(M,nobs)
@@ -110,17 +111,17 @@ end
     llm = similar(qm)
 
     rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, 1)
-    # @code_warntype loglik_royalty!(rc, RM, theta, false)
+    # @code_warntype simloglik_royalty!(rc, RM, theta, false)
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
         for i in 1:nobs
             rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, i)
             fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
-            loglik_royalty!(rc, RM, θ, dograd)    # update LLm
+            simloglik_royalty!(rc, RM, θ, dograd)    # update LLm
             LL += logsumexp(_LLm(rc))             # b/c integrating
             softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
-            dograd && update_grad_roy!(grad, RM, θ, rc)
+            dograd && grad_simloglik_royalty!(grad, RM, θ, rc)
         end
         return LL - nobs*log(M)
     end

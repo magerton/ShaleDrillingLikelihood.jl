@@ -9,10 +9,10 @@ using Random
 
 
 using ShaleDrillingLikelihood: num_x,
-    idx_pdxn_ψ, idx_pdxn_β, idx_pdxn_σ2η, idx_pdxn_σ2u,
-    theta_pdxn, theta_pdxn_ψ, theta_pdxn_β, theta_pdxn_σ2η, theta_pdxn_σ2u,
+    idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
+    theta_produce, theta_produce_ψ, theta_produce_β, theta_produce_σ2η, theta_produce_σ2u,
     ProductionLikelihoodComputations, ProductionGradientComputations,
-    dloglik_production!, loglik_pdxn
+    grad_simloglik_produce!, loglik_produce
 
 
 @testset "Production basics" begin
@@ -35,14 +35,14 @@ using ShaleDrillingLikelihood: num_x,
     @test length(theta) == length(pm)
     @test num_x(pm) == k
 
-    @test theta_pdxn_ψ(pm, theta) == theta[1]
-    @test all(theta_pdxn_β(pm, theta) .== theta[1 .+ (1:k)])
-    @test theta_pdxn_σ2η(pm, theta) == theta[end-1]
-    @test theta_pdxn_σ2u(pm, theta) == theta[end]
+    @test theta_produce_ψ(pm, theta) == theta[1]
+    @test all(theta_produce_β(pm, theta) .== theta[1 .+ (1:k)])
+    @test theta_produce_σ2η(pm, theta) == theta[end-1]
+    @test theta_produce_σ2u(pm, theta) == theta[end]
 
-    v = sqrt(theta_pdxn_σ2u(pm,theta)^2) .* u .+ sqrt(theta_pdxn_σ2η(pm,theta)^2) .* η
+    v = sqrt(theta_produce_σ2u(pm,theta)^2) .* u .+ sqrt(theta_produce_σ2η(pm,theta)^2) .* η
     v .+= repeat(ψ[1,:], inner = num_t)
-    y = v .+ X'*theta_pdxn_β(pm,theta)
+    y = v .+ X'*theta_produce_β(pm,theta)
 
     function viewi(v::AbstractVector, i::Integer)
         @assert 0 < i <= num_i
@@ -75,17 +75,17 @@ using ShaleDrillingLikelihood: num_x,
             fill!(llm, 0)
             xi = viewi(xx, i)
             yi = viewi(yy, i)
-            vi .= yi .- xi'*theta_pdxn_β(pm,θ)
+            vi .= yi .- xi'*theta_produce_β(pm,θ)
 
             # TODO use ProductionTempVars
 
             ψi = view(ψ, :, i)
 
             plci = ProductionLikelihoodComputations(vi)
-            llpsi = ShaleDrillingLikelihood.loglik_pdxn_scalars(pm, θ, plci)
+            llpsi = ShaleDrillingLikelihood.loglik_produce_scalars(pm, θ, plci)
 
             for m = 1:M
-                llm[m] = loglik_pdxn(llpsi..., ψi[m])
+                llm[m] = loglik_produce(llpsi..., ψi[m])
             end
 
             LL += logsumexp(llm)
@@ -93,7 +93,7 @@ using ShaleDrillingLikelihood: num_x,
             if dograd
                 softmax!(qm)
                 pgci = ProductionGradientComputations(qm, ψi, xi, vi)
-                dloglik_production!(grad, pm, θ, plci, pgci)
+                grad_simloglik_produce!(grad, pm, θ, plci, pgci)
             end
         end
         return LL - log(M)*num_i

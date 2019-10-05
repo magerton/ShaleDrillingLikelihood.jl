@@ -53,8 +53,8 @@ length( rc::RoyaltyComputation ) = length(_u(rc))
 
 function η12(model::AbstractRoyaltyModel, theta::AbstractVector, l::Integer, zm::Real)
     L = num_choices(model)
-    η1 = l == 1 ? typemin(zm) : theta_roy_κ(model, theta, l-1) - zm
-    η2 = l == L ? typemax(zm) : theta_roy_κ(model, theta, l)   - zm
+    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(model, theta, l-1) - zm
+    η2 = l == L ? typemax(zm) : theta_royalty_κ(model, theta, l)   - zm
     @assert η1 < η2
     return η1, η2
 end
@@ -113,7 +113,7 @@ end
 # ---------------------------------------------
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
-function loglik_royalty!(rc::RoyaltyComputation, model::AbstractRoyaltyModel, theta::AbstractVector, dograd::Bool)
+function simloglik_royalty!(rc::RoyaltyComputation, model::AbstractRoyaltyModel, theta::AbstractVector, dograd::Bool)
 
     am = _am(rc)
     bm = _bm(rc)
@@ -125,9 +125,9 @@ function loglik_royalty!(rc::RoyaltyComputation, model::AbstractRoyaltyModel, th
 
     @assert choice_in_model(model, l)
 
-    ρ  = theta_roy_ρ(model,theta)
-    βψ = theta_roy_ψ(model,theta)
-    βx = theta_roy_β(model,theta)
+    ρ  = theta_royalty_ρ(model,theta)
+    βψ = theta_royalty_ψ(model,theta)
+    βx = theta_royalty_β(model,theta)
 
     # TODO move this outside of computation....
     xbeta = dot( _x(rc), βx )
@@ -156,7 +156,7 @@ end
 # ---------------------------------------------
 
 "integrates over royalty"
-function update_grad_roy!(grad::AbstractVector, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
+function grad_simloglik_royalty!(grad::AbstractVector, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
 
     @assert length(grad) == length(theta) == length(model)
 
@@ -170,18 +170,18 @@ function update_grad_roy!(grad::AbstractVector, model::RoyaltyModel, theta::Abst
     l = _choice(rc)         # discrete choice info
     L = num_choices(model)  # discrete choice info
 
-    ρ  = theta_roy_ρ(model, theta) # parameters
-    βψ = theta_roy_ψ(model, theta) # parameters
+    ρ  = theta_royalty_ρ(model, theta) # parameters
+    βψ = theta_royalty_ψ(model, theta) # parameters
 
     dψdρ(u,v) = dpsidrho(model, theta, u, v)  # for below
     ψ1(u,v) = _ψ1(u,v,ρ)                      # for below
 
     # gradient
-    grad[idx_roy_ρ(model)] -= sumprod(dψdρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
-    grad[idx_roy_ψ(model)] -= sumprod(ψ1,   qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
-    grad[idx_roy_β(model)] -= dot(qm, cm) .* _x(rc)
-    l > 1 && ( grad[idx_roy_κ(model,l-1)] -= dot(qm, am) )
-    l < L && ( grad[idx_roy_κ(model,l)]   += dot(qm, bm) )
+    grad[idx_royalty_ρ(model)] -= sumprod(dψdρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
+    grad[idx_royalty_ψ(model)] -= sumprod(ψ1,   qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_royalty_β(model)] -= dot(qm, cm) .* _x(rc)
+    l > 1 && ( grad[idx_royalty_κ(model,l-1)] -= dot(qm, am) )
+    l < L && ( grad[idx_royalty_κ(model,l)]   += dot(qm, bm) )
 end
 
 # ---------------------------------------------
@@ -192,7 +192,7 @@ end
 "for testing only"
 function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
 
-    theta_roy_check(RM, θ) || return -Inf
+    theta_royalty_check(RM, θ) || return -Inf
 
     k,n = size(xx)
     nparm = length(RM)
@@ -203,8 +203,8 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
     gradtmp = zeros(Float64, nparm, n)
     LL      = Vector{Float64}(undef, n)
 
-    z = xx' * theta_roy_β(RM, θ)
-    # mul!(z, xx', theta_roy_β(RM, θ))
+    z = xx' * theta_royalty_β(RM, θ)
+    # mul!(z, xx', theta_royalty_β(RM, θ))
 
     @threads for i in 1:n
         eta12 = η12(RM, θ, l[i], z[i])
@@ -214,9 +214,9 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
             a, b = normpdf.(eta12) ./ F
             c = dlogcdf_trunc(eta12...)
 
-            gradtmp[idx_roy_β(RM), i] .= - c .* view(xx, :, i)
-            l[i] > 1  && ( gradtmp[idx_roy_κ(RM, l[i]-1), i] = -a )
-            l[i] < L  && ( gradtmp[idx_roy_κ(RM, l[i]),   i] =  b )
+            gradtmp[idx_royalty_β(RM), i] .= - c .* view(xx, :, i)
+            l[i] > 1  && ( gradtmp[idx_royalty_κ(RM, l[i]-1), i] = -a )
+            l[i] < L  && ( gradtmp[idx_royalty_κ(RM, l[i]),   i] =  b )
         end
     end
 

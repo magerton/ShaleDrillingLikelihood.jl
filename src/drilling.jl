@@ -1,6 +1,6 @@
 using Base: OneTo
 
-export flow, irng, loglik_threaded!, loglik_serial!
+export flow, irng, simloglik_drill!
 
 
 # look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
@@ -22,7 +22,7 @@ export flow, irng, loglik_threaded!, loglik_serial!
 end
 
 
-function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
+function simloglik_drill!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
     @assert length(y) == length(x) == num_i * num_t
     L = maximum(y)
     M = size(psi,1)
@@ -98,67 +98,4 @@ function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::Abstrac
 
     return LL
 
-end
-
-
-
-function loglik_serial!(grad::AbstractVector, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
-    @assert length(y) == length(x) == num_i * num_t
-    L = maximum(y)
-    M = size(psi,1)
-    K = length(thet)
-    @assert minimum(y) == 1
-    @assert size(psi,2) == num_i
-    @assert length(grad) ∈ (0,K)
-
-    dograd = length(grad) > 0
-
-    # LL + grad
-    LL = zero(T)
-    fill!(grad, zero(T))
-
-    # tmpvars
-    ubv = Vector{T}(undef, L)
-    llm = Vector{T}(undef, M)
-    gradm = Matrix{T}(undef, K, M)
-
-    for i in OneTo(num_i)
-        fill!(llm, zero(T))
-        dograd && fill!(gradm, zero(T))
-
-        rng = irng(num_t,i)
-        xi = view(x, rng)
-        yi = view(y, rng)
-
-        for m in OneTo(M)
-            for t in OneTo(num_t)
-
-                # LL
-                @fastmath @inbounds @simd for d in OneTo(L)
-                    ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
-                end
-
-                if !dograd
-                    llm[m] += ubv[yi[t]] - logsumexp(ubv)
-                else
-                    llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
-                    for d in OneTo(L)
-                        local wt = T(d == yi[t]) - ubv[d]
-                        @fastmath @inbounds @simd for k in OneTo(K)
-                            gradm[k,m] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
-                        end # k
-                    end # d
-                end # if
-
-            end # t
-        end  # m
-
-        if !dograd
-            LL += logsumexp(llm) - log(M)
-        else
-            LL += logsumexp_and_softmax!(llm) - log(M)
-            grad .+= gradm * llm
-        end
-    end # i
-    return LL
 end

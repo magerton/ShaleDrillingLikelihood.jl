@@ -59,11 +59,11 @@ end
 # Production log lik
 # ---------------------------------------------
 
-function loglik_pdxn_scalars(model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations)
+function loglik_produce_scalars(model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations)
 
-    αψ = theta_pdxn_ψ(  model, theta)
-    σ2η = theta_pdxn_σ2η(model, theta)
-    σ2u = theta_pdxn_σ2u(model, theta)
+    αψ = theta_produce_ψ(  model, theta)
+    σ2η = theta_produce_σ2η(model, theta)
+    σ2u = theta_produce_σ2u(model, theta)
     a = σ2η^2
     b = σ2u^2
 
@@ -84,17 +84,23 @@ function loglik_pdxn_scalars(model::ProductionModel, theta::AbstractVector, plc:
     return A0, A1, A2
 end
 
-loglik_pdxn(a::Real, b::Real, c::Real, ψ::Real) = a + b*ψ + c*ψ^2
+loglik_produce(a::Real, b::Real, c::Real, ψ::Real) = a + (b + c*ψ)*ψ
+
+function simloglik_produce!(LL::AbstractVector, model, theta, plc, ψ::AbstractVector)
+    a, b, c = loglik_produce_scalars(model, theta, plc)
+    f(x) = loglik_produce(a,b,c,x)
+    LL .+= f.(ψ)
+end
 
 # ---------------------------------------------
 # Production gradient
 # ---------------------------------------------
 
-function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations, pgc::ProductionGradientComputations)
+function grad_simloglik_produce!(grad::AbstractVector, model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations, pgc::ProductionGradientComputations)
 
-    αψ = theta_pdxn_ψ( model, theta)
-    σ2η = theta_pdxn_σ2η(model, theta)
-    σ2u = theta_pdxn_σ2u(model, theta)
+    αψ = theta_produce_ψ( model, theta)
+    σ2η = theta_produce_σ2η(model, theta)
+    σ2u = theta_produce_σ2u(model, theta)
     a = σ2η^2
     b = σ2u^2
 
@@ -120,21 +126,21 @@ function dloglik_production!(grad::AbstractVector, model::ProductionModel, theta
     cT_ainv_abTinv = T*c_ainv_abTinv
 
     # ∂log L / ∂α_ψ
-    grad[idx_pdxn_ψ(model)] += ainv_cT * (vp1*ψbar - αψ*T*ψ2bar)
+    grad[idx_produce_ψ(model)] += ainv_cT * (vp1*ψbar - αψ*T*ψ2bar)
 
     # ∂log L / ∂β
     H = (c*vp1 + αψ*ainv_cT*ψbar)
-    grad[idx_pdxn_β(model)] .+= Xpv.*ainv .- H.*Xp1
+    grad[idx_produce_β(model)] .+= Xpv.*ainv .- H.*Xp1
 
     # ∂log L / ∂σ²η * ∂σ²η/∂ση
     E0 = -( (T-1)*ainv + abTinv - vpv*ainvsq + c_ainv_abTinv*vp1sq )/2
     E1 =   αψ*vp1*(-ainvsq + cT_ainv_abTinv)
     E2 = -(αψ^2*T*(-ainvsq + cT_ainv_abTinv))/2
-    grad[idx_pdxn_σ2η(model)] += 2*σ2η*(E0 + E1*ψbar + E2*ψ2bar)
+    grad[idx_produce_σ2η(model)] += 2*σ2η*(E0 + E1*ψbar + E2*ψ2bar)
 
     # ∂log L / σ²u * * ∂σ²u/∂σu
     G0 = -(T*abTinv - vp1sq*abTinvsq)/2
     G1 = -αψT*vp1*abTinvsq
     G2 = ((αψT*abTinv)^2)/2
-    grad[idx_pdxn_σ2u(model)] += 2*σ2u*(G0 + G1*ψbar + G2*ψ2bar)
+    grad[idx_produce_σ2u(model)] += 2*σ2u*(G0 + G1*ψbar + G2*ψ2bar)
 end
