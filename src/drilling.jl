@@ -1,74 +1,164 @@
+using Base: OneTo
+
+export flow, irng, loglik_threaded!, loglik_serial!
 
 
+# look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
+# https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
+# https://discourse.julialang.org/t/two-questions-about-multithreading/14564/2
+# https://discourse.julialang.org/t/question-about-multi-threading-performance/12075/3
 
+# check out this??
+# https://discourse.julialang.org/t/anyone-developing-multinomial-logistic-regression/23222
 
-
-
-function loglik_drilling_history()
-
-    jrng = j1_indexrange(data,i)
-    J = length(jrng)
-
-    @views LLmj   = LLJ[:,1:J]
-    @views gradmj = gradJ[:,:,1:J]
-
-    fillcols!(LLmj, log.(Prj))
-    zero!(gradmj)
-
-    for j in enumerate( jrng )
-        for obs in observations(data, j)
-            for (m,uv) in enumerate(uvs) # TODO threaded
-                LLmj[m,j] += loglik_drilling_in_t(gradmj[:,m,j])
-            end
-        end
+@noinline function init_ubvs(ubvs::Vector{Vector{T}}, L::Integer) where {T}
+    # Allocate the tmpvars the thread's own heap lazily
+    # instead of the master thread heap to minimize memory conflict.
+    # https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
+    @threads for id in 1:nthreads()
+        tid = threadid()
+        ubvs[tid] = fill(T(tid), L)
     end
+end
 
-    logsumexp_and_softmax2!(LLm, tmp, LLj)
 
-    gradm[k,m] = sum(gradmj[k,m,:] .* LLj[m,:])
+function loglik_threaded!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
+    @assert length(y) == length(x) == num_i * num_t
+    L = maximum(y)
+    M = size(psi,1)
+    K = length(thet)
+    @assert minimum(y) == 1
+    @assert size(psi,2) == num_i
+    @assert length(grad) ∈ (0,K)
 
-    for obs in observations(data,i)
-        for (m,uv) in enumerate(uvs)  # TODO threaded
-            LLm[m] += loglik_drilling!(grad,m,uv,drillcomp)
-        end # m/ψ
-    end # time
+    dograd = length(grad) > 0
+
+    # for out
+    LL = zero(T)
+    fill!(grad, zero(T))
+
+    # tmpvar for sims
+    llm = Vector{T}(undef, M)
+    gradm = Matrix{T}(undef, K, M)
+
+    # tmpvar for threads
+    ubvs = Vector{Vector{T}}(undef,nthreads())
+    gradtmps = Vector{Vector{T}}(undef,nthreads())
+    init_ubvs(ubvs, L)
+    init_ubvs(gradtmps, K)
+
+    for i in OneTo(num_i)
+        fill!(llm, zero(Float64))
+
+        rng = irng(num_t,i)
+        xi = view(x, rng)
+        yi = view(y, rng)
+        let M=M, num_t=num_t, L=L, K=K, dograd=dograd, ubvs=ubvs, gradtmps=gradtmps, thet=thet, xi=xi, psi=psi, llm=llm, gradm=gradm
+            @threads for m in OneTo(M)
+                local ubv = ubvs[threadid()]
+                local gradtmp = gradtmps[threadid()]
+                dograd && fill!(gradtmp, zero(T))
+
+                for t in OneTo(num_t)
+
+                    # loop over choices
+                    @fastmath @inbounds @simd for d in OneTo(L)
+                        ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+                    end
+
+                    # compute likliehood
+                    if !dograd
+                        llm[m] += ubv[yi[t]] - logsumexp(ubv)
+
+                    # compute liklihood + gradient
+                    else
+                        llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
+                        for d in OneTo(L)
+                            local wt = T(d == yi[t]) - ubv[d]
+                            @fastmath @inbounds @simd for k in OneTo(K)
+                                gradtmp[k] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
+                            end # k
+                        end # d
+                    end # if
+
+                end # t
+                dograd && (gradm[:,m] .= gradtmp)
+            end # m
+        end # let
+
+        if !dograd
+            LL += logsumexp(llm) - log(M)
+        else
+            LL += logsumexp_and_softmax!(llm) - log(M)
+            mul!(gradtmps[1], gradm, llm)
+            grad .+= gradtmps[1]
+        end
+
+    end # i
+
+    return LL
 
 end
 
 
 
+function loglik_serial!(grad::AbstractVector, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
+    @assert length(y) == length(x) == num_i * num_t
+    L = maximum(y)
+    M = size(psi,1)
+    K = length(thet)
+    @assert minimum(y) == 1
+    @assert size(psi,2) == num_i
+    @assert length(grad) ∈ (0,K)
 
+    dograd = length(grad) > 0
 
+    # LL + grad
+    LL = zero(T)
+    fill!(grad, zero(T))
 
-function loglik_drilling_in_t()
+    # tmpvars
+    ubv = Vector{T}(undef, L)
+    llm = Vector{T}(undef, M)
+    gradm = Matrix{T}(undef, K, M)
 
-    ubv = view(bigubv, drng.+1, m)
+    for i in OneTo(num_i)
+        fill!(llm, zero(T))
+        dograd && fill!(gradm, zero(T))
 
-    # payoffs
-    @inbounds @simd for d in drng
-        ubv[d+1] = flow(u,d,obs) + β * dynamic
-    end
+        rng = irng(num_t,i)
+        xi = view(x, rng)
+        yi = view(y, rng)
 
-    logPrd = ubv[d_obs+1]
+        for m in OneTo(M)
+            for t in OneTo(num_t)
 
-    # if no gradient, return
-    dograd || return logPrd - logsumexp(ubv)
+                # LL
+                @fastmath @inbounds @simd for d in OneTo(L)
+                    ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
+                end
 
-    logPrd -= logsumexp_and_softmax!(ubv)
+                if !dograd
+                    llm[m] += ubv[yi[t]] - logsumexp(ubv)
+                else
+                    llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
+                    for d in OneTo(L)
+                        local wt = T(d == yi[t]) - ubv[d]
+                        @fastmath @inbounds @simd for k in OneTo(K)
+                            gradm[k,m] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
+                        end # k
+                    end # d
+                end # if
 
-    for d in drng
-        wt = d==d_obs ? 1-logPrd : -logPrd
-        # theta
-        for k in idx_drill_cost(model)
-            grad[k,m] += wt * (flowdθ(FF, k, θt, σ, wp, s_idx, d, z, ψ, itype...) + prim.β * isev.dEV[z..., ψ, k, sp_idx, itypidx...] )
+            end # t
+        end  # m
+
+        if !dograd
+            LL += logsumexp(llm) - log(M)
+        else
+            LL += logsumexp_and_softmax!(llm) - log(M)
+            grad .+= gradm * llm
         end
-        # sigma
-        if s_idx <= end_ex0(wp)
-            dpsi = flowdψ(FF, θt, σ, wp, s_idx, d, z, ψ, itype...) + prim.β * gradient_d(nplus1(Val{NZ}), isev.EV, z..., ψ, sp_idx, itypidx...)::T
-            dsig = flowdσ(FF, θt, σ, wp, s_idx, d, z, ψ, itype...) + prim.β * isev.dEVσ[z..., ψ, sp_idx, itypidx...]
-            grad[idx_drill_rho(model),m] += wt * (dpsi*_dψ1dθρ(uv..., ρ, σ) + dsig)
-        end
-    end # d
-
-    return logPrd
+    end # i
+    return LL
 end
