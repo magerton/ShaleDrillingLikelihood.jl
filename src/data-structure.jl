@@ -123,21 +123,23 @@ struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T},
     end
 end
 
-struct DataProduce{T<:Real, V<:AbstractVector{T}, M<:AbstractMatrix{T}} <: AbstractDataStructure
-    y::V
-    x::M
-    xsum::M
-    nu::V
+struct DataProduce{T<:Real} <: AbstractDataStructure
+    y::Vector{T}
+    x::Matrix{T}
+    xsum::Matrix{T}
+    nu::Vector{T}
     obs_ptr::Vector{Int}
     group_ptr::Vector{Int}
-    # function DataProduce(y::V, x::M, xsum::M, nu::V, obs_ptr::VI, group_ptr::VI) where {
-    #     T<:Real, V<:AbstractVector{T}, M <:AbstractMatrix{T}, VI <: AbstractVector{Int}
-    # }
-    #     k,n = size(x)
-    #     length(nu) == length(y) == n  || throw(DimensionMismatch())
-    #     size(xsum,1) == k || throw(DimensionMismatch())
-    #     return new{T,V,VM,VI}(y,x,xsum,nu,obs_ptr)
-    # end
+    function DataProduce(y::Vector{T}, x::Matrix{T}, xsum::Matrix{T}, nu::Vector{T}, obs_ptr::Vector{Int}, group_ptr::Vector{Int}) where {T<:Real}
+        k,n = size(x)
+        length(nu) == length(y) == n  || throw(DimensionMismatch())
+        size(xsum,1) == k || throw(DimensionMismatch())
+        issorted(obs_ptr) || throw(error("obs_ptr not sorted"))
+        issorted(group_ptr) || throw(error("group_ptr not sorted"))
+        last(group_ptr) == length(obs_ptr) || throw(DimensionMismatch("last(group_ptr)-1 != length(obs_ptr)"))
+        last(obs_ptr)-1 == n || throw(DimensionMismatch("last(obs_ptr)-1 != length(y)"))
+        return new{T}(y,x,xsum,nu,obs_ptr,group_ptr)
+    end
 end
 
 obs_ptr(  d::DataProduce) = d.obs_ptr
@@ -176,12 +178,12 @@ function ObservationProduce(d::DataProduce, j::Integer)
     return ObservationProduce(y, x, xsum, nu)
 end
 
-struct ObservationGroupProduce{D<:DataProduce,I<:Integer} <: AbstractObservationGroup
-    data::D
-    i::I
-    function ObservationGroupProduce(data::D, i::I) where {D<:DataProduce,I<:Integer}
+struct ObservationGroupProduce{T<:Real} <: AbstractObservationGroup
+    data::DataProduce{T}
+    i::Int
+    function ObservationGroupProduce(data::DataProduce{T}, i::Int) where {T<:Real}
         1 <= i <= length(data) || throw(BoundsError(data,i))
-        return new{D,I}(data,i)
+        return new{T}(data,i)
     end
 end
 _i(   g::ObservationGroupProduce) = g.i
