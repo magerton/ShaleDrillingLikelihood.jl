@@ -54,10 +54,11 @@ _draws(rli::RoyaltyLikelihoodInformation) = rli.simulated_draws
 # Royalty low level computations
 # ---------------------------------------------
 
-function η12(model::AbstractRoyaltyModel, theta::AbstractVector, l::Integer, zm::Real)
-    L = num_choices(model)
-    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(model, theta, l-1) - zm
-    η2 = l == L ? typemax(zm) : theta_royalty_κ(model, theta, l)   - zm
+function η12(obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, zm::Real)
+    l = _y(obs)
+    L = _num_choices(obs)
+    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(model, obs, theta, l-1) - zm
+    η2 = l == L ? typemax(zm) : theta_royalty_κ(model, obs, theta, l)   - zm
     @assert η1 < η2
     return η1, η2
 end
@@ -74,12 +75,12 @@ function dlogcdf_trunc(a::Real, b::Real)
 end
 
 
-function lik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
+function lik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     η1, η2 = η12
     l = _y(obs)
     if l == 1
         return normcdf(η2)
-    elseif l == num_choices(model)
+    elseif l == _num_choices(obs)
         return normccdf(η1)
     else
         return normcdf(η2) - normcdf(η1)
@@ -87,12 +88,12 @@ function lik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12:
 end
 
 
-function loglik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
+function loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     η1, η2 = η12
     l = _y(obs)
     if l == 1
         return normlogcdf(η2)
-    elseif l == num_choices(model)
+    elseif l == _num_choices(obs)
         return normlogccdf(η1)
     else
         return log(normcdf(η2) - normcdf(η1))
@@ -101,13 +102,13 @@ function loglik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η
 end
 
 
-function lik_loglik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
+function lik_loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     l = _y(obs)
-    F = lik_royalty(obs, model, η12)
+    F = lik_royalty(obs, η12)
     η1, η2 = η12
     if l == 1
         return  F, normlogcdf(η2)
-    elseif l == num_choices(model)
+    elseif l == _num_choices(obs)
         return  F, normlogccdf(η1)
     else
         return F, log(F)
@@ -138,20 +139,20 @@ function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVe
     l = _y(obs)
     xbeta = _xbeta(obs)
 
-    ρ  = theta_royalty_ρ(model,theta)
-    βψ = theta_royalty_ψ(model,theta)
-    βx = theta_royalty_β(model,theta)
+    ρ  = theta_royalty_ρ(model, obs, theta)
+    βψ = theta_royalty_ψ(model, obs, theta)
+    βx = theta_royalty_β(model, obs, theta)
 
     # @inbounds @threads
     for m = 1:length(u)
         zm  = xbeta + βψ * psi[m]
-        eta12 = η12(model, theta, l, zm)
+        eta12 = η12(obs, model, theta, zm)
 
         if dograd == false
-            LLm[m] += loglik_royalty(obs, model, eta12)
+            LLm[m] += loglik_royalty(obs, eta12)
         else
             η1, η2 = eta12
-            F,LL  = lik_loglik_royalty(obs, model, eta12)
+            F,LL  = lik_loglik_royalty(obs, eta12)
             LLm[m] += LL
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
@@ -175,24 +176,22 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     cm = _cm(rc) # computed in likelihood
     qm = _qm(rc) # Pr(um,vm | data) already computed!!!
 
-
-
     l = _choice(obs)         # discrete choice info
-    L = num_choices(model)  # discrete choice info
+    L = _num_choices(obs)  # discrete choice info
     x = _x(obs)
 
-    ρ  = theta_royalty_ρ(model, theta) # parameters
-    βψ = theta_royalty_ψ(model, theta) # parameters
+    ρ  = theta_royalty_ρ(model, obs, theta) # parameters
+    βψ = theta_royalty_ψ(model, obs, theta) # parameters
 
     ψ1 = _ψ1(draws)
     dψ1dρ = _dψdρ(draws)
 
     # gradient
-    grad[idx_royalty_ρ(model)] -= sumprod3(dψ1dρ, qm, cm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
-    grad[idx_royalty_ψ(model)] -= sumprod3(ψ1,    qm, cm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
-    grad[idx_royalty_β(model)] -= dot(qm, cm) .* x
-    l > 1 && ( grad[idx_royalty_κ(model,l-1)] -= dot(qm, am) )
-    l < L && ( grad[idx_royalty_κ(model,l)]   += dot(qm, bm) )
+    grad[idx_royalty_ρ(model,obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
+    grad[idx_royalty_ψ(model,obs)] -= sumprod3(ψ1,    qm, cm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_royalty_β(model,obs)] -= dot(qm, cm) .* x
+    l > 1 && ( grad[idx_royalty_κ(model,obs,l-1)] -= dot(qm, am) )
+    l < L && ( grad[idx_royalty_κ(model,obs,l)]   += dot(qm, bm) )
 end
 
 # ---------------------------------------------
@@ -207,17 +206,15 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::
 
     k = num_x(data)
     n = length(data)
-    nparm = length(RM)
+    nparm = length(RM,data)
     @assert nparm == length(grad)
 
-    L = num_choices(RM)
+    L = _num_choices(data)
 
     gradtmp = zeros(Float64, nparm, n)
     LL      = Vector{Float64}(undef, n)
 
-    # z = xx' * theta_royalty_β(RM, θ)
-    # mul!(z, xx', theta_royalty_β(RM, θ))
-    update_xbeta!(data, theta_royalty_β(RM, θ))
+    update_xbeta!(data, theta_royalty_β(RM, data, θ))
     l = _y(data)
     X = _x(data)
     z = _xbeta(data)
@@ -225,16 +222,16 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::
     # @threads
     for i in 1:n
         obs = data[i]
-        eta12 = η12(RM, θ, l[i], z[i])
-        F, LL[i] = lik_loglik_royalty(obs, RM, eta12)
+        eta12 = η12(obs, RM, θ, z[i])
+        F, LL[i] = lik_loglik_royalty(obs, eta12)
 
         if dograd
             a, b = normpdf.(eta12) ./ F
             c = dlogcdf_trunc(eta12...)
 
-            gradtmp[idx_royalty_β(RM), i] .= - c .* _x(obs)
-            l[i] > 1  && ( gradtmp[idx_royalty_κ(RM, l[i]-1), i] = -a )
-            l[i] < L  && ( gradtmp[idx_royalty_κ(RM, l[i]),   i] =  b )
+            gradtmp[idx_royalty_β(RM,obs), i] .= - c .* _x(obs)
+            l[i] > 1  && ( gradtmp[idx_royalty_κ(RM, obs, l[i]-1), i] = -a )
+            l[i] < L  && ( gradtmp[idx_royalty_κ(RM, obs, l[i]),   i] =  b )
         end
     end
 

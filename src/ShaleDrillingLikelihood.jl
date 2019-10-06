@@ -10,13 +10,14 @@ abstract type AbstractIntermediateComputations end
 abstract type AbstractTempVar end
 
 
+include("models.jl")
+
 include("data-structure.jl")
 include("data-access.jl")
 include("sum-functions.jl")
 
 include("flow.jl")
 
-include("models.jl")
 
 include("royalty.jl")
 include("production.jl")
