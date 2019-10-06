@@ -1,5 +1,5 @@
 import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==
-using StatsBase: countmap
+using StatsBase: countmap, sample
 
 abstract type AbstractDataStructure end
 abstract type AbstractObservationGroup end
@@ -201,29 +201,34 @@ ObservationProduce(g::ObservationGroupProduce, k::Integer) = ObservationProduce(
 iterate(g::ObservationGroupProduce, k::Integer=1) = k > length(g) ? nothing : (ObservationProduce(g,k), k+1,)
 
 "make a random dataset"
-function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, ncoef::Int, sigmas::NTuple{3,Float64})
+function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, beta::Vector, sigmas::NTuple{3,Float64})
 
-    beta = rand(ncoef)
     alphapsi, sigu, sigeta = sigmas
-    psi = rand(numgroups)
 
+    ncoef = length(beta)
+
+    # groups
+    psi = rand(ngroups)
     grouplens = vcat(0, collect(0:maxwells)..., sample(0:maxwells, ngroups-maxwells-1))
     groupptr = 1 .+ cumsum(grouplens)
 
+    # wells in each group
     nwells = last(groupptr)-1
+
     us = rand(nwells)
     obslens = vcat(0, sample(ntrange, nwells))
     obsptr = 1 .+ cumsum(obslens)
 
+    # observations
     nobs = last(obsptr)-1
 
-    e    = rand(nobs)
-    x    = rand(k,nobs)
-    xsum = zeros(k, nwells)
+    eta  = rand(nobs)
+    x    = rand(ncoef,nobs)
+    xsum = zeros(ncoef, nwells)
     nu   = zeros(nobs)
-    y    = x'*beta
+    y    = x'*beta .+ sigeta .* eta
 
-    data = DataProduce(y,x,xsum,nu,obsptr,groups)
+    data = DataProduce(y,x,xsum,nu,obsptr,groupptr)
 
     for g in data
         i = _i(g)

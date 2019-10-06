@@ -134,13 +134,11 @@ end
     end
 
     @testset "DataProduce random" begin
-        ngroups = 11
+        numgroups = 11
         maxwells = 5
         mint = 4
         maxt = 25
-        ncoef = 3
-
-        DataProduce(ngroups, maxwells, mint:maxt, ncoef, (0.5, 0.5, 0.3))
+        k = 3
 
         beta = rand(3)
         alphapsi = 0.5
@@ -200,7 +198,12 @@ end
         @test _y(data) - _x(data)'*beta == _nu(data)
 
         @test !all(_nu(data) .== 0)
+
+        dd = DataProduce(numgroups, maxwells, mint:maxt, rand(3), (0.5, 0.5, 0.3))
+
     end
+
+
 end
 
 
