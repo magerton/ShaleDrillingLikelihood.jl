@@ -32,7 +32,7 @@ function simloglik_i!(grad::AbstractVector, tmpvars, model, theta::AbstractVecto
     dograd && zero_gradm!(tmpvars)
 
     # royalty rate
-    rc = RoyaltyComputation
+    rc = RoyaltyTmpVar
     simloglik_royalty!(rc, royalty(model), theta, dograd)
 
     # production

@@ -4,8 +4,10 @@ using StatsFuns
 using Distributions: _F1
 using LinearAlgebra
 using Base.Threads
+using Halton
 
 abstract type AbstractIntermediateComputations end
+abstract type AbstractTempVar end
 
 
 include("data-structure.jl")

@@ -19,13 +19,16 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     u = rand(M, nobs)
     v = rand(M, nobs)
 
-    x = SimulationDraws(u,v)
+    x = SimulationDraws(u,v, similar(u), similar(v))
 
     @test size(x) == (M,nobs)
     @test isa(x, SimulationDrawsMatrix)
     vw = view(x, 1)
-    @test typeof(vw) <: SimulationDrawsVector
+    @test isa(vw, SimulationDrawsVector)
     @test size(vw) == (M,)
+
+    @test size(SimulationDraws(M, nobs)) == (M,nobs,)
+
 end
 
 

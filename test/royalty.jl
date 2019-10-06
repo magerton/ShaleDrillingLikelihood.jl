@@ -11,14 +11,15 @@ using Random
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
     theta_royalty_ρ, theta_royalty_ψ, theta_royalty_β, theta_royalty_κ,
-    RoyaltyComputation,
+    RoyaltyTmpVar,
     η12,
     lik_royalty, lik_loglik_royalty,
     theta_royalty_check,
     simloglik_royalty!,
     grad_simloglik_royalty!,
     _LLm,
-    ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, num_x
+    ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, num_x,
+    SimulationDraws, RoyaltyLikelihoodInformation
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -62,10 +63,10 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     # form functions for stuff
     grad = similar(theta)
-    f(parm) = - ShaleDrillingLikelihood.llthreads!(grad, parm, RM, l, X, false)
+    f(parm) = - ShaleDrillingLikelihood.llthreads!(grad, parm, RM, data, false)
 
     function fg!(g, parm)
-        LL = ShaleDrillingLikelihood.llthreads!(g, parm, RM, l, X, true)
+        LL = ShaleDrillingLikelihood.llthreads!(g, parm, RM, data, true)
         g .*= -1
         return -LL
     end
@@ -102,9 +103,10 @@ end
     rstar  = X'*theta_royalty_β(RM, theta) .+ eps
     l = map((r) ->  searchsortedfirst(theta_royalty_κ(RM,theta), r), rstar)
 
+    data = DataRoyalty(l,X)
+
     # simulations
-    u = randn(M,nobs)
-    v = randn(M,nobs)
+    uv = SimulationDraws(M,nobs)
 
     qm = fill(Float64(1/M), M)
     am  = similar(qm)
@@ -112,18 +114,19 @@ end
     cm  = similar(qm)
     llm = similar(qm)
 
-    rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, 1)
+    rc = RoyaltyTmpVar(M)
     # @code_warntype simloglik_royalty!(rc, RM, theta, false)
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
         for i in 1:nobs
-            rc = RoyaltyComputation(l, X, am, bm, cm, llm, qm, u, v, i)
+            rc = RoyaltyTmpVar(M)
             fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
-            simloglik_royalty!(rc, RM, θ, dograd)    # update LLm
+            rli = RoyaltyLikelihoodInformation(rc, data[i], RM, view(uv,i))
+            simloglik_royalty!(rli, θ, dograd)    # update LLm
             LL += logsumexp(_LLm(rc))             # b/c integrating
             softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
-            dograd && grad_simloglik_royalty!(grad, RM, θ, rc)
+            dograd && grad_simloglik_royalty!(grad, data[i], RM, θ, rc)
         end
         return LL - nobs*log(M)
     end

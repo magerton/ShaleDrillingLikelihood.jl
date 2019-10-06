@@ -7,35 +7,48 @@ using Base.Threads
 # ---------------------------------------------
 
 "Tempvars for royalty simulations with `i`"
-struct RoyaltyComputation{T<:Real} <: AbstractIntermediateComputations
+struct RoyaltyTmpVar{T<:Real} <: AbstractIntermediateComputations
     am::Vector{T}
     bm::Vector{T}
     cm::Vector{T}
     LLm::Vector{T}
     qm::Vector{T}
 
-    function RoyaltyComputation(am::V, bm::V, cm::V, LLm::V, qm::V) where {T,V<:Vector{T}}
-        @assert length(am)==length(bm)==length(cm)==length(qm)==length(LLm)
+    function RoyaltyTmpVar(am::V, bm::V, cm::V, LLm::V, qm::V) where {T,V<:Vector{T}}
+        length(am)==length(bm)==length(cm)==length(qm)==length(LLm) || throw(DimensionMismatch())
         return new{T}(am, bm, cm, LLm, qm)
     end
 end
 
-function RoyaltyComputation(am, bm, cm, llm, qm, u, v, i::Integer)
-    um, vm = view.( (u,v), :, i ) # simulations
-    return RoyaltyComputation(li, xi, am, bm, cm, llm, qm, um, vm)
+_am( rc::RoyaltyTmpVar) = rc.am
+_bm( rc::RoyaltyTmpVar) = rc.bm
+_cm( rc::RoyaltyTmpVar) = rc.cm
+_LLm(rc::RoyaltyTmpVar) = rc.LLm
+_qm( rc::RoyaltyTmpVar) = rc.qm
+
+
+function RoyaltyTmpVar(M)
+    am = Vector{Float64}(undef,M)
+    bm = similar(am)
+    cm = similar(am)
+    llm = similar(am)
+    qm = similar(am)
+    RoyaltyTmpVar(am, bm, cm, llm, qm)
 end
 
-_choice(rc::RoyaltyComputation) = rc.choice
-_x(     rc::RoyaltyComputation) = rc.x
-_am(    rc::RoyaltyComputation) = rc.am
-_bm(    rc::RoyaltyComputation) = rc.bm
-_cm(    rc::RoyaltyComputation) = rc.cm
-_LLm(   rc::RoyaltyComputation) = rc.LLm
-_qm(    rc::RoyaltyComputation) = rc.qm
-_u(     rc::RoyaltyComputation) = rc.u
-_v(     rc::RoyaltyComputation) = rc.v
 
-length( rc::RoyaltyComputation ) = length(_u(rc))
+"What we need to compure royalty"
+struct RoyaltyLikelihoodInformation{RT<:RoyaltyTmpVar, O<:ObservationRoyalty, M<:AbstractRoyaltyModel, S<:SimulationDrawsVector}
+    tmpvar::RT
+    observation::O
+    model::M
+    simulated_draws::S
+end
+
+_tmpvar(rli::RoyaltyLikelihoodInformation) = rli.tmpvar
+_observation(rli::RoyaltyLikelihoodInformation) = rli.observation
+_model(rli::RoyaltyLikelihoodInformation) = rli.model
+_draws(rli::RoyaltyLikelihoodInformation) = rli.simulated_draws
 
 # ---------------------------------------------
 # Royalty low level computations
@@ -61,8 +74,9 @@ function dlogcdf_trunc(a::Real, b::Real)
 end
 
 
-function lik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTuple{2,Real})
+function lik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
     η1, η2 = η12
+    l = _y(obs)
     if l == 1
         return normcdf(η2)
     elseif l == num_choices(model)
@@ -73,8 +87,9 @@ function lik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTuple{2,Rea
 end
 
 
-function loglik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTuple{2,Real})
+function loglik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
     η1, η2 = η12
+    l = _y(obs)
     if l == 1
         return normlogcdf(η2)
     elseif l == num_choices(model)
@@ -86,8 +101,9 @@ function loglik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTuple{2,
 end
 
 
-function lik_loglik_royalty(model::AbstractRoyaltyModel, l::Integer, η12::NTuple{2,Real})
-    F = lik_royalty(model, l, η12)
+function lik_loglik_royalty(obs::ObservationRoyalty, model::AbstractRoyaltyModel, η12::NTuple{2,Real})
+    l = _y(obs)
+    F = lik_royalty(obs, model, η12)
     η1, η2 = η12
     if l == 1
         return  F, normlogcdf(η2)
@@ -103,35 +119,38 @@ end
 # ---------------------------------------------
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
-function simloglik_royalty!(rc::RoyaltyComputation, model::AbstractRoyaltyModel, theta::AbstractVector, dograd::Bool)
+function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVector, dograd::Bool)
+
+    rc    = _tmpvar(rli)
+    obs   = _observation(rli)
+    model = _model(rli)
+    draws = _draws(rli)
 
     am = _am(rc)
     bm = _bm(rc)
     cm = _cm(rc)
     LLm = _LLm(rc)
-    u = _u(rc)
-    v = _v(rc)
-    l = _choice(rc)
 
-    @assert choice_in_model(model, l)
+    u = _u(draws)
+    v = _v(draws)
+    psi = _ψ1(draws)
+
+    l = _y(obs)
+    xbeta = _xbeta(obs)
 
     ρ  = theta_royalty_ρ(model,theta)
     βψ = theta_royalty_ψ(model,theta)
     βx = theta_royalty_β(model,theta)
 
-    # TODO move this outside of computation....
-    xbeta = dot( _x(rc), βx )
-
-    @inbounds @threads for m = 1:length(rc)
-        psi = _ψ1(u[m], v[m], ρ)
-        zm  = xbeta + βψ * psi
+    @inbounds @threads for m = 1:length(u)
+        zm  = xbeta + βψ * psi[m]
         eta12 = η12(model, theta, l, zm)
 
         if dograd == false
-            LLm[m] += loglik_royalty(model, l, eta12)
+            LLm[m] += loglik_royalty(obs, model, eta12)
         else
             η1, η2 = eta12
-            F,LL  = lik_loglik_royalty(model, l, eta12)
+            F,LL  = lik_loglik_royalty(obs, model, eta12)
             LLm[m] += LL
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
@@ -146,30 +165,29 @@ end
 # ---------------------------------------------
 
 "integrates over royalty"
-function grad_simloglik_royalty!(grad::AbstractVector, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyComputation)
+function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyTmpVar)
 
     @assert length(grad) == length(theta) == length(model)
 
     am = _am(rc) # computed in likelihood
     bm = _bm(rc) # computed in likelihood
     cm = _cm(rc) # computed in likelihood
-    um = _u(rc)  # halton draws
-    vm = _v(rc)  # halton draws
     qm = _qm(rc) # Pr(um,vm | data) already computed!!!
 
-    l = _choice(rc)         # discrete choice info
+    l = _choice(obs)         # discrete choice info
     L = num_choices(model)  # discrete choice info
+    x = _x(obs)
 
     ρ  = theta_royalty_ρ(model, theta) # parameters
     βψ = theta_royalty_ψ(model, theta) # parameters
 
-    dψdρ(u,v) = dpsidrho(model, theta, u, v)  # for below
-    ψ1(u,v) = _ψ1(u,v,ρ)                      # for below
+    ψ1 = _ψ1(draws)
+    dψ1dρ = _dψdρ(draws)
 
     # gradient
-    grad[idx_royalty_ρ(model)] -= sumprod(dψdρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
-    grad[idx_royalty_ψ(model)] -= sumprod(ψ1,   qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
-    grad[idx_royalty_β(model)] -= dot(qm, cm) .* _x(rc)
+    grad[idx_royalty_ρ(model)] -= sumprod(dψ1dρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
+    grad[idx_royalty_ψ(model)] -= sumprod(ψ1,    qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_royalty_β(model)] -= dot(qm, cm) .* x
     l > 1 && ( grad[idx_royalty_κ(model,l-1)] -= dot(qm, am) )
     l < L && ( grad[idx_royalty_κ(model,l)]   += dot(qm, bm) )
 end
@@ -180,11 +198,12 @@ end
 
 
 "for testing only"
-function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
+function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::Bool=true)
 
     theta_royalty_check(RM, θ) || return -Inf
 
-    k,n = size(xx)
+    k = num_x(data)
+    n = length(data)
     nparm = length(RM)
     @assert nparm == length(grad)
 
@@ -193,18 +212,23 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, l, xx, dograd::Bool=true)
     gradtmp = zeros(Float64, nparm, n)
     LL      = Vector{Float64}(undef, n)
 
-    z = xx' * theta_royalty_β(RM, θ)
+    # z = xx' * theta_royalty_β(RM, θ)
     # mul!(z, xx', theta_royalty_β(RM, θ))
+    update_xbeta!(data, theta_royalty_β(RM, θ))
+    l = _y(data)
+    X = _x(data)
+    z = _xbeta(data)
 
     @threads for i in 1:n
+        obs = data[i]
         eta12 = η12(RM, θ, l[i], z[i])
-        F, LL[i] = lik_loglik_royalty(RM, l[i], eta12)
+        F, LL[i] = lik_loglik_royalty(obs, RM, eta12)
 
         if dograd
             a, b = normpdf.(eta12) ./ F
             c = dlogcdf_trunc(eta12...)
 
-            gradtmp[idx_royalty_β(RM), i] .= - c .* view(xx, :, i)
+            gradtmp[idx_royalty_β(RM), i] .= - c .* _x(obs)
             l[i] > 1  && ( gradtmp[idx_royalty_κ(RM, l[i]-1), i] = -a )
             l[i] < L  && ( gradtmp[idx_royalty_κ(RM, l[i]),   i] =  b )
         end
