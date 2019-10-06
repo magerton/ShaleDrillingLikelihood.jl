@@ -66,70 +66,141 @@ end
 
 @testset "DataProduce" begin
 
-    n = 10
-    k = 2
-    nwell = 3
-    ngroups = 3
-    nobs = n*nwell
-    beta = rand(2)
+    @testset "DataProduce Deterministic" begin
+        n = 10
+        k = 2
+        nwell = 3
+        ngroups = 3
+        nobs = n*nwell
+        beta = rand(2)
 
-    x = rand(k, nobs)
-    y = x' * beta + rand(nobs)
+        x = rand(k, nobs)
+        y = x' * beta + rand(nobs)
 
-    xsum = hcat(collect(sum(x[:, (j-1)*n .+ (1:n)]; dims=2) for j in 1:nwell)...)
+        xsum = hcat(collect(sum(x[:, (j-1)*n .+ (1:n)]; dims=2) for j in 1:nwell)...)
 
-    nu = y - x'*beta
-    obsptr = [j*n+1 for j in 0:nwell]
-    groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
+        nu = y - x'*beta
+        obsptr = [j*n+1 for j in 0:nwell]
+        groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
 
-    d = DataProduce(y,x,xsum,nu,obsptr,groupptr)
-    obs = ObservationProduce(d,2)
+        d = DataProduce(y,x,xsum,nu,obsptr,groupptr)
+        obs = ObservationProduce(d,2)
 
-    @test length(d) == ngroups == length(groupptr)-1
-    @test _num_x(d) == k
+        @test length(d) == ngroups == length(groupptr)-1
+        @test _num_x(d) == k
+        @test _num_obs(d) == last(groupptr)-1 == length(obsptr)-1
 
-    @test obsstart(d,2) == n+1
-    @test obsstart(d,3) == 2*n + 1
-    rng = obsstart(d,2) : obsstart(d,3)-1
-    @test isa(rng, UnitRange)
-    @test obsrange(d,2) == rng
+        @test obsstart(d,2) == n+1
+        @test obsstart(d,3) == 2*n + 1
+        rng = obsstart(d,2) : obsstart(d,3)-1
+        @test isa(rng, UnitRange)
+        @test obsrange(d,2) == rng
 
-    @test obslength(d,2) == length(rng)
-    @test obsstart(d,2) == first(rng)
+        @test obslength(d,2) == length(rng)
+        @test obsstart(d,2) == first(rng)
 
-    @test length(obs) == n
-    @test _y(obs) == y[rng]
-    @test _x(obs) == x[:, rng]
-    @test dropdims(sum(_x(obs); dims=2); dims=2) == _xsum(obs)
+        @test length(obs) == n
+        @test _y(obs) == y[rng]
+        @test _x(obs) == x[:, rng]
+        @test dropdims(sum(_x(obs); dims=2); dims=2) == _xsum(obs)
 
-    grp = ObservationGroupProduce(d,1)
-    grouprange(grp)
-    @test ObservationProduce(grp,1) == ObservationProduce(d,1)
-    @test iterate(grp) == (ObservationProduce(d,1), 2,)
-    @test iterate(grp, iterate(grp)[2]) == nothing
+        grp = ObservationGroupProduce(d,1)
+        grouprange(grp)
+        @test ObservationProduce(grp,1) == ObservationProduce(d,1)
+        @test iterate(grp) == (ObservationProduce(d,1), 2,)
+        @test iterate(grp, iterate(grp)[2]) == nothing
 
-    grp = ObservationGroupProduce(d,2)
-    @test length(grp) == 2
-    @test ObservationProduce(grp,1) == ObservationProduce(d,2)
-    @test ObservationProduce(grp,2) == ObservationProduce(d,3)
-    @test iterate(grp) == (ObservationProduce(d,2), 2,)
-    @test iterate(grp, 2) == (ObservationProduce(d,3), 3,)
-    @test iterate(grp, 3) == nothing
+        grp = ObservationGroupProduce(d,2)
+        @test length(grp) == 2
+        @test ObservationProduce(grp,1) == ObservationProduce(d,2)
+        @test ObservationProduce(grp,2) == ObservationProduce(d,3)
+        @test iterate(grp) == (ObservationProduce(d,2), 2,)
+        @test iterate(grp, 2) == (ObservationProduce(d,3), 3,)
+        @test iterate(grp, 3) == nothing
 
-    grp = ObservationGroupProduce(d,3)
-    @test length(grp) == 0
-    @test iterate(grp) == nothing
+        grp = ObservationGroupProduce(d,3)
+        @test length(grp) == 0
+        @test iterate(grp) == nothing
 
-    ii, jj = (0,0)
-    for g in d
-        ii += 1
-        for o in g
-            jj+=1
+        ii, jj = (0,0)
+        for g in d
+            ii += 1
+            for o in g
+                jj+=1
+            end
         end
+        @test ii == length(d) == ngroups == length(groupptr)-1
+        @test jj == _num_obs(d) == nwell
     end
-    @test ii == length(d) == ngroups == length(groupptr)-1
-    @test jj == _num_obs(d) == nwell
 
+    @testset "DataProduce random" begin
+        ngroups = 11
+        maxwells = 5
+        mint = 4
+        maxt = 25
+        ncoef = 3
+
+        DataProduce(ngroups, maxwells, mint:maxt, ncoef, (0.5, 0.5, 0.3))
+
+        beta = rand(3)
+        alphapsi = 0.5
+        sigeta = 0.3
+        sigu = 0.5
+
+        # create group variables
+        psi = rand(numgroups)
+        grouplens = vcat(0, collect(0:maxwells)..., sample(0:maxwells, numgroups-maxwells-1))
+        @test length(grouplens) == numgroups+1
+        groups = 1 .+ cumsum(grouplens)
+
+        @test all(groups[2:end] .- groups[1:end-1] .== grouplens[2:end])
+
+        # create wells per group
+        nwells = last(groups)-1
+        us = rand(nwells)
+        obslens = vcat(0, sample(mint:maxt, nwells))
+        obsptr = 1 .+ cumsum(obslens)
+        nobs = last(obsptr)-1
+
+        @test all(obsptr[2:end] .- obsptr[1:end-1] .== obslens[2:end])
+
+        # create observation epsilons
+        e = rand(nobs)
+        x = rand(k,nobs)
+        xsum = zeros(k, nwells)
+        nu = zeros(nobs)
+        y = x'*beta
+
+        for i = 1:numgroups
+            wellptrs = groups[i]:groups[i+1]-1
+            for k in wellptrs
+                obsrng = obsptr[k]:obsptr[k+1]-1
+                # sum!(xsum[:,k:k], x[:, obsrng])
+                # y[obsrng] .+= sigu .* us[k] .+ alphapsi .* psi[i]
+            end
+        end
+
+        data = DataProduce(y,x,xsum,nu,obsptr,groups)
+
+        for g in data
+            i = _i(g)
+            for (k,o) in enumerate(g)
+                j = getindex(grouprange(g), k)
+                _y(o) .+= sigu .* us[j] .+ alphapsi .* psi[i]
+                sum!(reshape(_xsum(o), :, 1), _x(o))
+                _nu(o) .= _y(o) .- _x(o)'*beta
+            end
+        end
+
+        for j = 1:nwells
+            o = ObservationProduce(data,j)
+            @test all(_xsum(o) .== sum(_x(o); dims=2))
+        end
+
+        @test _y(data) - _x(data)'*beta == _nu(data)
+
+        @test !all(_nu(data) .== 0)
+    end
 end
 
 

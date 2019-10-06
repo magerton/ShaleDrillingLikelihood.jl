@@ -200,6 +200,46 @@ obslength(g::ObservationGroupProduce, k::Integer) = obslength(_data(g), getindex
 ObservationProduce(g::ObservationGroupProduce, k::Integer) = ObservationProduce(_data(g), getindex(grouprange(g), k))
 iterate(g::ObservationGroupProduce, k::Integer=1) = k > length(g) ? nothing : (ObservationProduce(g,k), k+1,)
 
+"make a random dataset"
+function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, ncoef::Int, sigmas::NTuple{3,Float64})
+
+    beta = rand(ncoef)
+    alphapsi, sigu, sigeta = sigmas
+    psi = rand(numgroups)
+
+    grouplens = vcat(0, collect(0:maxwells)..., sample(0:maxwells, ngroups-maxwells-1))
+    groupptr = 1 .+ cumsum(grouplens)
+
+    nwells = last(groupptr)-1
+    us = rand(nwells)
+    obslens = vcat(0, sample(ntrange, nwells))
+    obsptr = 1 .+ cumsum(obslens)
+
+    nobs = last(obsptr)-1
+
+    e    = rand(nobs)
+    x    = rand(k,nobs)
+    xsum = zeros(k, nwells)
+    nu   = zeros(nobs)
+    y    = x'*beta
+
+    data = DataProduce(y,x,xsum,nu,obsptr,groups)
+
+    for g in data
+        i = _i(g)
+        for (k,o) in enumerate(g)
+            j = getindex(grouprange(g), k)
+            _y(o) .+= sigu .* us[j] .+ alphapsi .* psi[i]
+            sum!(reshape(_xsum(o), :, 1), _x(o))
+            _nu(o) .= _y(o) .- _x(o)'*beta
+        end
+    end
+
+    return data
+end
+
+
+
 # ----------------------------
 # drilling data
 # ----------------------------
