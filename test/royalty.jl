@@ -15,10 +15,10 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     η12,
     lik_royalty, lik_loglik_royalty,
     theta_royalty_check,
-    llthreads!,
     simloglik_royalty!,
     grad_simloglik_royalty!,
-    _LLm
+    _LLm,
+    ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, num_x
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -47,6 +47,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     rstar = X'*theta_royalty_β(RM, theta) .+ eps
     l = map((r) ->  searchsortedfirst(theta_royalty_κ(RM,theta), r), rstar)
+
+    data = DataRoyalty(l, X)
 
     M = 10
     am = Vector{Float64}(undef,M)

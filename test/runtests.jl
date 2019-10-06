@@ -1,5 +1,6 @@
 using Revise
 
-include("royalty.jl")
-include("production.jl")
-include("drilling.jl")
+include("data-structure.jl")
+# include("royalty.jl")
+# include("production.jl")
+# include("drilling.jl")

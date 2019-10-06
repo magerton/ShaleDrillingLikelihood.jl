@@ -8,6 +8,7 @@ using Base.Threads
 abstract type AbstractIntermediateComputations end
 
 
+include("data-structure.jl")
 include("data-access.jl")
 include("sum-functions.jl")
 
