@@ -16,6 +16,8 @@ function ProductionLikelihoodComputations(v::AbstractVector)
     return ProductionLikelihoodComputations(T, vpv, vp1)
 end
 
+ProductionLikelihoodComputations(o::ObservationProduce) = ProductionLikelihoodComputations(_nu(o))
+
 _T(    plc::ProductionLikelihoodComputations) = plc.T
 _vpv(  plc::ProductionLikelihoodComputations) = plc.vpv
 _vp1(  plc::ProductionLikelihoodComputations) = plc.vp1
@@ -61,7 +63,7 @@ end
 
 function loglik_produce_scalars(model::ProductionModel, theta::AbstractVector, plc::ProductionLikelihoodComputations)
 
-    αψ = theta_produce_ψ(  model, theta)
+    αψ = theta_produce_ψ(   model, theta)
     σ2η = theta_produce_σ2η(model, theta)
     σ2u = theta_produce_σ2u(model, theta)
     a = σ2η^2

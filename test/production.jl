@@ -6,13 +6,16 @@ using StatsFuns
 using Calculus
 using Optim
 using Random
+using LinearAlgebra
 
 
 using ShaleDrillingLikelihood: num_x,
     idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
     theta_produce, theta_produce_ψ, theta_produce_β, theta_produce_σ2η, theta_produce_σ2u,
     ProductionLikelihoodComputations, ProductionGradientComputations,
-    grad_simloglik_produce!, loglik_produce
+    grad_simloglik_produce!, loglik_produce,
+    DataProduce, ObservationGroupProduce, ObservationProduce,
+    _x, _y, _xsum, _nu, _i
 
 
 @testset "Production basics" begin
@@ -30,7 +33,7 @@ using ShaleDrillingLikelihood: num_x,
     u = repeat(randn(num_i), inner=num_t)  # random effect
     η = randn(nobs)                        # idiosyncratic shock
     ψ = ones(M, num_i)
-    theta = [1.0, 2.0, 3.0, 4.0, sqrt(0.25), sqrt(0.5)]
+    theta = [1.0, 2.0, 3.0, 4.0, sqrt(0.10), sqrt(0.10)]
 
     @test length(theta) == length(pm)
     @test num_x(pm) == k
@@ -58,6 +61,16 @@ using ShaleDrillingLikelihood: num_x,
         return view(X, :, idx)
     end
 
+    xsum = Matrix{Float64}(undef, k, num_i)
+    for i in 1:num_i
+        sum!(xsum[:,i:i], viewi(X, i))
+    end
+
+    grpptr = collect(1:num_i+1)
+    obsptr = collect(1:num_t:(num_i*num_t+1))
+
+    data = DataProduce(y,X,xsum,zeros(nobs),obsptr, grpptr)
+
     function fg!(grad, θ, yy, xx, dograd::Bool=true)
         llm = zeros(Float64, M)
         qm = llm
@@ -70,30 +83,35 @@ using ShaleDrillingLikelihood: num_x,
 
         @assert length(llm) == size(ψ,1)
 
+        _nu(data) .= _y(data) .- _x(data)'*theta_produce_β(pm, θ)
+
         LL = 0.0
-        for i in 1:num_i
-            fill!(llm, 0)
-            xi = viewi(xx, i)
-            yi = viewi(yy, i)
-            vi .= yi .- xi'*theta_produce_β(pm,θ)
 
-            # TODO use ProductionTempVars
+        for grp in data
+            for obs in grp
+                fill!(llm, 0)
+                xi = _x( obs)
+                yi = _y( obs)
+                vi = _nu(obs)
 
-            ψi = view(ψ, :, i)
+                # TODO use ProductionTempVars
 
-            plci = ProductionLikelihoodComputations(vi)
-            llpsi = ShaleDrillingLikelihood.loglik_produce_scalars(pm, θ, plci)
+                ψi = view(ψ, :, _i(grp))
 
-            for m = 1:M
-                llm[m] = loglik_produce(llpsi..., ψi[m])
-            end
+                plci = ProductionLikelihoodComputations(vi)
+                llpsi = ShaleDrillingLikelihood.loglik_produce_scalars(pm, θ, plci)
 
-            LL += logsumexp(llm)
+                for m = 1:M
+                    llm[m] = loglik_produce(llpsi..., ψi[m])
+                end
 
-            if dograd
-                softmax!(qm)
-                pgci = ProductionGradientComputations(qm, ψi, xi, vi)
-                grad_simloglik_produce!(grad, pm, θ, plci, pgci)
+                LL += logsumexp(llm)
+
+                if dograd
+                    softmax!(qm)
+                    pgci = ProductionGradientComputations(qm, ψi, xi, vi)
+                    grad_simloglik_produce!(grad, pm, θ, plci, pgci)
+                end
             end
         end
         return LL - log(M)*num_i
@@ -123,9 +141,19 @@ using ShaleDrillingLikelihood: num_x,
     fd = Calculus.gradient(ff, theta)
     fill!(gradtmp, 0)
     ffgg!(gradtmp, theta)
-    @test fd ≈ gradtmp
+    @test norm(fd .- gradtmp, Inf) < 1e-5
 end
 
+
+@testset "Production full data" begin
+
+    Random.seed!(1234)
+
+    beta = rand(3)
+    sigmas = (sqrt(0.25), sqrt(0.25), sqrt(0.1))
+    data = DataProduce(10, 5, 5:10, beta, sigmas)
+
+end
 
 # TODO
 @testset "Production likelihood integration" begin
