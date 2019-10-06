@@ -9,9 +9,12 @@ using Halton
 abstract type AbstractIntermediateComputations end
 abstract type AbstractTempVar end
 
+const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
+
 
 include("models.jl")
 
+include("simulation-draws.jl")
 include("data-structure.jl")
 include("data-access.jl")
 include("sum-functions.jl")

@@ -1,70 +1,9 @@
-import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view
+import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==
 using StatsBase: countmap
 
 abstract type AbstractDataStructure end
+abstract type AbstractObservationGroup end
 abstract type AbstractObservation end
-
-# ---------------------------------
-# Simulation Draws
-# ---------------------------------
-
-
-const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
-
-struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
-    u::A
-    v::A
-    psi1::A
-    dpsidrho::A
-    function SimulationDraws(u::A, v::A, psi1::A, dpsidrho::A) where {T,N,A<:AbstractRealArray{T,N}}
-        size(dpsidrho) == size(psi1) == size(u) == size(v)  || throw(DimensionMismatch())
-        return new{T,N,A}(u,v,psi1,dpsidrho)
-    end
-end
-
-const SimulationDrawsVector{T,A} = SimulationDraws{T,1,A} where {T,A}
-const SimulationDrawsMatrix{T,A} = SimulationDraws{T,2,A} where {T,A}
-
-
-function SimulationDraws(M::Integer, N::Integer, bases::NTuple{2,Int}=(2,3); kwargs...)
-    uvs = map((b) -> Matrix{Float64}(undef, M,N), bases)
-    HaltonDraws!.(uvs, bases; kwargs...)
-    psi1 = similar(uvs[1])
-    dpsidrho = similar(uvs[1])
-    return SimulationDraws(uvs..., psi1, dpsidrho)
-end
-
-_u(s::SimulationDraws) = s.u
-_v(s::SimulationDraws) = s.v
-_ψ1(s::SimulationDraws) = s.psi1
-_ψ2(s::SimulationDraws) = _u(s)
-_dψ1dρ(s::SimulationDraws) = s.dpsidrho
-_psi1(s::SimulationDraws) = _ψ1(s)
-_psi2(s::SimulationDraws) = _ψ2(s)
-
-_dψdρ(s::SimulationDraws) = s.dpsidrho
-@deprecate _dψdρ(s) _dψ1dρ(s)
-
-function update_ψ1!(s::SimulationDraws, ρ::Real)
-    # 0 <= ρ <= 1 || throw(DomainError())
-    wt = sqrt(1-ρ^2)
-    _ψ1(s) .= ρ.*_u(s)  +  wt.*_v(s)
-end
-
-function update_dψ1dρ!(s::SimulationDraws, ρ::Real)
-    0 <= ρ <= 1 || throw(DomainError())
-    rhoinvwt = ρ/sqrt(1-ρ^2)
-    _dψ1dρ(s) .= _u(s) .- rhoinvwt .* _v(s)
-end
-
-
-# unobservables we integrate out
-size(s::SimulationDraws) = size(_u(s))
-
-tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψdρ(s)
-
-view(s::SimulationDrawsMatrix, i::Integer) = SimulationDraws(view.(tup(s), :, i)...)
-getindex(s::SimulationDrawsVector, m) = getindex.(tup(s), m)
 
 # ----------------------------
 # royalty data
@@ -171,35 +110,103 @@ theta_royalty_check(m::AbstractRoyaltyModel, d, theta) = issorted(theta_royalty_
 # produce data
 # ----------------------------
 
-struct ObservationProduce{T<:Real, V<:AbstractVector{T}, M <:AbstractMatrix{T}} <: AbstractObservation
-    y::V
+struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}} <: AbstractObservation
+    y::V1
     x::M
-    nu::V
+    xsum::V2
+    nu::V1
+    function ObservationProduce(y::V1, x::M, xsum::V2, nu::V1) where {T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
+        k,n = size(x)
+        length(nu) == length(y) == n  || throw(DimensionMismatch())
+        size(xsum,1) == k || throw(DimensionMismatch())
+        return new{T,V1,V2,M}(y,x,xsum,nu)
+    end
 end
 
-struct DataProduce{T<:Real, V<:AbstractVector{T}, M<:AbstractMatrix{T}}
+struct DataProduce{T<:Real, V<:AbstractVector{T}, M<:AbstractMatrix{T}} <: AbstractDataStructure
     y::V
     x::M
+    xsum::M
     nu::V
+    obs_ptr::Vector{Int}
+    group_ptr::Vector{Int}
+    # function DataProduce(y::V, x::M, xsum::M, nu::V, obs_ptr::VI, group_ptr::VI) where {
+    #     T<:Real, V<:AbstractVector{T}, M <:AbstractMatrix{T}, VI <: AbstractVector{Int}
+    # }
+    #     k,n = size(x)
+    #     length(nu) == length(y) == n  || throw(DimensionMismatch())
+    #     size(xsum,1) == k || throw(DimensionMismatch())
+    #     return new{T,V,VM,VI}(y,x,xsum,nu,obs_ptr)
+    # end
 end
 
-_nu(d::ObservationProduce) = d.nu
-_y(d::Union{ObservationProduce, DataProduce}) = d.y
-_x(d::Union{ObservationProduce, DataProduce}) = d.x
+obs_ptr(  d::DataProduce) = d.obs_ptr
+group_ptr(d::DataProduce) = d.group_ptr
+_nu(  d::Union{ObservationProduce, DataProduce}) = d.nu
+_y(   d::Union{ObservationProduce, DataProduce}) = d.y
+_x(   d::Union{ObservationProduce, DataProduce}) = d.x
+_xsum(d::Union{ObservationProduce, DataProduce}) = d.xsum
+_num_x(d::Union{ObservationProduce, DataProduce}) = size(_xsum(d),1)
+
+function ==(o1::ObservationProduce, o2::ObservationProduce)
+    _y(o1)==_y(o2) && _x(o1)==_x(o2) && _xsum(o1)==_xsum(o2) && _nu(o1)==_nu(o2)
+end
+
+iterate(d::DataProduce, i::Integer=1) = i > length(d) ? nothing : (ObservationGroupProduce(d,i), i+1,)
+
+length(d::DataProduce) = length(group_ptr(d))-1
+length(o::ObservationProduce) = length(_y(o))
+
+_num_obs(d::DataProduce) = length(obs_ptr(d))-1
+
+groupstart( d::DataProduce, i::Integer) = getindex(group_ptr(d), i)
+grouplength(d::DataProduce, i::Integer) = groupstart(d,i+1) - groupstart(d,i)
+grouprange( d::DataProduce, i::Integer) = groupstart(d,i) : groupstart(d,i+1)-1
+
+obsstart( d::DataProduce, j::Integer) = getindex(obs_ptr(d),j)
+obsrange( d::DataProduce, j::Integer) = obsstart(d,j) : obsstart(d,j+1)-1
+obslength(d::DataProduce, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
+
+function ObservationProduce(d::DataProduce, j::Integer)
+    rng = obsrange(d,j)
+    y    = view(_y(d), rng)
+    nu   = view(_nu(d), rng)
+    x    = view(_x(d), :, rng)
+    xsum = view(_xsum(d), :, j)
+    return ObservationProduce(y, x, xsum, nu)
+end
+
+struct ObservationGroupProduce{D<:DataProduce,I<:Integer} <: AbstractObservationGroup
+    data::D
+    i::I
+    function ObservationGroupProduce(data::D, i::I) where {D<:DataProduce,I<:Integer}
+        1 <= i <= length(data) || throw(BoundsError(data,i))
+        return new{D,I}(data,i)
+    end
+end
+_i(   g::ObservationGroupProduce) = g.i
+_data(g::ObservationGroupProduce) = g.data
+
+
+length(    g::ObservationGroupProduce) = grouplength(_data(g), _i(g))
+grouprange(g::ObservationGroupProduce) = grouprange( _data(g), _i(g))
+
+obsstart( g::ObservationGroupProduce, k::Integer) = obsstart( _data(g), getindex(grouprange(g), k))
+obsrange( g::ObservationGroupProduce, k::Integer) = obsrange( _data(g), getindex(grouprange(g), k))
+obslength(g::ObservationGroupProduce, k::Integer) = obslength(_data(g), getindex(grouprange(g), k))
+
+ObservationProduce(g::ObservationGroupProduce, k::Integer) = ObservationProduce(_data(g), getindex(grouprange(g), k))
+iterate(g::ObservationGroupProduce, k::Integer=1) = k > length(g) ? nothing : (ObservationProduce(g,k), k+1,)
 
 # ----------------------------
 # drilling data
 # ----------------------------
 
-struct ObservationDrilling <: AbstractDataStructure
-end
+struct ObservationDrilling <: AbstractDataStructure end
 
 # ----------------------------
 # drilling data
 # ----------------------------
 
-struct DataIndividual <:AbstractDataStructure
-end
-
-struct DataSet <: AbstractDataStructure
-end
+struct DataIndividual <:AbstractDataStructure end
+struct DataSet <: AbstractDataStructure end
