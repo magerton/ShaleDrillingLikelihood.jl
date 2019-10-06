@@ -65,6 +65,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     cm = _cm(RT)
 
     # test η12s
+        
     η12s = map((l_rstar) -> η12(RM, theta, L, l_rstar[1], l_rstar[2]), zip(l, rstar))
     @test all(map((x) -> x[1] < x[2], η12s))
 

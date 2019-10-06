@@ -46,7 +46,7 @@ struct RoyaltyLikelihoodInformation{RT<:RoyaltyTmpVar, O<:ObservationRoyalty, M<
 end
 
 _tmpvar(rli::RoyaltyLikelihoodInformation) = rli.tmpvar
-_observation(rli::RoyaltyLikelihoodInformation) = rli.observation
+_obs(rli::RoyaltyLikelihoodInformation) = rli.observation
 _model(rli::RoyaltyLikelihoodInformation) = rli.model
 _draws(rli::RoyaltyLikelihoodInformation) = rli.simulated_draws
 
@@ -54,7 +54,9 @@ _draws(rli::RoyaltyLikelihoodInformation) = rli.simulated_draws
 # Royalty low level computations
 # ---------------------------------------------
 
-function η12(obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, zm::Real)
+function η12(rli::RoyaltyLikelihoodInformation, theta::AbstractVector, zm::Real)
+    obs = _obs(rli)
+    model = _model(rli)
     l = _y(obs)
     L = _num_choices(obs)
     η1 = l == 1 ? typemin(zm) : theta_royalty_κ(model, obs, theta, l-1) - zm
@@ -75,8 +77,9 @@ function dlogcdf_trunc(a::Real, b::Real)
 end
 
 
-function lik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
+function lik_royalty(rli::RoyaltyLikelihoodInformation, η12::NTuple{2,Real})
     η1, η2 = η12
+    obs = _obs(rli)
     l = _y(obs)
     if l == 1
         return normcdf(η2)
@@ -88,8 +91,9 @@ function lik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
 end
 
 
-function loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
+function loglik_royalty(rli::RoyaltyLikelihoodInformation, η12::NTuple{2,Real})
     η1, η2 = η12
+    obs = _obs(rli)
     l = _y(obs)
     if l == 1
         return normlogcdf(η2)
@@ -102,9 +106,10 @@ function loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
 end
 
 
-function lik_loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
+function lik_loglik_royalty(rli::RoyaltyLikelihoodInformation, η12::NTuple{2,Real})
+    obs = _obs(rli)
     l = _y(obs)
-    F = lik_royalty(obs, η12)
+    F = lik_royalty(rli, η12)
     η1, η2 = η12
     if l == 1
         return  F, normlogcdf(η2)
@@ -122,37 +127,30 @@ end
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
 function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVector, dograd::Bool)
 
-    rc    = _tmpvar(rli)
     obs   = _observation(rli)
     model = _model(rli)
-    draws = _draws(rli)
+    psi = _ψ1(_draws(rli))
 
+    rc = _tmpvar(rli)
     am = _am(rc)
     bm = _bm(rc)
     cm = _cm(rc)
     LLm = _LLm(rc)
-
-    u = _u(draws)
-    v = _v(draws)
-    psi = _ψ1(draws)
-
-    l = _y(obs)
-    xbeta = _xbeta(obs)
 
     ρ  = theta_royalty_ρ(model, obs, theta)
     βψ = theta_royalty_ψ(model, obs, theta)
     βx = theta_royalty_β(model, obs, theta)
 
     # @inbounds @threads
-    for m = 1:length(u)
-        zm  = xbeta + βψ * psi[m]
-        eta12 = η12(obs, model, theta, zm)
+    for m = 1:length(psi)
+        zm  = _xbeta(obs) + βψ * psi[m]
+        eta12 = η12(rli, theta, zm)
 
         if dograd == false
-            LLm[m] += loglik_royalty(obs, eta12)
+            LLm[m] += loglik_royalty(rli, eta12)
         else
             η1, η2 = eta12
-            F,LL  = lik_loglik_royalty(obs, eta12)
+            F,LL  = lik_loglik_royalty(rli, eta12)
             LLm[m] += LL
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
@@ -169,7 +167,7 @@ end
 "integrates over royalty"
 function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyTmpVar, draws::SimulationDrawsVector)
 
-    @assert length(grad) == length(theta) == length(model)
+    @assert length(grad) == length(theta) == length(model, obs)
 
     am = _am(rc) # computed in likelihood
     bm = _bm(rc) # computed in likelihood
