@@ -1,5 +1,8 @@
 module ShaleDrillingLikelihood_Royalty_Test
 
+# using Revise
+
+# using Juno
 using ShaleDrillingLikelihood
 using Test
 using StatsFuns
@@ -19,7 +22,9 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     grad_simloglik_royalty!,
     _LLm,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, num_x,
-    SimulationDraws, RoyaltyLikelihoodInformation
+    SimulationDraws, RoyaltyLikelihoodInformation,
+    update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
+    update_xbeta!
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -93,7 +98,7 @@ end
     # make data
     X      = randn(k,nobs)
     eps    = randn(nobs)
-    theta  = [0.0, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    theta  = [0.1, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
 
     # check indexing is correct
     @test all(theta_royalty_β(RM, theta) .== theta[2 .+ (1:k)])
@@ -107,32 +112,33 @@ end
 
     # simulations
     uv = SimulationDraws(M,nobs)
-
-    qm = fill(Float64(1/M), M)
-    am  = similar(qm)
-    bm  = similar(qm)
-    cm  = similar(qm)
-    llm = similar(qm)
-
     rc = RoyaltyTmpVar(M)
     # @code_warntype simloglik_royalty!(rc, RM, theta, false)
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
+        update_ψ1!(uv, theta_royalty_ρ(RM,θ))
+        update_dψ1dρ!(uv, theta_royalty_ρ(RM,θ))
+        qm = ShaleDrillingLikelihood._qm(rc)
+        update_xbeta!(data, theta_royalty_β(RM,θ))
         for i in 1:nobs
-            rc = RoyaltyTmpVar(M)
             fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
             rli = RoyaltyLikelihoodInformation(rc, data[i], RM, view(uv,i))
             simloglik_royalty!(rli, θ, dograd)    # update LLm
             LL += logsumexp(_LLm(rc))             # b/c integrating
             softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
-            dograd && grad_simloglik_royalty!(grad, data[i], RM, θ, rc)
+            dograd && grad_simloglik_royalty!(grad, data[i], RM, θ, rc, view(uv,i))
         end
         return LL - nobs*log(M)
     end
 
+
     gradtmp = zeros(size(theta))
+    fg!(gradtmp, theta, false)
+    fg!(gradtmp, theta, true)
+
     fd = Calculus.gradient(x -> fg!(gradtmp, x, false), theta)
+    fill!(gradtmp, 0)
     fg!(gradtmp, theta, true)
     @test gradtmp ≈ fd
 end

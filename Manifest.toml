@@ -115,7 +115,7 @@ version = "0.10.3"
 
 [[Halton]]
 deps = ["Distributions", "Primes"]
-path = "D:\\libraries\\julia\\dev\\Halton"
+path = "D:\\software_libraries\\julia\\dev\\Halton"
 uuid = "dff42ae5-d2f8-5e0a-8ab1-4573ef3c433c"
 version = "0.0.0"
 

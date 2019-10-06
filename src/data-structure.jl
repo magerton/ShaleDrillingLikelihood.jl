@@ -38,12 +38,15 @@ _u(s::SimulationDraws) = s.u
 _v(s::SimulationDraws) = s.v
 _ψ1(s::SimulationDraws) = s.psi1
 _ψ2(s::SimulationDraws) = _u(s)
-_dψdρ(s::SimulationDraws) = s.dpsidrho
+_dψ1dρ(s::SimulationDraws) = s.dpsidrho
 _psi1(s::SimulationDraws) = _ψ1(s)
 _psi2(s::SimulationDraws) = _ψ2(s)
 
+_dψdρ(s::SimulationDraws) = s.dpsidrho
+@deprecate _dψdρ(s) _dψ1dρ(s)
+
 function update_ψ1!(s::SimulationDraws, ρ::Real)
-    0 <= ρ <= 1 || throw(DomainError())
+    # 0 <= ρ <= 1 || throw(DomainError())
     wt = sqrt(1-ρ^2)
     _ψ1(s) .= ρ.*_u(s)  +  wt.*_v(s)
 end

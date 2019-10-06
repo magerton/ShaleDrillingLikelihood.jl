@@ -142,7 +142,8 @@ function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVe
     βψ = theta_royalty_ψ(model,theta)
     βx = theta_royalty_β(model,theta)
 
-    @inbounds @threads for m = 1:length(u)
+    # @inbounds @threads
+    for m = 1:length(u)
         zm  = xbeta + βψ * psi[m]
         eta12 = η12(model, theta, l, zm)
 
@@ -165,7 +166,7 @@ end
 # ---------------------------------------------
 
 "integrates over royalty"
-function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyTmpVar)
+function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyTmpVar, draws::SimulationDrawsVector)
 
     @assert length(grad) == length(theta) == length(model)
 
@@ -173,6 +174,8 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     bm = _bm(rc) # computed in likelihood
     cm = _cm(rc) # computed in likelihood
     qm = _qm(rc) # Pr(um,vm | data) already computed!!!
+
+
 
     l = _choice(obs)         # discrete choice info
     L = num_choices(model)  # discrete choice info
@@ -185,8 +188,8 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     dψ1dρ = _dψdρ(draws)
 
     # gradient
-    grad[idx_royalty_ρ(model)] -= sumprod(dψ1dρ, qm, cm, um, vm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
-    grad[idx_royalty_ψ(model)] -= sumprod(ψ1,    qm, cm, um, vm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_royalty_ρ(model)] -= sumprod3(dψ1dρ, qm, cm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
+    grad[idx_royalty_ψ(model)] -= sumprod3(ψ1,    qm, cm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
     grad[idx_royalty_β(model)] -= dot(qm, cm) .* x
     l > 1 && ( grad[idx_royalty_κ(model,l-1)] -= dot(qm, am) )
     l < L && ( grad[idx_royalty_κ(model,l)]   += dot(qm, bm) )
@@ -219,7 +222,8 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::
     X = _x(data)
     z = _xbeta(data)
 
-    @threads for i in 1:n
+    # @threads
+    for i in 1:n
         obs = data[i]
         eta12 = η12(RM, θ, l[i], z[i])
         F, LL[i] = lik_loglik_royalty(obs, RM, eta12)
