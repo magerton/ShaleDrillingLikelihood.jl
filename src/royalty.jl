@@ -166,10 +166,15 @@ end
 # Royalty gradient
 # ---------------------------------------------
 
-"integrates over royalty"
-function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::RoyaltyModel, theta::AbstractVector, rc::RoyaltyTmpVar, draws::SimulationDrawsVector)
+"gradient for simulated likelihood when integrating"
+function grad_simloglik_royalty!(grad::AbstractVector, rli::RoyaltyLikelihoodInformation, theta::AbstractVector)
 
-    @assert length(grad) == length(theta) == length(model)
+    rc    = _tmpvar(rli)
+    obs   = _observation(rli)
+    model = _model(rli)
+    draws = _draws(rli)
+
+    @assert length(grad) == length(theta) == length(model,obs)
 
     am = _am(rc) # computed in likelihood
     bm = _bm(rc) # computed in likelihood
