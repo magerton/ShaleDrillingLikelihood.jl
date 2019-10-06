@@ -97,8 +97,6 @@ _x(d::Union{ObservationRoyalty, DataRoyalty}) = d.x
 _xbeta(d::Union{ObservationRoyalty,DataRoyalty}) = d.xbeta
 _num_choices(d::Union{ObservationRoyalty,DataRoyalty}) = d.num_choices
 _choice(d::ObservationRoyalty) = _y(d)
-num_choices(d) = _num_choices(d)
-@deprecate num_choices(d) _num_choices(d)
 
 _num_x(d::Union{ObservationRoyalty,DataRoyalty}) = size(_x(d), 1)
 @deprecate _num_x(d) num_x(d)
@@ -106,7 +104,7 @@ length(d::DataRoyalty) = length(_y(d))
 size(d::DataRoyalty) = length(d)
 
 function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
-    length(theta) == num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
+    length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
     mul!(_xbeta(d), _x(d)', theta)
     return nothing
 end
@@ -130,13 +128,18 @@ IndexStyle(d::DataRoyalty) = IndexLinear()
 length(m::RoyaltyModelNoHet, d) = _num_x(d) + _num_choices(d) - 1
 length(m::RoyaltyModel     , d) = _num_x(d) + _num_choices(d) + 1
 
+function choice_in_model(d::Union{DataRoyalty,ObservationRoyalty}, l::Integer)
+    0 < l <= _num_choices(d) && return true
+    throw(DomainError(l, "$l outside of 1:$(_num_choices(d))"))
+end
+
 # parameter vector
 idx_royalty_ρ(m::RoyaltyModelNoHet, d) = 1:0
 idx_royalty_ψ(m::RoyaltyModelNoHet, d) = 1:0
 idx_royalty_β(m::RoyaltyModelNoHet, d) = (1:_num_x(d))
-idx_royalty_κ(m::RoyaltyModelNoHet, d) = _num_x(d) .+ (1:num_choices(d)-1)
+idx_royalty_κ(m::RoyaltyModelNoHet, d) = _num_x(d) .+ (1:_num_choices(d)-1)
 function idx_royalty_κ(m::RoyaltyModelNoHet, d, l::Integer)
-    1 <= l <= _num_choices(d) || throw(DomainError())
+    choice_in_model(d,l)
     return _num_x(d) + l
 end
 
@@ -145,7 +148,7 @@ idx_royalty_ψ(m::RoyaltyModel, d) = 2
 idx_royalty_β(m::RoyaltyModel, d) = 2 .+ (1:_num_x(d))
 idx_royalty_κ(m::RoyaltyModel, d) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
 function idx_royalty_κ(m::RoyaltyModel, d, l::Integer)
-    1 <= l <= _num_choices(d) || throw(DomainError())
+    choice_in_model(d,l)
     return 2 + _num_x(d) + l
 end
 

@@ -202,40 +202,43 @@ end
 "for testing only"
 function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::Bool=true)
 
-    theta_royalty_check(RM, θ) || return -Inf
+    theta_royalty_check(RM, data, θ) || return -Inf
 
-    k = num_x(data)
+    k = _num_x(data)
     n = length(data)
-    nparm = length(RM,data)
-    @assert nparm == length(grad)
-
     L = _num_choices(data)
+    nparm = length(RM,data)
+
+    @assert nparm == length(grad)
 
     gradtmp = zeros(Float64, nparm, n)
     LL      = Vector{Float64}(undef, n)
 
     update_xbeta!(data, theta_royalty_β(RM, data, θ))
-    l = _y(data)
-    X = _x(data)
-    z = _xbeta(data)
 
-    # @threads
-    for i in 1:n
-        obs = data[i]
-        eta12 = η12(obs, RM, θ, z[i])
-        F, LL[i] = lik_loglik_royalty(obs, eta12)
-
-        if dograd
-            a, b = normpdf.(eta12) ./ F
-            c = dlogcdf_trunc(eta12...)
-
-            gradtmp[idx_royalty_β(RM,obs), i] .= - c .* _x(obs)
-            l[i] > 1  && ( gradtmp[idx_royalty_κ(RM, obs, l[i]-1), i] = -a )
-            l[i] < L  && ( gradtmp[idx_royalty_κ(RM, obs, l[i]),   i] =  b )
+    let RM=RM, data=data, θ=θ, gradtmp=gradtmp, dograd=dograd, LL=LL
+        @threads for i in 1:n
+            LL[i] = ll_inner!(view(gradtmp,:,i), data[i], RM, dograd, θ)
         end
     end
-
     dograd && sum!(reshape(grad, nparm, 1), gradtmp)
 
     return sum(LL)
+end
+
+function ll_inner!(gradtmp::AbstractVector, obs::ObservationRoyalty, RM::AbstractRoyaltyModel, dograd::Bool, θ::AbstractVector)
+    eta12 = η12(obs, RM, θ, _xbeta(obs))
+    F, LL = lik_loglik_royalty(obs, eta12)
+    l = _y(obs)
+    L = _num_choices(obs)
+
+    if dograd
+        a, b = normpdf.(eta12) ./ F
+        c = dlogcdf_trunc(eta12...)
+
+        gradtmp[idx_royalty_β(RM,obs)] .= - c .* _x(obs)
+        l > 1  && ( gradtmp[idx_royalty_κ(RM, obs, l-1)] = -a )
+        l < L  && ( gradtmp[idx_royalty_κ(RM, obs, l)  ] =  b )
+    end
+    return LL
 end

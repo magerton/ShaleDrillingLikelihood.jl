@@ -9,7 +9,7 @@ using StatsFuns
 using Calculus
 using Optim
 using Random
-# using InteractiveUtils
+using InteractiveUtils
 
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
@@ -24,7 +24,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, num_x,
     SimulationDraws, RoyaltyLikelihoodInformation,
     update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
-    update_xbeta!, _am, _bm, _cm
+    update_xbeta!, _am, _bm, _cm,
+    llthreads!
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -42,6 +43,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     rstar = X'*theta[1:k] .+ eps
     l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
     data = DataRoyalty(l, X)
+    update_xbeta!(data, theta[1:k])
 
     @test length(theta) == length(RM, data)
 
@@ -53,10 +55,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     @test idx_royalty_κ(RM, data, 1) == 4
     @test idx_royalty_κ(RM, data, 2) == 5
-    @test_broken idx_royalty_κ(RM, data, L+1)
-    @test_broken idx_royalty_κ(RM, data, 0)
-    # @test_throws DomainError idx_royalty_κ(RM, data, L+1)
-    # @test_throws DomainError idx_royalty_κ(RM, data, 0)
+    @test_throws DomainError idx_royalty_κ(RM, data, L+1)
+    @test_throws DomainError idx_royalty_κ(RM, data, 0)
 
     M = 10
     RT = RoyaltyTmpVar(M)
@@ -65,17 +65,18 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     cm = _cm(RT)
 
     # test η12s
-    η12s = map((l_rstar) -> η12(RM, theta, L, l_rstar[1], l_rstar[2]), zip(l, rstar))
-    @test all(map((x) -> x[1] < x[2], η12s))
+    η12s = [η12(obs, RM, theta, r) for (obs,r) in zip(data, rstar)]
+    @test all(x[1] < x[2] for x in η12s )
 
-    # @code_warntype ShaleDrillingLikelihood.llthreads!(grad, theta, RM, l, X, true)
 
     # form functions for stuff
     grad = similar(theta)
-    f(parm) = - ShaleDrillingLikelihood.llthreads!(grad, parm, RM, data, false)
+    @code_warntype llthreads!(grad, theta, RM, data, true)
+
+    f(parm) = - llthreads!(grad, parm, RM, data, false)
 
     function fg!(g, parm)
-        LL = ShaleDrillingLikelihood.llthreads!(g, parm, RM, data, true)
+        LL = llthreads!(g, parm, RM, data, true)
         g .*= -1
         return -LL
     end
