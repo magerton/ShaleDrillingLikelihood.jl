@@ -50,7 +50,8 @@ using ShaleDrillingLikelihood: _num_x,
     # need to add in shocks
     for g in data
         for o in g
-            _y(o) .+= theta_produce_σ2u(pm,data,theta)*randn()
+            u = theta_produce_σ2u(pm,data,theta)*randn()
+            _y(o) .+= u .+ theta_produce_σ2η(pm,data,theta).*randn(length(o))
         end
     end
 
@@ -109,7 +110,7 @@ using ShaleDrillingLikelihood: _num_x,
 
     # println("\n\nBFGS\n\n")
     od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
-    res = optimize(ff, theta*1.5, BFGS(), Optim.Options(time_limit = 20.0))
+    res = optimize(ff, theta*1.1, BFGS(), Optim.Options(time_limit = 20.0))
     @test maximum(abs.(res.minimizer[1:end-2] .- theta[1:end-2])) < 0.2
     @test maximum(abs.(res.minimizer[end-1:end].^2 .- theta[end-1:end].^2)) < 0.2
 
