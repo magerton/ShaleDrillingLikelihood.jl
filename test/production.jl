@@ -12,10 +12,9 @@ using LinearAlgebra
 using ShaleDrillingLikelihood: _num_x,
     idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
     theta_produce, theta_produce_ψ, theta_produce_β, theta_produce_σ2η, theta_produce_σ2u,
-    ProductionLikelihoodComputations, ProductionGradientComputations,
     grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
-    _x, _y, _xsum, _nu, _i, update_nu!
+    _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!
 
 
 @testset "Production basics" begin
@@ -51,7 +50,8 @@ using ShaleDrillingLikelihood: _num_x,
     for g in data
         for o in g
             u = theta_produce_σ2u(pm,data,theta)*randn()
-            _y(o) .+= u .+ theta_produce_σ2η(pm,data,theta).*randn(length(o))
+            y = _y(o)
+            y .+= u .+ theta_produce_σ2η(pm,data,theta).*randn(length(o))
         end
     end
 
@@ -62,6 +62,7 @@ using ShaleDrillingLikelihood: _num_x,
         ψi = ones(M)
 
         update_nu!(data, pm, θ)
+        update_xpnu!(data)
 
         LL = 0.0
 

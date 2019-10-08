@@ -264,7 +264,7 @@ function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, theta::Vec
         i = _i(g)
         for (k,o) in enumerate(g)
             j = getindex(grouprange(g), k)
-            y = _y(o)
+            y = _y(o) # if we don't do this, errors on julia v1.1.1
             y .+= sigu .* us[j] .+ alphapsi .* psi[i]
         end
     end

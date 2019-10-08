@@ -210,9 +210,9 @@ end
 
         dd = DataProduce(numgroups, maxwells, mint:maxt, vcat(rand(3), 0.5, 0.5, 0.3))
 
-        @code_warntype ShaleDrillingLikelihood.update_xsum!(dd)
-        @code_warntype ShaleDrillingLikelihood.update_xpnu!(dd)
-        @code_warntype update_nu!(dd, ProductionModel(), vcat(rand(3), 0.5, 0.5, 0.3))
+        # @code_warntype ShaleDrillingLikelihood.update_xsum!(dd)
+        # @code_warntype ShaleDrillingLikelihood.update_xpnu!(dd)
+        # @code_warntype update_nu!(dd, ProductionModel(), vcat(rand(3), 0.5, 0.5, 0.3))
 
     end
 end
