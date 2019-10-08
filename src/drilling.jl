@@ -1,7 +1,9 @@
 using Base: OneTo
 
-export flow, irng, simloglik_drill!
+export flow, simloglik_drill!
 
+# drilling.jl
+irng(num_t::Int, i::Int) = (i-1)*num_t .+ (1:num_t)
 
 # look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
 # https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39

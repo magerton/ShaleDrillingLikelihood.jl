@@ -199,7 +199,7 @@ end
 
         @test !all(_nu(data) .== 0)
 
-        dd = DataProduce(numgroups, maxwells, mint:maxt, rand(3), (0.5, 0.5, 0.3))
+        dd = DataProduce(numgroups, maxwells, mint:maxt, vcat(rand(3), 0.5, 0.5, 0.3))
 
     end
 
