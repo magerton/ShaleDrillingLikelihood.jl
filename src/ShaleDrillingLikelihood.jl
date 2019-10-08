@@ -8,6 +8,7 @@ using Halton
 
 import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==
 using StatsBase: countmap, sample
+using Base: OneTo
 
 # for computations
 abstract type AbstractIntermediateComputations end

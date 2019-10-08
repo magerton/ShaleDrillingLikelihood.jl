@@ -12,11 +12,15 @@ struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T},
     x::M
     xsum::V2
     nu::V1
-    function ObservationProduce(y::V1, x::M, xsum::V2, nu::V1) where {T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
+    xpnu::V2
+    nusum::T
+    nusumsq::T
+    function ObservationProduce(y::V1, x::M, xsum::V2, nu::V1, xpnu::V2,nusum::T,nusumsq::T) where {T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
+        nusumsq >= 0 || throw(DomainError(nusumsq))
         k,n = size(x)
         length(nu) == length(y) == n  || throw(DimensionMismatch())
-        size(xsum,1) == k || throw(DimensionMismatch())
-        return new{T,V1,V2,M}(y,x,xsum,nu)
+        size(xpnu,1) == size(xsum,1) == k || throw(DimensionMismatch())
+        return new{T,V1,V2,M}(y,x,xsum,nu,xpnu,nusum,nusumsq)
     end
 end
 
@@ -25,17 +29,23 @@ struct DataProduce{T<:Real} <: AbstractDataStructure
     x::Matrix{T}
     xsum::Matrix{T}
     nu::Vector{T}
+    xpnu::Matrix{T}
+
+    nusum::Vector{T}
+    nusumsq::Vector{T}
+
     obs_ptr::Vector{Int}
     group_ptr::Vector{Int}
-    function DataProduce(y::Vector{T}, x::Matrix{T}, xsum::Matrix{T}, nu::Vector{T}, obs_ptr::Vector{Int}, group_ptr::Vector{Int}) where {T<:Real}
+    function DataProduce(y::Vector{T}, x::Matrix{T}, xsum::Matrix{T}, nu::Vector{T}, xpnu::Matrix{T}, nusum::Vector{T}, nusumsq::Vector{T}, obs_ptr::Vector{Int}, group_ptr::Vector{Int}) where {T<:Real}
         k,n = size(x)
         length(nu) == length(y) == n  || throw(DimensionMismatch())
         size(xsum,1) == k || throw(DimensionMismatch())
+        size(xpnu) == size(xsum) || throw(DimensionMismatch())
         issorted(obs_ptr) || throw(error("obs_ptr not sorted"))
         issorted(group_ptr) || throw(error("group_ptr not sorted"))
-        last(group_ptr) == length(obs_ptr) || throw(DimensionMismatch("last(group_ptr)-1 != length(obs_ptr)"))
+        length(nusum)+1 == length(nusumsq)+1 == last(group_ptr) == length(obs_ptr) || throw(DimensionMismatch("last(group_ptr)-1 != length(obs_ptr)"))
         last(obs_ptr)-1 == n || throw(DimensionMismatch("last(obs_ptr)-1 != length(y)"))
-        return new{T}(y,x,xsum,nu,obs_ptr,group_ptr)
+        return new{T}(y,x,xsum,nu,xpnu, nusum, nusumsq, obs_ptr,group_ptr)
     end
 end
 
@@ -55,11 +65,14 @@ const DataObsObsGrpProduction = Union{ObservationProduce,DataProduce,Observation
 # Common interfaces
 #---------------------------
 
+_xpnu( d::DataOrObsProduction) = d.xpnu
 _nu(   d::DataOrObsProduction) = d.nu
 _y(    d::DataOrObsProduction) = d.y
 _x(    d::DataOrObsProduction) = d.x
 _xsum( d::DataOrObsProduction) = d.xsum
 _num_x(d::DataOrObsProduction) = size(_xsum(d),1)
+_nusum(d::DataOrObsProduction) = d.nusum
+_nusumsq(d::DataOrObsProduction) = d.nusumsq
 
 # Data-specific interfaces
 #---------------------------
@@ -85,12 +98,50 @@ function ObservationProduce(d::DataProduce, j::Integer)
     nu   = view(_nu(d), rng)
     x    = view(_x(d), :, rng)
     xsum = view(_xsum(d), :, j)
-    return ObservationProduce(y, x, xsum, nu)
+    xpnu = view(_xpnu(d), :, j)
+    nusum = getindex(_nusum(d), j)
+    nusumsq = getindex(_nusumsq(d),j)
+    return ObservationProduce(y, x, xsum, nu, xpnu, nusum, nusumsq)
 end
 
-function update_nu!(d::DataProduce, m::AbstractProductionModel, theta)
-    _nu(d) .= _y(d) .- _x(d)'*theta_produce_β(m,d,theta)
+
+function update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta)
+    _nu(d) .= _y(d) - _x(d)'*theta_produce_β(m,d,theta)
+    let d = d
+        @threads for j in OneTo(_num_obs(d))
+            obs = ObservationProduce(d, j)
+            nusum   = sum(_nu(obs))
+            nusumsq = dot(_nu(obs), _nu(obs))
+            setindex!(_nusum(d),   nusum,   j)
+            setindex!(_nusumsq(d), nusumsq, j)
+        end
+    end
+    return nothing
 end
+
+function update_xsum!(obs::ObservationProduce)
+    xsum = reshape(_xsum(obs), :, 1)
+    sum!(xsum, _x(obs))
+    return nothing
+end
+
+function update_xpnu!(obs::ObservationProduce)
+    mul!(_xpnu(obs), _x(obs), _nu(obs))
+    return nothing
+end
+
+function update_over_obs(f!::Function, data::DataProduce)
+    let data = data
+        @threads for j in OneTo(_num_obs(data))
+            f!( ObservationProduce(data, j) )
+        end
+    end
+    return nothing
+end
+
+update_xsum!(data::DataProduce) = update_over_obs(update_xsum!, data)
+update_xpnu!(data::DataProduce) = update_over_obs(update_xpnu!, data)
+
 
 # Observation-specific interfaces
 #---------------------------
@@ -159,15 +210,14 @@ function DataProduce(y::Vector{T}, x::Matrix{T}, obs_ptr::Vector, group_ptr::Vec
     nwells = length(obs_ptr)-1
 
     xsum = Matrix{T}(undef, k, nwells)
+    xpnu = similar(xsum)
     nu   = Vector{T}(undef, n)
+    nusum = Vector{T}(undef, nwells)
+    nusumsq = similar(nusum)
 
-    data = DataProduce(y,x,xsum,nu,obs_ptr,group_ptr)
+    data = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obs_ptr,group_ptr)
 
-    for g in data
-        for (k,o) in enumerate(g)
-            sum!(reshape(_xsum(o), :, 1), _x(o))
-        end
-    end
+    update_xsum!(data)
 
     return data
 end
@@ -208,21 +258,20 @@ function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, theta::Vec
 
     eta  = rand(nobs)
     x    = rand(ncoef,nobs)
-    xsum = zeros(ncoef, nwells)
-    nu   = zeros(nobs)
     y    = x'*beta .+ sigeta .* eta
 
-    data = DataProduce(y,x,xsum,nu,obsptr,groupptr)
+    data = DataProduce(y,x,obsptr,groupptr)
 
     for g in data
         i = _i(g)
         for (k,o) in enumerate(g)
             j = getindex(grouprange(g), k)
-            _y(o) .+= sigu .* us[j] .+ alphapsi .* psi[i]
-            sum!(reshape(_xsum(o), :, 1), _x(o))
-            _nu(o) .= _y(o) .- _x(o)'*beta
+            y = _y(o)
+            y .+= sigu .* us[j] .+ alphapsi .* psi[i]
         end
     end
+
+    update_nu!(data, ProductionModel(), theta)
 
     return data
 end

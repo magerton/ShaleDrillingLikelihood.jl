@@ -5,6 +5,7 @@ using ShaleDrillingLikelihood
 using Test
 using Random
 using StatsBase
+using InteractiveUtils
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
@@ -78,12 +79,15 @@ end
         y = x' * beta + rand(nobs)
 
         xsum = hcat(collect(sum(x[:, (j-1)*n .+ (1:n)]; dims=2) for j in 1:nwell)...)
+        xpnu = similar(xsum)
+        nusum = zeros(size(xsum,2))
+        nusumsq = similar(nusum)
 
         nu = y - x'*beta
         obsptr = [j*n+1 for j in 0:nwell]
         groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
 
-        d = DataProduce(y,x,xsum,nu,obsptr,groupptr)
+        d = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groupptr)
         obs = ObservationProduce(d,2)
 
         @test length(d) == ngroups == length(groupptr)-1
@@ -166,6 +170,9 @@ end
         e = rand(nobs)
         x = rand(k,nobs)
         xsum = zeros(k, nwells)
+        xpnu = similar(xsum)
+        nusum = zeros(size(xsum,2))
+        nusumsq = similar(nusum)
         nu = zeros(nobs)
         y = x'*beta
 
@@ -178,13 +185,15 @@ end
             end
         end
 
-        data = DataProduce(y,x,xsum,nu,obsptr,groups)
+        data = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groups)
 
         for g in data
             i = _i(g)
             for (k,o) in enumerate(g)
                 j = getindex(grouprange(g), k)
-                _y(o) .+= sigu .* us[j] .+ alphapsi .* psi[i]
+                let y = _y(o)
+                    y .+= sigu .* us[j] .+ alphapsi .* psi[i]
+                end
                 sum!(reshape(_xsum(o), :, 1), _x(o))
                 _nu(o) .= _y(o) .- _x(o)'*beta
             end
@@ -200,6 +209,10 @@ end
         @test !all(_nu(data) .== 0)
 
         dd = DataProduce(numgroups, maxwells, mint:maxt, vcat(rand(3), 0.5, 0.5, 0.3))
+
+        # @code_warntype ShaleDrillingLikelihood.update_xsum!(dd)
+        # @code_warntype ShaleDrillingLikelihood.update_xpnu!(dd)
+        @code_warntype ShaleDrillingLikelihood.update_nu!(dd)
 
     end
 
