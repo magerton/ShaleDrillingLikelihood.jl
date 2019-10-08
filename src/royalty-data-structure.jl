@@ -45,13 +45,8 @@ _xbeta(      d::DataOrObsRoyalty) = d.xbeta
 _num_choices(d::DataOrObsRoyalty) = d.num_choices
 _num_x(      d::DataOrObsRoyalty) = size(_x(d), 1)
 
-@deprecate _choice(d) _y(d) false
-@deprecate _num_x(d) num_x(d) false
-
 # Observation-specific interfaces
 #---------------------------
-_choice(     d::ObservationRoyalty) = _y(d)
-
 length(d::DataRoyalty) = length(_y(d))
 size(  d::DataRoyalty) = length(d)
 

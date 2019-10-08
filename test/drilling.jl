@@ -64,10 +64,10 @@ using LinearAlgebra
     gradfd = Calculus.gradient( θ -> simloglik_drill!(Vector{Float64}(undef,0), choices, X, psisim, θ, num_t, num_i), theta )
     @test gradan ≈ gradfd
 
-    @code_warntype simloglik_drill!(grad, choices, X, psisim, theta, num_t, num_i)
+    # @code_warntype simloglik_drill!(grad, choices, X, psisim, theta, num_t, num_i)
 
     println("\n\n-------- Threaded using $(nthreads()) threads --------\n\n")
-    @show @btime simloglik_drill!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)
+    # @show @btime simloglik_drill!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)
 
 end # testset
 end # module

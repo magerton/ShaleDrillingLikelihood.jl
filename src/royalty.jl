@@ -181,7 +181,7 @@ function grad_simloglik_royalty!(grad::AbstractVector, rli::RoyaltyLikelihoodInf
     cm = _cm(rc) # computed in likelihood
     qm = _qm(rc) # Pr(um,vm | data) already computed!!!
 
-    l = _choice(obs)         # discrete choice info
+    l = _y(obs)         # discrete choice info
     L = _num_choices(obs)  # discrete choice info
     x = _x(obs)
 
