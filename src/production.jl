@@ -71,7 +71,7 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
     cT_ainv_abTinv = T*c_ainv_abTinv
 
     # ∂log L / ∂α_ψ
-    grad[idx_produce_ψ(model,obs)] += ainv_cT * (vp1*ψbar - αψ*T*ψ2bar)
+    grad[idx_produce_ψ(model,obs)] += ainv_cT * (vp1*ψbar - αψT*ψ2bar)
 
     # ∂log L / ∂β
     H = (c*vp1 + αψ*ainv_cT*ψbar)
