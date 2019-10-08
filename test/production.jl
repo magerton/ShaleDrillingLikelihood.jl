@@ -59,6 +59,7 @@ using ShaleDrillingLikelihood: _num_x,
         llm = zeros(Float64, M)
         qm = llm
         vi = zeros(Float64, num_t)
+        ψi = ones(M)
 
         update_nu!(data, pm, θ)
 
@@ -75,19 +76,17 @@ using ShaleDrillingLikelihood: _num_x,
 
                 ψi = ones(1)
 
-                plci = ProductionLikelihoodComputations(vi)
-                llpsi = loglik_produce_scalars(pm, θ, plci)
+                llpsi = loglik_produce_scalars(obs, pm, θ)
 
                 for m = 1:M
-                    llm[m] = loglik_produce(llpsi..., ψi[1])
+                    llm[m] = loglik_produce(llpsi..., ψi[m])
                 end
 
                 LL += logsumexp(llm)
 
                 if dograd
                     softmax!(qm)
-                    pgci = ProductionGradientComputations(qm, ψi, xi, vi)
-                    grad_simloglik_produce!(grad, pm, θ, plci, pgci)
+                    grad_simloglik_produce!(grad, obs, pm, θ, ψi, qm)
                 end
             end
         end

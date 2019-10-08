@@ -16,7 +16,6 @@ struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T},
     nusum::T
     nusumsq::T
     function ObservationProduce(y::V1, x::M, xsum::V2, nu::V1, xpnu::V2,nusum::T,nusumsq::T) where {T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
-        nusumsq >= 0 || throw(DomainError(nusumsq))
         k,n = size(x)
         length(nu) == length(y) == n  || throw(DimensionMismatch())
         size(xpnu,1) == size(xsum,1) == k || throw(DimensionMismatch())
@@ -108,12 +107,11 @@ end
 function update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta)
     _nu(d) .= _y(d) - _x(d)'*theta_produce_β(m,d,theta)
     let d = d
-        @threads for j in OneTo(_num_obs(d))
+        for j in OneTo(_num_obs(d))
             obs = ObservationProduce(d, j)
-            nusum   = sum(_nu(obs))
-            nusumsq = dot(_nu(obs), _nu(obs))
-            setindex!(_nusum(d),   nusum,   j)
-            setindex!(_nusumsq(d), nusumsq, j)
+            nu = _nu(obs)
+            setindex!(_nusum(d),   sum(nu),    j)
+            setindex!(_nusumsq(d), dot(nu,nu), j)
         end
     end
     return nothing

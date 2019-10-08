@@ -12,7 +12,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     DataProduce, _xsum, obs_ptr, group_ptr, _nu,
     groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
     ObservationProduce, ObservationGroupProduce,
-    _i, _data, _num_obs
+    _i, _data, _num_obs, update_nu!
 
 
 @testset "SimulationDraws" begin
@@ -210,13 +210,11 @@ end
 
         dd = DataProduce(numgroups, maxwells, mint:maxt, vcat(rand(3), 0.5, 0.5, 0.3))
 
-        # @code_warntype ShaleDrillingLikelihood.update_xsum!(dd)
-        # @code_warntype ShaleDrillingLikelihood.update_xpnu!(dd)
-        @code_warntype ShaleDrillingLikelihood.update_nu!(dd)
+        @code_warntype ShaleDrillingLikelihood.update_xsum!(dd)
+        @code_warntype ShaleDrillingLikelihood.update_xpnu!(dd)
+        @code_warntype update_nu!(dd, ProductionModel(), vcat(rand(3), 0.5, 0.5, 0.3))
 
     end
-
-
 end
 
 
