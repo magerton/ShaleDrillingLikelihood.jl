@@ -29,19 +29,17 @@ end
 
 loglik_produce(a::Real, b::Real, c::Real, ψ::Real) = a + (b + c*ψ)*ψ
 
-function simloglik_produce!(LL::AbstractVector, obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, ψ::AbstractVector)
+function simloglik_produce!(obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
     a, b, c = loglik_produce_scalars(obs, model, theta)
     f(x) = loglik_produce(a,b,c,x)
-    LL .+= f.(ψ)
+    _qm(s) .+= f.(_psi2(sim))
 end
 
 # ---------------------------------------------
 # Production gradient
 # ---------------------------------------------
 
-function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, ψ::AbstractVector, qm::AbstractVector)
-
-    length(ψ) == length(qm) || throw(DimensionMismatch())
+function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
 
     αψ  = theta_produce_ψ( model, theta)
     σ2η = theta_produce_σ2η(model, theta)
@@ -49,8 +47,7 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
     a = σ2η^2
     b = σ2u^2
 
-    ψbar  = dot(ψ, qm)
-    ψ2bar = sumprod3(ψ, ψ, qm)
+    ψbar, ψ2bar = psi2_wtd_sum_and_sumsq(sim)
 
     Xpv   = _xpnu(obs)
     Xp1   = _xsum(obs)
@@ -68,7 +65,6 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
     ainv_cT  = ainv - c*T
     αψT      = αψ*T
     c_ainv_abTinv  = c*(ainv+abTinv)
-    cT_ainv_abTinv = T*c_ainv_abTinv
 
     # ∂log L / ∂α_ψ
     grad[idx_produce_ψ(model,obs)] += ainv_cT * (vp1*ψbar - αψT*ψ2bar)
@@ -79,8 +75,9 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
 
     # ∂log L / ∂σ²η * ∂σ²η/∂ση
     E0 = -( (T-1)*ainv + abTinv - vpv*ainvsq + c_ainv_abTinv*vp1sq )/2
-    E1 =   αψ*vp1*(-ainvsq + cT_ainv_abTinv)
-    E2 = -(αψ^2*T*(-ainvsq + cT_ainv_abTinv))/2
+    Einner = αψ*(-ainvsq + T*c_ainv_abTinv)
+    E1 =   Einner*vp1
+    E2 = -(αψ*T*Einner)/2
     grad[idx_produce_σ2η(model,obs)] += 2*σ2η*(E0 + E1*ψbar + E2*ψ2bar)
 
     # ∂log L / σ²u * * ∂σ²u/∂σu

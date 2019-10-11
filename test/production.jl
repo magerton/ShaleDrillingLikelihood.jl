@@ -14,7 +14,8 @@ using ShaleDrillingLikelihood: _num_x,
     theta_produce, theta_produce_ψ, theta_produce_β, theta_produce_σ2η, theta_produce_σ2u,
     grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
-    _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!
+    _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
+    SimulationDraws, zero!
 
 
 @testset "Production basics" begin
@@ -38,6 +39,10 @@ using ShaleDrillingLikelihood: _num_x,
 
     data = DataProduce(y,X,obsptr, grpptr)
 
+    allsim = SimulationDraws(1,num_i)
+    sim = view(allsim, 1)
+    _qm(sim) .= 1
+
     @test length(theta) == length(pm,data)
     @test _num_x(pm,data) == k
 
@@ -56,10 +61,11 @@ using ShaleDrillingLikelihood: _num_x,
     end
 
     function fg!(grad, θ, yy, xx, dograd::Bool=true)
-        llm = zeros(Float64, M)
+        llm = _qm(sim)
         qm = llm
+        ψi = _psi2(sim)
+        ψi .= 1
         vi = zeros(Float64, num_t)
-        ψi = ones(M)
 
         update_nu!(data, pm, θ)
         update_xpnu!(data)
@@ -68,6 +74,7 @@ using ShaleDrillingLikelihood: _num_x,
 
         for grp in data
             for obs in grp
+                zero!(sim)
                 fill!(llm, 0)
                 xi = _x( obs)
                 yi = _y( obs)
@@ -87,7 +94,7 @@ using ShaleDrillingLikelihood: _num_x,
 
                 if dograd
                     softmax!(qm)
-                    grad_simloglik_produce!(grad, obs, pm, θ, ψi, qm)
+                    grad_simloglik_produce!(grad, obs, pm, θ, sim)
                 end
             end
         end
@@ -130,6 +137,8 @@ end
     sigmas = (sqrt(0.25), sqrt(0.25), sqrt(0.1))
     theta = vcat(beta, sigmas...)
     data = DataProduce(10, 5, 5:10, theta)
+
+
 
 end
 

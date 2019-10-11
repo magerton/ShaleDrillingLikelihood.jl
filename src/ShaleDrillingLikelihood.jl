@@ -49,7 +49,6 @@ struct NoModel <: AbstractModel end
 struct DataIndividual <:AbstractDataStructure end
 struct DataSet <: AbstractDataStructure end
 
-
 # data structures
 include("simulation-data-structure.jl")
 

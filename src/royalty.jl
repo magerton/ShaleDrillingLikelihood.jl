@@ -189,7 +189,7 @@ function grad_simloglik_royalty!(grad::AbstractVector, rli::RoyaltyLikelihoodInf
     βψ = theta_royalty_ψ(model, obs, theta) # parameters
 
     ψ1 = _ψ1(draws)
-    dψ1dρ = _dψdρ(draws)
+    dψ1dρ = _dψ1dρ(draws)
 
     # gradient
     grad[idx_royalty_ρ(model,obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ

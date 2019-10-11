@@ -6,9 +6,11 @@ struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
     v::A
     psi1::A
     dpsidrho::A
-    function SimulationDraws(u::A, v::A, psi1::A, dpsidrho::A) where {T,N,A<:AbstractRealArray{T,N}}
+    qm::Vector{T}
+    function SimulationDraws(u::A, v::A, psi1::A, dpsidrho::A, qm::Vector{T}) where {T,N,A<:AbstractRealArray{T,N}}
         size(dpsidrho) == size(psi1) == size(u) == size(v)  || throw(DimensionMismatch())
-        return new{T,N,A}(u,v,psi1,dpsidrho)
+        length(qm) == size(u,1) || throw(DimensionMismatch())
+        return new{T,N,A}(u,v,psi1,dpsidrho,qm)
     end
 end
 
@@ -23,7 +25,8 @@ function SimulationDraws(M::Integer, N::Integer, bases::NTuple{2,Int}=(2,3); kwa
     HaltonDraws!.(uvs, bases; kwargs...)
     psi1 = similar(uvs[1])
     dpsidrho = similar(uvs[1])
-    return SimulationDraws(uvs..., psi1, dpsidrho)
+    qm = Vector{Float64}(undef, M)
+    return SimulationDraws(uvs..., psi1, dpsidrho, qm)
 end
 
 # interface
@@ -35,19 +38,38 @@ _v(    s::SimulationDraws) = s.v
 _ψ1(   s::SimulationDraws) = s.psi1
 _ψ2(   s::SimulationDraws) = _u(s)
 _dψ1dρ(s::SimulationDraws) = s.dpsidrho
-_dψdρ(s::SimulationDraws)  = _dψ1dρ(s)
 _psi1( s::SimulationDraws) = _ψ1(s)
 _psi2( s::SimulationDraws) = _ψ2(s)
-
-@deprecate _dψdρ(s) _dψ1dρ(s)
+_qm(   s::SimulationDraws) = s.qm
 
 # manipulate like array
+tup(s::SimulationDrawsMatrix) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
+tup(s::SimulationDrawsVector) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s), _qm(s)
+
 size(    s::SimulationDraws) = size(_u(s))
-view(    s::SimulationDrawsMatrix, i::Integer) = SimulationDraws(view.(tup(s), :, i)...)
+view(    s::SimulationDrawsMatrix, i::Integer) = SimulationDraws(view.(tup(s), :, i)..., _qm(s))
 getindex(s::SimulationDrawsVector, m) = getindex.(tup(s), m)
 
-# pull out all elmenents
-tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψdρ(s)
+# doing mean(psi) and mean(psi^2)
+function psi2_wtd_sum_and_sumsq(s::SimulationDrawsVector{T}) where {T}
+    qm = _qm(s)
+    ψ = _ψ2(s)
+    @assert sum(qm) ≈ 1
+    ψbar = zero(T)
+    ψ2bar = zero(T)
+    @inbounds @simd for i = OneTo(length(qm))
+        ψ2bar += ψ[i] * ( ψbar += ψ[i] * qm[i])
+    end
+    return ψbar, ψ2bar
+end
+
+
+
+
+# updating
+function zero!(s::SimulationDraws{T}) where {T}
+    fill!(_qm(s), zero(T))
+end
 
 # so we can pre-calculate shocks
 function update_ψ1!(s::SimulationDraws, ρ::Real)

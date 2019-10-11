@@ -24,8 +24,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
     u = rand(M, nobs)
     v = rand(M, nobs)
-
-    x = SimulationDraws(u,v, similar(u), similar(v))
+    x = SimulationDraws(u,v, similar(u), similar(v), zeros(M))
 
     @test size(x) == (M,nobs)
     @test isa(x, SimulationDrawsMatrix)
