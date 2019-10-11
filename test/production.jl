@@ -15,8 +15,9 @@ using ShaleDrillingLikelihood: _num_x,
     simloglik_produce!, grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
-    SimulationDraws, zero!
+    SimulationDraws, zero!, fg!
 
+println("Starting production likelihood tests")
 
 @testset "Production basics" begin
 
@@ -134,48 +135,30 @@ end
     Random.seed!(1234)
 
     beta = rand(3)
-    sigmas = (sqrt(0.25), sqrt(0.25), sqrt(0.1))
+    sigmas = (sqrt(0.25), sqrt(0.1), sqrt(0.25),)
     theta = vcat(beta, sigmas...)
-    num_i = 100
-    data = DataProduce(num_i, 5, 5:10, theta)
+    num_i = 1_000
+    data = DataProduce(num_i, 10, 10:20, theta)
     pm = ProductionModel()
-    M = 100
+    M = 500
 
     allsim = SimulationDraws(M,num_i)
-
-    function fg!(grad, data, model, xx, sim, dograd::Bool)
-        llm = _qm(sim)
-        qm = llm
-
-        update_nu!(data, pm, xx)
-        update_xpnu!(data)
-
-        LL = 0.0
-
-        for (i,grp) in enumerate(data)
-            simi = view(sim, i)
-            zero!(simi)
-            for obs in grp
-                simloglik_produce!(obs, model, xx, simi)
-            end
-            LL += logsumexp(_qm(sim)) - log(M)
-            if dograd
-                softmax!(_qm(sim))
-                for obs in grp
-                    grad_simloglik_produce!(grad, obs, model, xx, simi)
-                end
-            end
-        end
-        return LL
-    end
 
     ff(x)          = fg!(zeros(length(x)), data, pm, x, allsim, false)
     ffgg!(grad, x) = fg!(grad,             data, pm, x, allsim, true)
 
-    od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
-    res = optimize(od, theta*1.1, BFGS(), Optim.Options(time_limit = 20.0))
+    tmpgrad = similar(theta)
+    ff(theta)
 
-    @show res
+    fd = Calculus.gradient(ff, theta)
+    fill!(tmpgrad, 0)
+    ffgg!(tmpgrad, theta)
+    @test fd ≈ tmpgrad
+
+    od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
+    res = optimize(od, theta, NelderMead(), Optim.Options(time_limit = 40.0))
+
+    @show res.minimizer, theta, Calculus.gradient(ff, res.minimizer)
 end
 
 # TODO

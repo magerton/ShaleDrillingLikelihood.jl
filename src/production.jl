@@ -86,3 +86,35 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
     G2 = ((αψT*abTinv)^2)/2
     grad[idx_produce_σ2u(model,obs)] += 2*σ2u*(G0 + G1*ψbar + G2*ψ2bar)
 end
+
+
+
+function fg!(grad, data, model, θ, sim, dograd::Bool)
+
+    qm = _qm(sim)
+    update_xsum!(data)
+    update_nu!(data, model, θ)
+    update_xpnu!(data)
+    fill!(grad, 0)
+    LL = 0.0
+    M = _num_sim(sim)
+
+    for (i,grp) in enumerate(data)
+        simi = view(sim, i)
+        fill!(qm, 0)
+
+        for obs in grp
+            simloglik_produce!(obs, model, θ, simi)
+        end
+
+        LL += logsumexp(qm) - log(M)
+        # softmax!(qm)
+        # if dograd
+        #     for obs in grp
+        #         grad_simloglik_produce!(grad, obs, model, θ, simi)
+        #     end
+        # end
+    end
+    # grad .*= -1
+    return -LL
+end

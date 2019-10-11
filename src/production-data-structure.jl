@@ -260,8 +260,7 @@ function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, theta::Vec
 
     data = DataProduce(y,x,obsptr,groupptr)
 
-    for g in data
-        i = _i(g)
+    for (i,g) in enumerate(data)
         for (k,o) in enumerate(g)
             j = getindex(grouprange(g), k)
             y = _y(o) # if we don't do this, errors on julia v1.1.1

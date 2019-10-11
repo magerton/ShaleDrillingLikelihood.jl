@@ -41,6 +41,7 @@ _dψ1dρ(s::SimulationDraws) = s.dpsidrho
 _psi1( s::SimulationDraws) = _ψ1(s)
 _psi2( s::SimulationDraws) = _ψ2(s)
 _qm(   s::SimulationDraws) = s.qm
+_num_sim(s::SimulationDraws) = size(_u(s),1)
 
 # manipulate like array
 tup(s::SimulationDrawsMatrix) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
@@ -55,11 +56,12 @@ function psi2_wtd_sum_and_sumsq(s::SimulationDrawsVector{T}) where {T}
     qm = _qm(s)
     ψ = _ψ2(s)
     @assert sum(qm) ≈ 1
-    ψbar = zero(T)
-    ψ2bar = zero(T)
-    @inbounds @simd for i = OneTo(length(qm))
-        ψ2bar += ψ[i] * ( ψbar += ψ[i] * qm[i])
-    end
+    ψbar = dot(qm,ψ) # zero(T)
+    ψ2bar = sumprod3(qm,qm,ψ)
+    # ψ2bar = zero(T)
+    # @inbounds @simd for i = OneTo(length(qm))
+    #     ψ2bar += ψ[i] * ( ψbar += ψ[i] * qm[i])
+    # end
     return ψbar, ψ2bar
 end
 
