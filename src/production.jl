@@ -32,7 +32,7 @@ loglik_produce(a::Real, b::Real, c::Real, ψ::Real) = a + (b + c*ψ)*ψ
 function simloglik_produce!(obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
     a, b, c = loglik_produce_scalars(obs, model, theta)
     f(x) = loglik_produce(a,b,c,x)
-    _qm(s) .+= f.(_psi2(sim))
+    _qm(sim) .+= f.(_psi2(sim))
 end
 
 # ---------------------------------------------

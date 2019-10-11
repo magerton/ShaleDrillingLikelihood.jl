@@ -12,7 +12,7 @@ using LinearAlgebra
 using ShaleDrillingLikelihood: _num_x,
     idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
     theta_produce, theta_produce_ψ, theta_produce_β, theta_produce_σ2η, theta_produce_σ2u,
-    grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
+    simloglik_produce!, grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
     SimulationDraws, zero!
@@ -136,10 +136,46 @@ end
     beta = rand(3)
     sigmas = (sqrt(0.25), sqrt(0.25), sqrt(0.1))
     theta = vcat(beta, sigmas...)
-    data = DataProduce(10, 5, 5:10, theta)
+    num_i = 100
+    data = DataProduce(num_i, 5, 5:10, theta)
+    pm = ProductionModel()
+    M = 100
 
+    allsim = SimulationDraws(M,num_i)
 
+    function fg!(grad, data, model, xx, sim, dograd::Bool)
+        llm = _qm(sim)
+        qm = llm
 
+        update_nu!(data, pm, xx)
+        update_xpnu!(data)
+
+        LL = 0.0
+
+        for (i,grp) in enumerate(data)
+            simi = view(sim, i)
+            zero!(simi)
+            for obs in grp
+                simloglik_produce!(obs, model, xx, simi)
+            end
+            LL += logsumexp(_qm(sim)) - log(M)
+            if dograd
+                softmax!(_qm(sim))
+                for obs in grp
+                    grad_simloglik_produce!(grad, obs, model, xx, simi)
+                end
+            end
+        end
+        return LL
+    end
+
+    ff(x)          = fg!(zeros(length(x)), data, pm, x, allsim, false)
+    ffgg!(grad, x) = fg!(grad,             data, pm, x, allsim, true)
+
+    od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
+    res = optimize(od, theta*1.1, BFGS(), Optim.Options(time_limit = 20.0))
+
+    @show res
 end
 
 # TODO
