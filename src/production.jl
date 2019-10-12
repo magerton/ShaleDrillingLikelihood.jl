@@ -39,9 +39,9 @@ end
 
 function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
 
-    αψ  = theta_produce_ψ( model, theta)
-    σ2η = theta_produce_σ2η(model, theta)
-    σ2u = theta_produce_σ2u(model, theta)
+    αψ  = theta_produce_ψ(  model, obs, theta)
+    σ2η = theta_produce_σ2η(model, obs, theta)
+    σ2u = theta_produce_σ2u(model, obs, theta)
     a = σ2η^2
     b = σ2u^2
 

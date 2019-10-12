@@ -41,6 +41,7 @@ _dψ1dρ(s::SimulationDraws) = s.dpsidrho
 _psi1( s::SimulationDraws) = _ψ1(s)
 _psi2( s::SimulationDraws) = _ψ2(s)
 _qm(   s::SimulationDraws) = s.qm
+_llm(  s::SimulationDraws) = _qm(s)
 _num_sim(s::SimulationDraws) = size(_u(s),1)
 
 # manipulate like array

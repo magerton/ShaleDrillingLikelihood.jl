@@ -186,13 +186,6 @@ theta_produce_β(  m::ProductionModel, d, theta) = view(theta, idx_produce_β(m,
 theta_produce_σ2η(m::ProductionModel, d, theta) = theta[idx_produce_σ2η(m,d)]
 theta_produce_σ2u(m::ProductionModel, d, theta) = theta[idx_produce_σ2u(m,d)]
 
-# should deprecate these?
-theta_produce_ψ(  m::ProductionModel, theta) = theta[1]
-theta_produce_β(  m::ProductionModel, theta) = @views theta[2:end-2]
-theta_produce_σ2η(m::ProductionModel, theta) = theta[end-1]
-theta_produce_σ2u(m::ProductionModel, theta) = theta[end]
-
-
 # Dataset generator
 #---------------------------
 
