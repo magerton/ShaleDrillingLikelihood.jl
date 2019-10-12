@@ -14,17 +14,17 @@ using InteractiveUtils
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
     theta_royalty_ρ, theta_royalty_ψ, theta_royalty_β, theta_royalty_κ,
-    RoyaltyTmpVar,
     η12,
     lik_royalty, lik_loglik_royalty,
     theta_royalty_check,
     simloglik_royalty!,
     grad_simloglik_royalty!,
     _LLm,
+    logsumexp_and_softmax!,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
-    SimulationDraws, RoyaltyLikelihoodInformation,
+    SimulationDraws,
     update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
-    update_xbeta!, _am, _bm, _cm,
+    update_xbeta!, _am, _bm, _cm, _qm,
     llthreads!, _i
 
 @testset "RoyaltyModelNoHet" begin
@@ -59,7 +59,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     @test_throws DomainError idx_royalty_κ(RM, data, 0)
 
     M = 10
-    RT = RoyaltyTmpVar(M)
+    RT = SimulationDraws(M,nobs)
     am = _am(RT)
     bm = _bm(RT)
     cm = _cm(RT)
@@ -116,8 +116,6 @@ end
 
     # simulations
     uv = SimulationDraws(M,nobs)
-    rc = RoyaltyTmpVar(M)
-    rli = RoyaltyLikelihoodInformation(rc, first(first(data)), RM, view(uv,1))
 
     # @code_warntype simloglik_royalty!(rli, theta, false)
 
@@ -125,19 +123,25 @@ end
         LL = zero(eltype(θ))
         update_ψ1!(uv, theta_royalty_ρ(RM,data,θ))
         update_dψ1dρ!(uv, theta_royalty_ρ(RM,data,θ))
-        qm = ShaleDrillingLikelihood._qm(rc)
+
+        qm = _qm(uv)
+
         update_xbeta!(data, theta_royalty_β(RM,data,θ))
+
         for grp in data
             for obs in grp
-                fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
-                rli = RoyaltyLikelihoodInformation(rc, obs, RM, view(uv,_i(grp)))
-                simloglik_royalty!(rli, θ, dograd)    # update LLm
-                LL += logsumexp(_LLm(rc))             # b/c integrating
-                softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
-                dograd && grad_simloglik_royalty!(grad, rli, θ)
+                fill!(qm, 0)                    # b/c might do other stuff to LLm
+                simi = view(uv,_i(grp))
+                simloglik_royalty!(obs, RM, θ, simi, dograd)    # update LLm
+                if !dograd
+                    LL += logsumexp(qm) - log(M)
+                else
+                    LL += logsumexp_and_softmax!(qm)
+                    grad_simloglik_royalty!(grad, obs, RM, θ, simi)
+                end
             end
         end
-        return LL - nobs*log(M)
+        return LL
     end
 
 

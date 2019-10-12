@@ -58,6 +58,6 @@ include("royalty.jl")
 include("production.jl")
 include("drilling.jl")
 
-# include("overall-likelihood.jl")
+include("overall-likelihood.jl")
 
 end # module

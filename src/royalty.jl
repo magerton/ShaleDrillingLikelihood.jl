@@ -1,55 +1,3 @@
-using StatsFuns
-using Distributions: _F1
-using Base.Threads
-
-# ---------------------------------------------
-# Royalty computations for individual `i`
-# ---------------------------------------------
-
-"Tempvars for royalty simulations with `i`"
-struct RoyaltyTmpVar{T<:Real} <: AbstractIntermediateComputations
-    am::Vector{T}
-    bm::Vector{T}
-    cm::Vector{T}
-    LLm::Vector{T}
-    qm::Vector{T}
-
-    function RoyaltyTmpVar(am::V, bm::V, cm::V, LLm::V, qm::V) where {T,V<:Vector{T}}
-        length(am)==length(bm)==length(cm)==length(qm)==length(LLm) || throw(DimensionMismatch())
-        return new{T}(am, bm, cm, LLm, qm)
-    end
-end
-
-_am( rc::RoyaltyTmpVar) = rc.am
-_bm( rc::RoyaltyTmpVar) = rc.bm
-_cm( rc::RoyaltyTmpVar) = rc.cm
-_LLm(rc::RoyaltyTmpVar) = rc.LLm
-_qm( rc::RoyaltyTmpVar) = rc.qm
-
-
-function RoyaltyTmpVar(M)
-    am = Vector{Float64}(undef,M)
-    bm = similar(am)
-    cm = similar(am)
-    llm = similar(am)
-    qm = similar(am)
-    RoyaltyTmpVar(am, bm, cm, llm, qm)
-end
-
-
-"What we need to compure royalty"
-struct RoyaltyLikelihoodInformation{RT<:RoyaltyTmpVar, O<:ObservationRoyalty, M<:AbstractRoyaltyModel, S<:SimulationDrawsVector}
-    tmpvar::RT
-    observation::O
-    model::M
-    simulated_draws::S
-end
-
-_tmpvar(rli::RoyaltyLikelihoodInformation) = rli.tmpvar
-_observation(rli::RoyaltyLikelihoodInformation) = rli.observation
-_model(rli::RoyaltyLikelihoodInformation) = rli.model
-_draws(rli::RoyaltyLikelihoodInformation) = rli.simulated_draws
-
 # ---------------------------------------------
 # Royalty low level computations
 # ---------------------------------------------
@@ -120,21 +68,14 @@ end
 # ---------------------------------------------
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
-function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVector, dograd::Bool)
+function simloglik_royalty!(obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool=true)
 
-    rc    = _tmpvar(rli)
-    obs   = _observation(rli)
-    model = _model(rli)
-    draws = _draws(rli)
+    am  = _am(sim)
+    bm  = _bm(sim)
+    cm  = _cm(sim)
+    LLm = _LLm(sim)
 
-    am = _am(rc)
-    bm = _bm(rc)
-    cm = _cm(rc)
-    LLm = _LLm(rc)
-
-    u = _u(draws)
-    v = _v(draws)
-    psi = _ψ1(draws)
+    psi = _ψ1(sim)
 
     l = _y(obs)
     xbeta = _xbeta(obs)
@@ -144,8 +85,8 @@ function simloglik_royalty!(rli::RoyaltyLikelihoodInformation, theta::AbstractVe
     βx = theta_royalty_β(model, obs, theta)
 
     # @inbounds @threads
-    for m = 1:length(u)
-        zm  = xbeta + βψ * psi[m]
+    for (m,psi) in enumerate(_ψ1(sim))
+        zm  = xbeta + βψ * psi
         eta12 = η12(obs, model, theta, zm)
 
         if dograd == false
@@ -167,19 +108,16 @@ end
 # ---------------------------------------------
 
 "gradient for simulated likelihood when integrating"
-function grad_simloglik_royalty!(grad::AbstractVector, rli::RoyaltyLikelihoodInformation, theta::AbstractVector)
+function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, sim::SimulationDrawsVector)
 
-    rc    = _tmpvar(rli)
-    obs   = _observation(rli)
-    model = _model(rli)
-    draws = _draws(rli)
+    length(grad) == length(theta) == length(model,obs) || throw(DimensionMismatch())
 
-    @assert length(grad) == length(theta) == length(model,obs)
-
-    am = _am(rc) # computed in likelihood
-    bm = _bm(rc) # computed in likelihood
-    cm = _cm(rc) # computed in likelihood
-    qm = _qm(rc) # Pr(um,vm | data) already computed!!!
+    ψ1 = _ψ1(sim)
+    dψ1dρ = _dψ1dρ(sim)
+    qm = _qm(sim) # Pr(um,vm | data) already computed!!!
+    am = _am(sim) # computed in likelihood
+    bm = _bm(sim) # computed in likelihood
+    cm = _cm(sim) # computed in likelihood
 
     l = _y(obs)         # discrete choice info
     L = _num_choices(obs)  # discrete choice info
@@ -188,12 +126,9 @@ function grad_simloglik_royalty!(grad::AbstractVector, rli::RoyaltyLikelihoodInf
     ρ  = theta_royalty_ρ(model, obs, theta) # parameters
     βψ = theta_royalty_ψ(model, obs, theta) # parameters
 
-    ψ1 = _ψ1(draws)
-    dψ1dρ = _dψ1dρ(draws)
-
     # gradient
-    grad[idx_royalty_ρ(model,obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ   # tmapreduce((q,c,u,v) -> q*c*dψdρ(u,v), +, qm,cm,um,vm; init=zero(eltype(qm))) * βψ
-    grad[idx_royalty_ψ(model,obs)] -= sumprod3(ψ1,    qm, cm)        # tmapreduce((q,c,u,v) -> q*c*ψ1(u,v),   +, qm,cm,um,vm; init=zero(eltype(qm)))
+    grad[idx_royalty_ρ(model,obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ
+    grad[idx_royalty_ψ(model,obs)] -= sumprod3(ψ1,    qm, cm)
     grad[idx_royalty_β(model,obs)] -= dot(qm, cm) .* x
     l > 1 && ( grad[idx_royalty_κ(model,obs,l-1)] -= dot(qm, am) )
     l < L && ( grad[idx_royalty_κ(model,obs,l)]   += dot(qm, bm) )
