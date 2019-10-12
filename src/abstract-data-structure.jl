@@ -1,11 +1,15 @@
 # For data structures
 abstract type AbstractDataStructure end
 
-abstract type AbstractDataSet          <: AbstractDataStructure end
-abstract type AbstractObservation      <: AbstractDataStructure end
+"Collection of data on a particular outcome for individuals `i`"
+abstract type AbstractDataSet <: AbstractDataStructure end
+
+"What we feed into a likelihood"
+abstract type AbstractObservation <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+"Observation Groups are associated with an individual and shock (ψ₁,ψ₂)"
 struct ObservationGroup{D<:AbstractDataSet} <: AbstractDataStructure
     data::D
     i::Int
