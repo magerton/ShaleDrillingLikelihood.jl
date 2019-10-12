@@ -2,11 +2,11 @@
 # Royalty low level computations
 # ---------------------------------------------
 
-function η12(obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, zm::Real)
+function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     l = _y(obs)
     L = _num_choices(obs)
-    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(model, obs, theta, l-1) - zm
-    η2 = l == L ? typemax(zm) : theta_royalty_κ(model, obs, theta, l)   - zm
+    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
+    η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
     @assert η1 < η2
     return η1, η2
 end
@@ -68,7 +68,7 @@ end
 # ---------------------------------------------
 
 "this is the main function. for each ψm, it computes LLm(roy|ψm) and ∇LLm(roy|ψm)"
-function simloglik_royalty!(obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool=true)
+function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool=true)
 
     am  = _am(sim)
     bm  = _bm(sim)
@@ -80,14 +80,13 @@ function simloglik_royalty!(obs::ObservationRoyalty, model::AbstractRoyaltyModel
     l = _y(obs)
     xbeta = _xbeta(obs)
 
-    ρ  = theta_royalty_ρ(model, obs, theta)
-    βψ = theta_royalty_ψ(model, obs, theta)
-    βx = theta_royalty_β(model, obs, theta)
+    βψ = theta_royalty_ψ(obs, theta)
+    βx = theta_royalty_β(obs, theta)
 
     # @inbounds @threads
     for (m,psi) in enumerate(_ψ1(sim))
         zm  = xbeta + βψ * psi
-        eta12 = η12(obs, model, theta, zm)
+        eta12 = η12(obs, theta, zm)
 
         if dograd == false
             LLm[m] += loglik_royalty(obs, eta12)
@@ -108,9 +107,9 @@ end
 # ---------------------------------------------
 
 "gradient for simulated likelihood when integrating"
-function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, model::AbstractRoyaltyModel, theta::AbstractVector, sim::SimulationDrawsVector)
+function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, theta::AbstractVector, sim::SimulationDrawsVector)
 
-    length(grad) == length(theta) == length(model,obs) || throw(DimensionMismatch())
+    length(grad) == length(theta) == nparm(obs) || throw(DimensionMismatch())
 
     ψ1 = _ψ1(sim)
     dψ1dρ = _dψ1dρ(sim)
@@ -119,19 +118,19 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     bm = _bm(sim) # computed in likelihood
     cm = _cm(sim) # computed in likelihood
 
+    model = _model(obs)
     l = _y(obs)         # discrete choice info
     L = _num_choices(obs)  # discrete choice info
     x = _x(obs)
 
-    ρ  = theta_royalty_ρ(model, obs, theta) # parameters
-    βψ = theta_royalty_ψ(model, obs, theta) # parameters
+    βψ = theta_royalty_ψ(obs, theta) # parameters
 
     # gradient
-    grad[idx_royalty_ρ(model,obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ
-    grad[idx_royalty_ψ(model,obs)] -= sumprod3(ψ1,    qm, cm)
-    grad[idx_royalty_β(model,obs)] -= dot(qm, cm) .* x
-    l > 1 && ( grad[idx_royalty_κ(model,obs,l-1)] -= dot(qm, am) )
-    l < L && ( grad[idx_royalty_κ(model,obs,l)]   += dot(qm, bm) )
+    grad[idx_royalty_ρ(obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ
+    grad[idx_royalty_ψ(obs)] -= sumprod3(ψ1,    qm, cm)
+    grad[idx_royalty_β(obs)] -= dot(qm, cm) .* x
+    l > 1 && ( grad[idx_royalty_κ(obs,l-1)] -= dot(qm, am) )
+    l < L && ( grad[idx_royalty_κ(obs,l)]   += dot(qm, bm) )
 end
 
 # ---------------------------------------------
@@ -140,35 +139,38 @@ end
 
 
 "for testing only"
-function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::Bool=true)
+function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bool=true)
 
-    theta_royalty_check(RM, data, θ) || return -Inf
+    model = _model(data)
+    theta_royalty_check(data, θ) || return -Inf
 
     k = _num_x(data)
     n = length(data)
     L = _num_choices(data)
-    nparm = length(RM,data)
+    ncoef = _nparm(data)
 
-    @assert nparm == length(grad)
+    @assert ncoef == length(grad)
 
-    gradtmp = zeros(Float64, nparm, n)
+    gradtmp = zeros(Float64, ncoef, n)
     LL      = Vector{Float64}(undef, n)
 
-    update_xbeta!(data, theta_royalty_β(RM, data, θ))
+    update_xbeta!(data, theta_royalty_β(data, θ))
 
-    let RM=RM, data=data, θ=θ, gradtmp=gradtmp, dograd=dograd, LL=LL
+    let data=data, θ=θ, gradtmp=gradtmp, dograd=dograd, LL=LL
         @threads for i in 1:n
-            LL[i] = ll_inner!(view(gradtmp,:,i), data[i], RM, dograd, θ)
+            LL[i] = ll_inner!(view(gradtmp,:,i), data[i], dograd, θ)
         end
     end
-    dograd && sum!(reshape(grad, nparm, 1), gradtmp)
+    dograd && sum!(reshape(grad, ncoef, 1), gradtmp)
 
     return sum(LL)
 end
 
-function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroup{<:DataRoyalty}, RM::AbstractRoyaltyModel, dograd::Bool, θ::AbstractVector)
+function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroup{<:DataRoyalty}, dograd::Bool, θ::AbstractVector)
+
+    RM = _model(_data(grp))
     obs = first(grp)
-    eta12 = η12(obs, RM, θ, _xbeta(obs))
+    eta12 = η12(obs, θ, _xbeta(obs))
     F, LL = lik_loglik_royalty(obs, eta12)
     l = _y(obs)
     L = _num_choices(obs)
@@ -177,9 +179,9 @@ function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroup{<:DataRoyalty}
         a, b = normpdf.(eta12) ./ F
         c = dlogcdf_trunc(eta12...)
 
-        gradtmp[idx_royalty_β(RM,obs)] .= - c .* _x(obs)
-        l > 1  && ( gradtmp[idx_royalty_κ(RM, obs, l-1)] = -a )
-        l < L  && ( gradtmp[idx_royalty_κ(RM, obs, l)  ] =  b )
+        gradtmp[idx_royalty_β(obs)] .= - c .* _x(obs)
+        l > 1  && ( gradtmp[idx_royalty_κ(obs, l-1)] = -a )
+        l < L  && ( gradtmp[idx_royalty_κ(obs, l)  ] =  b )
     end
     return LL
 end

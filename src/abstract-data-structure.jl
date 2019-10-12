@@ -25,6 +25,7 @@ end
 group_ptr(d::AbstractDataSet) = throw(error("group_ptr not defined for $(typeof(d))"))
 obs_ptr(  d::AbstractDataSet) = throw(error("obs_ptr not defined for $(typeof(d))"))
 
+_model(d::DataOrObs) = d.model
 _y(    d::DataOrObs) = d.y
 _x(    d::DataOrObs) = d.x
 _num_x(d::DataOrObs) = size(_x(d), 1)

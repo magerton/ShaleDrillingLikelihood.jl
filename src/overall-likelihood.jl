@@ -32,6 +32,12 @@ function simloglik!(grad, hess,
 ) where {N}
 
     LL = 0.0
+    # update_ψ1!(sim, theta_royalty_ρ(data,θ))
+    # update_dψ1dρ!(sim, theta_royalty_ρ(data,θ))
+    # update_nu!(data, model, θ)
+    # update_xpnu!(data)
+
+
     for i = 1:N
         gradi = view(tmpgrads, :, i)
         grptup = getindex.(dattup, i)

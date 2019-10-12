@@ -12,34 +12,36 @@ struct RoyaltyModel                <: AbstractRoyaltyModel end
 # Abstract data strucutres
 #---------------------------
 
-struct ObservationRoyalty{I<:Integer, T<:Real, V<:AbstractVector{T}} <: AbstractObservation
+struct ObservationRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:AbstractVector{T}} <: AbstractObservation
+    model::M
     y::I
     x::V
     xbeta::T
     num_choices::I
-    function ObservationRoyalty(y::I,x::V,xbeta::T,num_choices::I) where {I<:Integer, T<:Real, V<:AbstractVector{T}}
+    function ObservationRoyalty(model::M,y::I,x::V,xbeta::T,num_choices::I) where {M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:AbstractVector{T}}
         isfinite(xbeta) || throw(DomainError())
         0 < y <= num_choices || throw(DomainError())
-        return new{I,T,V}(y, x, xbeta, num_choices)
+        return new{M,I,T,V}(model, y, x, xbeta, num_choices)
     end
 end
 
-struct DataRoyalty{I<:Integer, T<:Real} <: AbstractDataSet
+struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataSet
+    model::M
     y::Vector{I}
     x::Matrix{T}
     xbeta::Vector{T}
     num_choices::I
-    function DataRoyalty(y::Vector{I}, x::Matrix{T}) where {I,T}
+    function DataRoyalty(model::M, y::Vector{I}, x::Matrix{T}) where {M<:AbstractRoyaltyModel,I,T}
         k,n = size(x)
         length(y) == n  || throw(DimensionMismatch())
         l,L = extrema(y)
         @assert l == 1
         @assert L == length(countmap(y))
-        return new{I,T}(y, x, Vector{T}(undef, n), L)
+        return new{M,I,T}(model, y, x, Vector{T}(undef, n), L)
     end
 end
 
-const DataOrObsRoyalty = Union{ObservationRoyalty,DataRoyalty}
+const DataOrObsRoyalty = Union{ObservationRoyalty{M},DataRoyalty{M}} where {M}
 
 # Common interfaces
 #---------------------------
@@ -76,7 +78,7 @@ function Observation(d::DataRoyalty, k::Integer)
     y = getindex(_y(d), k)
     x = view(_x(d), :, k)
     xbeta = getindex(_xbeta(d), k)
-    return ObservationRoyalty(y, x, xbeta, _num_choices(d))
+    return ObservationRoyalty(_model(d), y, x, xbeta, _num_choices(d))
 end
 
 @deprecate ObservationRoyalty(d::DataRoyalty, k::Integer) Observation(d,k)
@@ -85,8 +87,8 @@ end
 #---------------------------
 
 # length of RoyaltyModel parameters & gradient
-length(m::RoyaltyModelNoHet, d) = _num_x(d) + _num_choices(d) - 1
-length(m::RoyaltyModel     , d) = _num_x(d) + _num_choices(d) + 1
+_nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) + 1
+_nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
 
 function choice_in_model(d::DataOrObsRoyalty, l::Integer)
     0 < l <= _num_choices(d) && return true
@@ -94,32 +96,31 @@ function choice_in_model(d::DataOrObsRoyalty, l::Integer)
 end
 
 # parameter vector
-idx_royalty_ρ(m::RoyaltyModelNoHet, d) = 1:0
-idx_royalty_ψ(m::RoyaltyModelNoHet, d) = 1:0
-idx_royalty_β(m::RoyaltyModelNoHet, d) = (1:_num_x(d))
-idx_royalty_κ(m::RoyaltyModelNoHet, d) = _num_x(d) .+ (1:_num_choices(d)-1)
+idx_royalty_ρ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = 1:0
+idx_royalty_ψ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = 1:0
+idx_royalty_β(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = (1:_num_x(d))
+idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:_num_choices(d)-1)
 
-function idx_royalty_κ(m::RoyaltyModelNoHet, d, l::Integer)
+function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l::Integer)
     choice_in_model(d,l)
     return _num_x(d) + l
 end
 
-idx_royalty_ρ(m::RoyaltyModel, d) = 1
-idx_royalty_ψ(m::RoyaltyModel, d) = 2
-idx_royalty_β(m::RoyaltyModel, d) = 2 .+ (1:_num_x(d))
-idx_royalty_κ(m::RoyaltyModel, d) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
-function idx_royalty_κ(m::RoyaltyModel, d, l::Integer)
+idx_royalty_ρ(d::DataOrObsRoyalty{RoyaltyModel}) = 1
+idx_royalty_ψ(d::DataOrObsRoyalty{RoyaltyModel}) = 2
+idx_royalty_β(d::DataOrObsRoyalty{RoyaltyModel}) = 2 .+ (1:_num_x(d))
+idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
+function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
     choice_in_model(d,l)
     return 2 + _num_x(d) + l
 end
 
 # get coefs
-theta_roy(      m::AbstractRoyaltyModel,    theta) = theta
-theta_royalty_ρ(m::AbstractRoyaltyModel, d, theta) = theta[idx_royalty_ρ(m,d)]
-theta_royalty_ψ(m::AbstractRoyaltyModel, d, theta) = theta[idx_royalty_ψ(m,d)]
-theta_royalty_β(m::AbstractRoyaltyModel, d, theta) = view(theta, idx_royalty_β(m,d))
-theta_royalty_κ(m::AbstractRoyaltyModel, d, theta) = view(theta, idx_royalty_κ(m,d))
-theta_royalty_κ(m::AbstractRoyaltyModel, d, theta, l) = theta[idx_royalty_κ(m,d,l)]
-
+theta_roy(      d::DataOrObsRoyalty, theta) = theta
+theta_royalty_ρ(d::DataOrObsRoyalty, theta) = theta[idx_royalty_ρ(d)]
+theta_royalty_ψ(d::DataOrObsRoyalty, theta) = theta[idx_royalty_ψ(d)]
+theta_royalty_β(d::DataOrObsRoyalty, theta) = view(theta, idx_royalty_β(d))
+theta_royalty_κ(d::DataOrObsRoyalty, theta) = view(theta, idx_royalty_κ(d))
+theta_royalty_κ(d::DataOrObsRoyalty, theta, l) = theta[idx_royalty_κ(d,l)]
 # check if theta is okay
-theta_royalty_check(m::AbstractRoyaltyModel, d, theta) = issorted(theta_royalty_κ(m,d,theta))
+theta_royalty_check(d::DataOrObsRoyalty, theta) = issorted(theta_royalty_κ(d,theta))

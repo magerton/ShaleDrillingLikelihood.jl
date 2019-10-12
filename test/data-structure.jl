@@ -48,7 +48,7 @@ end
     y = collect(1:nobs)
     @views sample!(collect(1:L), y[L+1:end])
 
-    data = DataRoyalty(y, X)
+    data = DataRoyalty(RoyaltyModel(), y, X)
 
     @test length(data) == nobs == _num_obs(data)
     @test _num_x(data) == k

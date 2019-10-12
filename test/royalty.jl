@@ -25,7 +25,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     SimulationDraws,
     update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
     update_xbeta!, _am, _bm, _cm, _qm,
-    llthreads!, _i
+    llthreads!, _i, _nparm
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -42,21 +42,21 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     rstar = X'*theta[1:k] .+ eps
     l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
-    data = DataRoyalty(l, X)
+    data = DataRoyalty(RM, l, X)
     update_xbeta!(data, theta[1:k])
 
-    @test length(theta) == length(RM, data)
+    @test length(theta) == _nparm(data) == _nparm(first(first(data)))
 
-    @test theta_royalty_ρ(    RM, data, theta) == Float64[]
-    @test theta_royalty_ψ(    RM, data, theta) == Float64[]
-    @test all(theta_royalty_β(RM, data, theta) .== theta[1:3])
-    @test theta_royalty_κ(    RM, data, theta, 1) == -0.5
-    @test theta_royalty_κ(    RM, data, theta, 2) ==  0.5
+    @test theta_royalty_ρ(    data, theta) == Float64[]
+    @test theta_royalty_ψ(    data, theta) == Float64[]
+    @test all(theta_royalty_β(data, theta) .== theta[1:3])
+    @test theta_royalty_κ(    data, theta, 1) == -0.5
+    @test theta_royalty_κ(    data, theta, 2) ==  0.5
 
-    @test idx_royalty_κ(RM, data, 1) == 4
-    @test idx_royalty_κ(RM, data, 2) == 5
-    @test_throws DomainError idx_royalty_κ(RM, data, L+1)
-    @test_throws DomainError idx_royalty_κ(RM, data, 0)
+    @test idx_royalty_κ(data, 1) == 4
+    @test idx_royalty_κ(data, 2) == 5
+    @test_throws DomainError idx_royalty_κ(data, L+1)
+    @test_throws DomainError idx_royalty_κ(data, 0)
 
     M = 10
     RT = SimulationDraws(M,nobs)
@@ -65,7 +65,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     cm = _cm(RT)
 
     # test η12s
-    η12s = [η12(first(grp), RM, theta, r) for (grp,r) in zip(data, rstar)]
+    η12s = [η12(first(grp), theta, r) for (grp,r) in zip(data, rstar)]
     @test all(x[1] < x[2] for x in η12s )
 
 
@@ -73,10 +73,10 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     grad = similar(theta)
     # @code_warntype llthreads!(grad, theta, RM, data, true)
 
-    f(parm) = - llthreads!(grad, parm, RM, data, false)
+    f(parm) = - llthreads!(grad, parm, data, false)
 
     function fg!(g, parm)
-        LL = llthreads!(g, parm, RM, data, true)
+        LL = llthreads!(g, parm, data, true)
         g .*= -1
         return -LL
     end
@@ -108,11 +108,11 @@ end
     # make more data
     rstar  = X'*theta[2 .+ (1:k)] .+ eps
     l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
-    data = DataRoyalty(l,X)
+    data = DataRoyalty(RM,l,X)
 
     # check indexing is correct
-    @test all(theta_royalty_β(RM, data, theta) .== theta[2 .+ (1:k)])
-    @test all(theta_royalty_κ(RM, data, theta) .== theta[end-L+2:end])
+    @test all(theta_royalty_β(data, theta) .== theta[2 .+ (1:k)])
+    @test all(theta_royalty_κ(data, theta) .== theta[end-L+2:end])
 
     # simulations
     uv = SimulationDraws(M,nobs)
@@ -121,23 +121,23 @@ end
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
-        update_ψ1!(uv, theta_royalty_ρ(RM,data,θ))
-        update_dψ1dρ!(uv, theta_royalty_ρ(RM,data,θ))
+        update_ψ1!(uv, theta_royalty_ρ(data,θ))
+        update_dψ1dρ!(uv, theta_royalty_ρ(data,θ))
 
         qm = _qm(uv)
 
-        update_xbeta!(data, theta_royalty_β(RM,data,θ))
+        update_xbeta!(data, theta_royalty_β(data,θ))
 
         for grp in data
             for obs in grp
                 fill!(qm, 0)                    # b/c might do other stuff to LLm
                 simi = view(uv,_i(grp))
-                simloglik_royalty!(obs, RM, θ, simi, dograd)    # update LLm
+                simloglik_royalty!(obs, θ, simi, dograd)    # update LLm
                 if !dograd
                     LL += logsumexp(qm) - log(M)
                 else
                     LL += logsumexp_and_softmax!(qm)
-                    grad_simloglik_royalty!(grad, obs, RM, θ, simi)
+                    grad_simloglik_royalty!(grad, obs, θ, simi)
                 end
             end
         end
