@@ -6,18 +6,13 @@ using LinearAlgebra
 using Base.Threads
 using Halton
 
-import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==
+import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==, eltype
 using StatsBase: countmap, sample
 using Base: OneTo
 
 # for computations
 abstract type AbstractIntermediateComputations end
 abstract type AbstractTempVar end
-
-# For data structures
-abstract type AbstractDataStructure end
-abstract type AbstractObservationGroup end
-abstract type AbstractObservation end
 
 # for modeling
 abstract type AbstractModel end
@@ -46,11 +41,9 @@ struct NoModel <: AbstractModel end
 # Overall structure
 #----------------------------
 
-struct DataIndividual <:AbstractDataStructure end
-struct DataSet <: AbstractDataStructure end
-
 # data structures
 include("simulation-data-structure.jl")
+include("abstract-data-structure.jl")
 
 include("royalty-data-structure.jl")
 include("production-data-structure.jl")

@@ -15,7 +15,7 @@ using ShaleDrillingLikelihood: _num_x,
     simloglik_produce!, grad_simloglik_produce!, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
-    SimulationDraws, psi2_wtd_sum_and_sumsq
+    SimulationDraws, psi2_wtd_sum_and_sumsq, Observation
 
 println("Starting production likelihood tests")
 
@@ -74,7 +74,7 @@ _qm(sim) .= softmax(randn(M))
 
 @show @benchmark psi2_wtd_sum_and_sumsq(simi)
 
-obs = ObservationProduce(data,1)
+obs = Observation(data,1)
 @show @benchmark simloglik_produce!(obs, ProductionModel(), theta, simi)
 
 

@@ -25,7 +25,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     SimulationDraws, RoyaltyLikelihoodInformation,
     update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
     update_xbeta!, _am, _bm, _cm,
-    llthreads!
+    llthreads!, _i
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -65,7 +65,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     cm = _cm(RT)
 
     # test η12s
-    η12s = [η12(obs, RM, theta, r) for (obs,r) in zip(data, rstar)]
+    η12s = [η12(first(grp), RM, theta, r) for (grp,r) in zip(data, rstar)]
     @test all(x[1] < x[2] for x in η12s )
 
 
@@ -117,7 +117,7 @@ end
     # simulations
     uv = SimulationDraws(M,nobs)
     rc = RoyaltyTmpVar(M)
-    rli = RoyaltyLikelihoodInformation(rc, data[1], RM, view(uv,1))
+    rli = RoyaltyLikelihoodInformation(rc, first(first(data)), RM, view(uv,1))
 
     # @code_warntype simloglik_royalty!(rli, theta, false)
 
@@ -127,13 +127,15 @@ end
         update_dψ1dρ!(uv, theta_royalty_ρ(RM,data,θ))
         qm = ShaleDrillingLikelihood._qm(rc)
         update_xbeta!(data, theta_royalty_β(RM,data,θ))
-        for i in 1:nobs
-            fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
-            rli = RoyaltyLikelihoodInformation(rc, data[i], RM, view(uv,i))
-            simloglik_royalty!(rli, θ, dograd)    # update LLm
-            LL += logsumexp(_LLm(rc))             # b/c integrating
-            softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
-            dograd && grad_simloglik_royalty!(grad, rli, θ)
+        for grp in data
+            for obs in grp
+                fill!(_LLm(rc), 0)                    # b/c might do other stuff to LLm
+                rli = RoyaltyLikelihoodInformation(rc, obs, RM, view(uv,_i(grp)))
+                simloglik_royalty!(rli, θ, dograd)    # update LLm
+                LL += logsumexp(_LLm(rc))             # b/c integrating
+                softmax!(qm, _LLm(rc))                # b/c grad needs qm = Pr(m|data)
+                dograd && grad_simloglik_royalty!(grad, rli, θ)
+            end
         end
         return LL - nobs*log(M)
     end

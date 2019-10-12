@@ -11,8 +11,8 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
     DataProduce, _xsum, obs_ptr, group_ptr, _nu,
     groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
-    ObservationProduce, ObservationGroupProduce,
-    _i, _data, _num_obs, update_nu!
+    ObservationProduce, ObservationGroup,
+    _i, _data, _num_obs, update_nu!, Observation
 
 
 @testset "SimulationDraws" begin
@@ -49,16 +49,16 @@ end
 
     data = DataRoyalty(y, X)
 
-    @test length(data) == nobs
-    @test size(data) == nobs
+    @test length(data) == nobs == _num_obs(data)
     @test _num_x(data) == k
     @test_throws BoundsError data[nobs+1]
     @test_throws BoundsError data[0]
     @test iterate(data, nobs+1) == nothing
     @test iterate(data, 1) == iterate(data)
     let obsi = 0
-        for obs in data
+        for (i,grp) in enumerate(data)
             obsi += 1
+            @test Observation(grp,1) == Observation(data,i) == first(grp) == last(grp)
         end
         @test obsi == length(data)
     end
@@ -87,11 +87,12 @@ end
         groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
 
         d = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groupptr)
-        obs = ObservationProduce(d,2)
+        obs = Observation(d,2)
+        @test isa(obs, ObservationProduce)
 
         @test length(d) == ngroups == length(groupptr)-1
         @test _num_x(d) == k
-        @test _num_obs(d) == last(groupptr)-1 == length(obsptr)-1
+        @test length(d) == last(groupptr)-1 == length(obsptr)-1
 
         @test obsstart(d,2) == n+1
         @test obsstart(d,3) == 2*n + 1
@@ -107,21 +108,21 @@ end
         @test _x(obs) == x[:, rng]
         @test dropdims(sum(_x(obs); dims=2); dims=2) == _xsum(obs)
 
-        grp = ObservationGroupProduce(d,1)
+        grp = ObservationGroup(d,1)
         grouprange(grp)
-        @test ObservationProduce(grp,1) == ObservationProduce(d,1)
-        @test iterate(grp) == (ObservationProduce(d,1), 2,)
+        @test Observation(grp,1) == Observation(d,1)
+        @test iterate(grp) == (Observation(d,1), 2,)
         @test iterate(grp, iterate(grp)[2]) == nothing
 
-        grp = ObservationGroupProduce(d,2)
+        grp = ObservationGroup(d,2)
         @test length(grp) == 2
-        @test ObservationProduce(grp,1) == ObservationProduce(d,2)
-        @test ObservationProduce(grp,2) == ObservationProduce(d,3)
-        @test iterate(grp) == (ObservationProduce(d,2), 2,)
-        @test iterate(grp, 2) == (ObservationProduce(d,3), 3,)
+        @test Observation(grp,1) == Observation(d,2)
+        @test Observation(grp,2) == Observation(d,3)
+        @test iterate(grp) == (Observation(d,2), 2,)
+        @test iterate(grp, 2) == (Observation(d,3), 3,)
         @test iterate(grp, 3) == nothing
 
-        grp = ObservationGroupProduce(d,3)
+        grp = ObservationGroup(d,3)
         @test length(grp) == 0
         @test iterate(grp) == nothing
 
@@ -199,7 +200,7 @@ end
         end
 
         for j = 1:nwells
-            o = ObservationProduce(data,j)
+            o = Observation(data,j)
             @test all(_xsum(o) .== sum(_x(o); dims=2))
         end
 

@@ -23,7 +23,7 @@ struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T},
     end
 end
 
-struct DataProduce{T<:Real} <: AbstractDataStructure
+struct DataProduce{T<:Real} <: AbstractDataSet
     y::Vector{T}
     x::Matrix{T}
     xsum::Matrix{T}
@@ -48,26 +48,15 @@ struct DataProduce{T<:Real} <: AbstractDataStructure
     end
 end
 
-struct ObservationGroupProduce{T<:Real} <: AbstractObservationGroup
-    data::DataProduce{T}
-    i::Int
-    function ObservationGroupProduce(data::DataProduce{T}, i::Int) where {T<:Real}
-        1 <= i <= length(data) || throw(BoundsError(data,i))
-        return new{T}(data,i)
-    end
-end
-
+const ObservationGroupProduce = ObservationGroup{<:DataProduce}
 const DataOrObsProduction = Union{ObservationProduce,DataProduce}
-const DataObsObsGrpProduction = Union{ObservationProduce,DataProduce,ObservationGroupProduce}
-
+const AbstractDataStructureProduction = Union{ObservationProduce,DataProduce,ObservationGroupProduce}
 
 # Common interfaces
 #---------------------------
 
 _xpnu( d::DataOrObsProduction) = d.xpnu
 _nu(   d::DataOrObsProduction) = d.nu
-_y(    d::DataOrObsProduction) = d.y
-_x(    d::DataOrObsProduction) = d.x
 _xsum( d::DataOrObsProduction) = d.xsum
 _num_x(d::DataOrObsProduction) = size(_xsum(d),1)
 _nusum(d::DataOrObsProduction) = d.nusum
@@ -78,20 +67,27 @@ _nusumsq(d::DataOrObsProduction) = d.nusumsq
 
 obs_ptr(  d::DataProduce) = d.obs_ptr
 group_ptr(d::DataProduce) = d.group_ptr
-iterate(  d::DataProduce, i::Integer=1) = i > length(d) ? nothing : (ObservationGroupProduce(d,i), i+1,)
 length(   d::DataProduce) = length(group_ptr(d))-1
-
-_num_obs(d::DataProduce) = length(obs_ptr(d))-1
 
 groupstart( d::DataProduce, i::Integer) = getindex(group_ptr(d), i)
 grouplength(d::DataProduce, i::Integer) = groupstart(d,i+1) - groupstart(d,i)
 grouprange( d::DataProduce, i::Integer) = groupstart(d,i) : groupstart(d,i+1)-1
 
 obsstart( d::DataProduce, j::Integer) = getindex(obs_ptr(d),j)
-obsrange( d::DataProduce, j::Integer) = obsstart(d,j) : obsstart(d,j+1)-1
 obslength(d::DataProduce, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
+obsrange( d::DataProduce, j::Integer) = obsstart(d,j) : obsstart(d,j+1)-1
 
-function ObservationProduce(d::DataProduce, j::Integer)
+# Observation-specific interfaces
+#---------------------------
+
+function ==(o1::ObservationProduce, o2::ObservationProduce)
+    _y(o1)==_y(o2) && _x(o1)==_x(o2) && _xsum(o1)==_xsum(o2) && _nu(o1)==_nu(o2)
+end
+
+# Observation Group interfaces
+#---------------------------
+
+function Observation(d::DataProduce, j::Integer)
     rng = obsrange(d,j)
     y    = view(_y(d), rng)
     nu   = view(_nu(d), rng)
@@ -103,12 +99,13 @@ function ObservationProduce(d::DataProduce, j::Integer)
     return ObservationProduce(y, x, xsum, nu, xpnu, nusum, nusumsq)
 end
 
+@deprecate ObservationProduce(d::DataProduce,j::Integer) Observation(d,j)
 
 function update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta)
     _nu(d) .= _y(d) - _x(d)'*theta_produce_β(m,d,theta)
     let d = d
         for j in OneTo(_num_obs(d))
-            obs = ObservationProduce(d, j)
+            obs = Observation(d, j)
             nu = _nu(obs)
             setindex!(_nusum(d),   sum(nu),    j)
             setindex!(_nusumsq(d), dot(nu,nu), j)
@@ -128,52 +125,14 @@ function update_xpnu!(obs::ObservationProduce)
     return nothing
 end
 
-function update_over_obs(f!::Function, data::DataProduce)
-    let data = data
-        @threads for j in OneTo(_num_obs(data))
-            f!( ObservationProduce(data, j) )
-        end
-    end
-    return nothing
-end
-
 update_xsum!(data::DataProduce) = update_over_obs(update_xsum!, data)
 update_xpnu!(data::DataProduce) = update_over_obs(update_xpnu!, data)
-
-
-# Observation-specific interfaces
-#---------------------------
-
-function ==(o1::ObservationProduce, o2::ObservationProduce)
-    _y(o1)==_y(o2) && _x(o1)==_x(o2) && _xsum(o1)==_xsum(o2) && _nu(o1)==_nu(o2)
-end
-
-length(o::ObservationProduce) = length(_y(o))
-
-# Observation Group interfaces
-#---------------------------
-
-_i(        g::ObservationGroupProduce) = g.i
-_data(     g::ObservationGroupProduce) = g.data
-_num_x(    g::ObservationGroupProduce) = _num_x(_data(g))
-
-length(    g::ObservationGroupProduce) = grouplength(_data(g), _i(g))
-grouprange(g::ObservationGroupProduce) = grouprange( _data(g), _i(g))
-
-obsstart( g::ObservationGroupProduce, k::Integer) = obsstart( _data(g), getindex(grouprange(g), k))
-obsrange( g::ObservationGroupProduce, k::Integer) = obsrange( _data(g), getindex(grouprange(g), k))
-obslength(g::ObservationGroupProduce, k::Integer) = obslength(_data(g), getindex(grouprange(g), k))
-
-ObservationProduce(g::ObservationGroupProduce, k::Integer) = ObservationProduce(_data(g), getindex(grouprange(g), k))
-
-iterate(g::ObservationGroupProduce, k::Integer=1) = k > length(g) ? nothing : (ObservationProduce(g,k), k+1,)
-
 
 # Abstract data strucutres
 #---------------------------
 
-_num_x(m::ProductionModel, d::DataObsObsGrpProduction) = _num_x(d)
-length(m::ProductionModel, d::DataObsObsGrpProduction) = _num_x(d) + 3
+_num_x(m::ProductionModel, d::AbstractDataStructureProduction) = _num_x(d)
+length(m::ProductionModel, d::AbstractDataStructureProduction) = _num_x(d) + 3
 
 idx_produce_ψ(  m::ProductionModel, d) = 1
 idx_produce_β(  m::ProductionModel, d) = 1 .+ (1:_num_x(d))

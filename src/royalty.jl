@@ -231,7 +231,8 @@ function llthreads!(grad, θ, RM::RoyaltyModelNoHet, data::DataRoyalty, dograd::
     return sum(LL)
 end
 
-function ll_inner!(gradtmp::AbstractVector, obs::ObservationRoyalty, RM::AbstractRoyaltyModel, dograd::Bool, θ::AbstractVector)
+function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroup{<:DataRoyalty}, RM::AbstractRoyaltyModel, dograd::Bool, θ::AbstractVector)
+    obs = first(grp)
     eta12 = η12(obs, RM, θ, _xbeta(obs))
     F, LL = lik_loglik_royalty(obs, eta12)
     l = _y(obs)

@@ -17,9 +17,14 @@ struct ObservationRoyalty{I<:Integer, T<:Real, V<:AbstractVector{T}} <: Abstract
     x::V
     xbeta::T
     num_choices::I
+    function ObservationRoyalty(y::I,x::V,xbeta::T,num_choices::I) where {I<:Integer, T<:Real, V<:AbstractVector{T}}
+        isfinite(xbeta) || throw(DomainError())
+        0 < y <= num_choices || throw(DomainError())
+        return new{I,T,V}(y, x, xbeta, num_choices)
+    end
 end
 
-struct DataRoyalty{I<:Integer, T<:Real} <: AbstractDataStructure
+struct DataRoyalty{I<:Integer, T<:Real} <: AbstractDataSet
     y::Vector{I}
     x::Matrix{T}
     xbeta::Vector{T}
@@ -39,16 +44,24 @@ const DataOrObsRoyalty = Union{ObservationRoyalty,DataRoyalty}
 # Common interfaces
 #---------------------------
 
-_y(          d::DataOrObsRoyalty) = d.y
-_x(          d::DataOrObsRoyalty) = d.x
 _xbeta(      d::DataOrObsRoyalty) = d.xbeta
 _num_choices(d::DataOrObsRoyalty) = d.num_choices
-_num_x(      d::DataOrObsRoyalty) = size(_x(d), 1)
+
+# DataRoyalty interface
+#---------------------------
+
+group_ptr(d::DataRoyalty) = OneTo(length(_y(d))+1)
+obs_ptr(  d::DataRoyalty) = OneTo(length(_y(d))+1)
+
+function ==(a::ObservationRoyalty, b::ObservationRoyalty)
+    _y(a) == _y(b) &&
+    _x(a) == _x(b) &&
+    _xbeta(a) == _xbeta(b) &&
+    _num_choices(a) == _num_choices(b)
+end
 
 # Observation-specific interfaces
 #---------------------------
-length(d::DataRoyalty) = length(_y(d))
-size(  d::DataRoyalty) = length(d)
 
 function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
     length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
@@ -58,19 +71,15 @@ end
 
 # Iteration over data
 #---------------------------
-function getindex(d::DataRoyalty, i::Integer)
-    0 < i < length(d)+1 || throw(BoundsError(d,i))
-    y = getindex(_y(d), i)
-    x = view(_x(d), :, i)
-    xbeta = getindex(_xbeta(d), i)
+function Observation(d::DataRoyalty, k::Integer)
+    0 < k < length(d)+1 || throw(BoundsError(d,k))
+    y = getindex(_y(d), k)
+    x = view(_x(d), :, k)
+    xbeta = getindex(_xbeta(d), k)
     return ObservationRoyalty(y, x, xbeta, _num_choices(d))
 end
 
-iterate(   d::DataRoyalty, i=1) = i > length(d) ? nothing : (getindex(d, i), i+1,)
-firstindex(d::DataRoyalty) = getindex(d,1)
-lastindex( d::DataRoyalty) = getindex(d,length(d))
-IndexStyle(d::DataRoyalty) = IndexLinear()
-
+@deprecate ObservationRoyalty(d::DataRoyalty, k::Integer) Observation(d,k)
 
 # Model / data interfaces
 #---------------------------
