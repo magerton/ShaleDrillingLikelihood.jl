@@ -26,12 +26,11 @@ function loglik_produce_scalars(obs::ObservationProduce, model::ProductionModel,
     return A0, A1, A2
 end
 
-loglik_produce(a::Real, b::Real, c::Real, ψ::Real) = a + (b + c*ψ)*ψ
-
 function simloglik_produce!(obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
     a, b, c = loglik_produce_scalars(obs, model, theta)
-    f(x) = loglik_produce(a,b,c,x)
-    _qm(sim) .+= f.(_psi2(sim))
+    f(x) = a + (b + c*x)*x
+    qm = _qm(sim) # breaks 1.1.0
+    qm .+= f.(_psi2(sim))
 end
 
 # ---------------------------------------------
@@ -88,13 +87,17 @@ end
 
 
 
-function fg!(grad, data, model, θ, sim, dograd::Bool)
-
+function grad_simloglik_produce!(
+    grad::AbstractVector, data::DataProduce, model::ProductionModel,
+    θ::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
+)
     qm = _qm(sim)
+    M = _num_sim(sim)
+
+    # given θ update ν = y - X'β
     update_nu!(data, model, θ)
     update_xpnu!(data)
     fill!(grad, 0)
-    M = _num_sim(sim)
 
     LL = 0.0
     for (i,grp) in enumerate(data)
@@ -105,14 +108,14 @@ function fg!(grad, data, model, θ, sim, dograd::Bool)
             simloglik_produce!(obs, model, θ, simi)
         end
 
-        LL += logsumexp(qm) - log(M)
-        softmax!(qm)
-        if dograd
+        if !dograd
+            LL += logsumexp(qm) - log(M)
+        else
+            LL += logsumexp_and_softmax!(qm) - log(M)
             for obs in grp
                 grad_simloglik_produce!(grad, obs, model, θ, simi)
             end
         end
     end
-    grad .*= -1
-    return -LL
+    return LL
 end
