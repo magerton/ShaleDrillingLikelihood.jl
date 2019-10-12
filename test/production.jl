@@ -78,12 +78,4 @@ obs = ObservationProduce(data,1)
 @show @benchmark simloglik_produce!(obs, ProductionModel(), theta, simi)
 
 
-# TODO
-@testset "Production likelihood integration" begin
-    @warn "Have not implemented this yet!!!"
-
-    println("\n\n\t\tImplement test that gradient is all OK\n\n")
-end
-
-
 end # module
