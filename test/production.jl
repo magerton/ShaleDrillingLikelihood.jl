@@ -7,7 +7,7 @@ using Calculus
 using Optim
 using Random
 using LinearAlgebra
-
+using BenchmarkTools
 
 using ShaleDrillingLikelihood: _num_x,
     idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
@@ -15,7 +15,7 @@ using ShaleDrillingLikelihood: _num_x,
     simloglik_produce!, grad_simloglik_produce!, loglik_produce, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
-    SimulationDraws, zero!, fg!
+    SimulationDraws, fg!, psi2_wtd_sum_and_sumsq
 
 println("Starting production likelihood tests")
 
@@ -75,7 +75,6 @@ println("Starting production likelihood tests")
 
         for grp in data
             for obs in grp
-                zero!(sim)
                 fill!(llm, 0)
                 xi = _x( obs)
                 yi = _y( obs)
@@ -135,9 +134,9 @@ end
     Random.seed!(1234)
 
     beta = rand(3)
-    sigmas = (sqrt(0.25), sqrt(0.1), sqrt(0.25),)
-    theta = vcat(beta, sigmas...)
-    num_i = 1_000
+    sigmas = (0.5, 0.3, 0.4,)
+    theta = vcat(sigmas[1], beta, sigmas[2:3]...)
+    num_i = 100
     data = DataProduce(num_i, 10, 10:20, theta)
     pm = ProductionModel()
     M = 500
@@ -153,13 +152,34 @@ end
     fd = Calculus.gradient(ff, theta)
     fill!(tmpgrad, 0)
     ffgg!(tmpgrad, theta)
-    @test fd ≈ tmpgrad
+    # @test fd ≈ tmpgrad
+    @test norm(fd .- tmpgrad, Inf) < 2e-5
 
     od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
-    res = optimize(od, theta, NelderMead(), Optim.Options(time_limit = 40.0))
-
-    @show res.minimizer, theta, Calculus.gradient(ff, res.minimizer)
+    res = optimize(od, theta, BFGS(), Optim.Options(time_limit = 40.0))
 end
+
+# @testset "speed tests" begin
+    M = 500
+    num_i = 2000
+    sigmas = (0.5, 0.3, 0.4,)
+    beta = randn(3)
+    theta = vcat(sigmas[1], beta, sigmas[2:3]...)
+    data = DataProduce(num_i, 10, 10:20, theta)
+    sim = SimulationDraws(M, num_i)
+    simi = view(sim, 1)
+    _qm(sim) .= softmax(randn(M))
+
+    @show @benchmark psi2_wtd_sum_and_sumsq(simi)
+
+
+    obs = ObservationProduce(data,1)
+    @show @benchmark simloglik_produce!(obs, ProductionModel(), theta, simi)
+
+    # end
+# end
+
+
 
 # TODO
 @testset "Production likelihood integration" begin

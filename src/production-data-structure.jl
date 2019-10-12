@@ -235,27 +235,27 @@ function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, theta::Vec
     @assert length(theta) > 3
     alphapsi = theta[1]
     beta = theta[2:end-2]
-    sigu, sigeta = theta[end-1:end]
+    sigeta, sigu = theta[end-1:end]
 
     ncoef = length(beta)
 
     # groups
-    psi = rand(ngroups)
+    psi = randn(ngroups)
     grouplens = vcat(0, collect(0:maxwells)..., sample(0:maxwells, ngroups-maxwells-1))
     groupptr = 1 .+ cumsum(grouplens)
 
     # wells in each group
     nwells = last(groupptr)-1
 
-    us = rand(nwells)
+    us = randn(nwells)
     obslens = vcat(0, sample(ntrange, nwells))
     obsptr = 1 .+ cumsum(obslens)
 
     # observations
     nobs = last(obsptr)-1
 
-    eta  = rand(nobs)
-    x    = rand(ncoef,nobs)
+    eta  = randn(nobs)
+    x    = randn(ncoef,nobs)
     y    = x'*beta .+ sigeta .* eta
 
     data = DataProduce(y,x,obsptr,groupptr)

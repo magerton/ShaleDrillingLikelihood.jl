@@ -55,23 +55,11 @@ getindex(s::SimulationDrawsVector, m) = getindex.(tup(s), m)
 function psi2_wtd_sum_and_sumsq(s::SimulationDrawsVector{T}) where {T}
     qm = _qm(s)
     ψ = _ψ2(s)
-    @assert sum(qm) ≈ 1
-    ψbar = dot(qm,ψ) # zero(T)
-    ψ2bar = sumprod3(qm,qm,ψ)
-    # ψ2bar = zero(T)
-    # @inbounds @simd for i = OneTo(length(qm))
-    #     ψ2bar += ψ[i] * ( ψbar += ψ[i] * qm[i])
-    # end
+    ψbar = dot(qm,ψ)
+    ψ2bar = sumprod3(qm,ψ,ψ)
     return ψbar, ψ2bar
 end
 
-
-
-
-# updating
-function zero!(s::SimulationDraws{T}) where {T}
-    fill!(_qm(s), zero(T))
-end
 
 # so we can pre-calculate shocks
 function update_ψ1!(s::SimulationDraws, ρ::Real)

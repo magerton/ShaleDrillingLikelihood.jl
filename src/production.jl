@@ -10,17 +10,16 @@ function loglik_produce_scalars(obs::ObservationProduce, model::ProductionModel,
     a = σ2η^2
     b = σ2u^2
 
-    T     = length(obs)
-    vpv   = _nusumsq(obs)
-    vp1   = _nusum(  obs)
-    vp1sq = vp1^2
+    T   = length(obs)
+    vpv = _nusumsq(obs)
+    vp1 = _nusum(  obs)
 
     abT = a + b*T
     ainv = 1/a
     c = b *ainv / abT
     ainv_cT = ainv - c*T
 
-    A0 = -(T*log2π + (T-1)*log(a) + log(abT) + vpv*ainv - c*vp1sq) / 2
+    A0 = -(T*log2π + (T-1)*log(a) + log(abT) + vpv*ainv - c*vp1^2) / 2
     A1 =    αψ*vp1*ainv_cT
     A2 = - (αψ^2*T*ainv_cT)/2
 
@@ -77,7 +76,7 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
     E0 = -( (T-1)*ainv + abTinv - vpv*ainvsq + c_ainv_abTinv*vp1sq )/2
     Einner = αψ*(-ainvsq + T*c_ainv_abTinv)
     E1 =   Einner*vp1
-    E2 = -(αψ*T*Einner)/2
+    E2 = -(αψT*Einner)/2
     grad[idx_produce_σ2η(model,obs)] += 2*σ2η*(E0 + E1*ψbar + E2*ψ2bar)
 
     # ∂log L / σ²u * * ∂σ²u/∂σu
@@ -92,13 +91,12 @@ end
 function fg!(grad, data, model, θ, sim, dograd::Bool)
 
     qm = _qm(sim)
-    update_xsum!(data)
     update_nu!(data, model, θ)
     update_xpnu!(data)
     fill!(grad, 0)
-    LL = 0.0
     M = _num_sim(sim)
 
+    LL = 0.0
     for (i,grp) in enumerate(data)
         simi = view(sim, i)
         fill!(qm, 0)
@@ -108,13 +106,13 @@ function fg!(grad, data, model, θ, sim, dograd::Bool)
         end
 
         LL += logsumexp(qm) - log(M)
-        # softmax!(qm)
-        # if dograd
-        #     for obs in grp
-        #         grad_simloglik_produce!(grad, obs, model, θ, simi)
-        #     end
-        # end
+        softmax!(qm)
+        if dograd
+            for obs in grp
+                grad_simloglik_produce!(grad, obs, model, θ, simi)
+            end
+        end
     end
-    # grad .*= -1
+    grad .*= -1
     return -LL
 end
