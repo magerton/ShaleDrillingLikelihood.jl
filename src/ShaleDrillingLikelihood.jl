@@ -10,6 +10,8 @@ import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle,
 using StatsBase: countmap, sample
 using Base: OneTo
 
+using LinearAlgebra: checksquare
+
 # for computations
 abstract type AbstractIntermediateComputations end
 abstract type AbstractTempVar end

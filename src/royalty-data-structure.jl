@@ -42,8 +42,8 @@ struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataS
 end
 
 const DataOrObsRoyalty = Union{ObservationRoyalty{M},DataRoyalty{M}} where {M}
-
 const ObservationGroupRoyalty = ObservationGroup{DataRoyalty}
+const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,ObservationGroup{<:DataRoyalty}}
 
 # Common interfaces
 #---------------------------

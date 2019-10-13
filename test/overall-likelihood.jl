@@ -15,6 +15,8 @@ using InteractiveUtils
 using LinearAlgebra
 using BenchmarkTools
 
+using Base: OneTo
+
 using ShaleDrillingLikelihood: DataRoyalty, DataProduce,
     simloglik_royalty!,
     grad_simloglik_royalty!,
@@ -29,11 +31,13 @@ using ShaleDrillingLikelihood: DataRoyalty, DataProduce,
     _nparm,
     ObservationGroup,
     ObservationGroupProduce,
-    ObservationRoyalty
+    ObservationRoyalty,
+    idx_theta
 
 
 println("testing overall royalty")
-# @testset "Joint likelihood of Royalty + Pdxn" begin
+
+@testset "Joint likelihood of Royalty + Pdxn" begin
 
     num_i = 500
     L = 3
@@ -52,6 +56,7 @@ println("testing overall royalty")
     @test length(data_royalty) == num_i
 
     data = (data_royalty, data_produce)
+    @test idx_theta(data) == (OneTo(length(theta_royalty)), length(theta_royalty) .+ OneTo(length(theta_produce)))
 
     nparm = sum(_nparm.(data))
     theta = vcat(theta_royalty, theta_produce)
@@ -67,24 +72,21 @@ println("testing overall royalty")
     fill!(grad,0)
     fill!(hess,0)
     simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-
+    @test !all(grad.==0)
     @test isapprox(fd, grad; rtol=2e-5)
 
 
-@show @benchmark simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-# Profile.clear()
-# @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-# Profile.print()
-# ProfileView.view()
+    @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+    @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
 
-# Profile.clear()
-@show @benchmark simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-# @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-# ProfileView.view()
+    # Profile.clear()
+    # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+    # ProfileView.view()
 
+    # Profile.clear()
+    # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+    # ProfileView.view()
 
-# end
-
-
+end
 
 end # module

@@ -1,48 +1,47 @@
-function simloglik!(grad::AbstractVector, grptup::NTuple{2,ObservationGroup}, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool)
+function idx_theta(tup::Tuple{AbstractDataStructureRoyalty,AbstractDataStructureProduction})
+    rng_roy = OneTo(_nparm(first(tup)))
+    rng_pdxn = _nparm(first(tup)) .+ OneTo(_nparm(last(tup)))
+    return rng_roy, rng_pdxn
+end
+
+
+
+function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool) where {N}
 
     fill(_qm(sim), 0)
     logM = log(_num_sim(sim))
 
-    ncoefs = 0
-    grp_roy, grp_pdxn = grptup
+    idxs = idx_theta(grptup)
 
-    @views theta_roy  = theta[1:_nparm(grp_roy)]
-    @views grad_roy   = grad[ 1:_nparm(grp_roy)]
-
-    @views theta_pdxn = theta[1+_nparm(grp_roy):end]
-    @views grad_pdxn  = grad[ 1+_nparm(grp_roy):end]
-
-    simloglik!(grp_roy,  theta_roy, sim, dograd)
-    simloglik!(grp_pdxn, theta_pdxn, sim, dograd)
+    for (idx,grp) in zip(idxs, grptup)
+        @views simloglik!(grp, theta[idx], sim, dograd)
+    end
 
     if !dograd
         LL = logsumexp(_llm(sim)) - logM
     else
         LL = logsumexp_and_softmax!(_llm(sim)) - logM
-        ncoefs = 0
-        grad_simloglik!(grad_roy,  grp_roy,  theta_roy, sim)
-        grad_simloglik!(grad_pdxn, grp_pdxn, theta_pdxn, sim)
+        for (idx,grp) in zip(idxs, grptup)
+            @views grad_simloglik!(grad[idx], grp, theta[idx], sim)
+        end
     end
     return LL
 end
 
 
-function simloglik!(grad, hess, tmpgrad,
-    dattup::Tuple{DataRoyalty,DataProduce},
+function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix,
+    dattup::NTuple{2,AbstractDataSet},
     theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
+    nparm, num_i = size(tmpgrad)
+    all(length.(dattup) .== num_i) || throw(DimensionMismatch())
+    nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
 
-    num_i = length(first(dattup))
-    nparm = length(theta)
-    (nparm, num_i) == size(tmpgrad) || throw(DimensionMismatch())
-    dat_roy = first(dattup)
-    dat_pdxn = last(dattup)
-    theta_roy =  view(theta, 1:_nparm(first(dattup)))
-    theta_pdxn = view(theta, 1+_nparm(first(dattup)) : length(theta))
+    idxs = idx_theta(dattup)
+    dat_roy, dat_pdxn = dattup
+    theta_roy, theta_pdxn = map(idx -> view(theta, idx), idxs)
+
     ρ = first(theta_roy)
-
-    dtuplens = length.(dattup)
-    all(dtuplens .== first(dtuplens)) || throw(DimensionMismatch())
 
     # for royalty
     update_ψ1!(sim, ρ)
@@ -57,7 +56,7 @@ function simloglik!(grad, hess, tmpgrad,
     LL = 0.0
     fill!(tmpgrad, 0)
 
-    for i = 1:num_i
+    for i = OneTo(num_i)
         gradi = view(tmpgrad, :, i)
         grptup = getindex.(dattup, i)
         simi = view(sim, i)
