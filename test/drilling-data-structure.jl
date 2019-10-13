@@ -5,13 +5,24 @@ using Test
 using Random
 using StatsBase
 using InteractiveUtils
+using Dates
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
-    _y, _x, _xbeta, _num_choices, _num_x, _i, _data, _num_obs,
-    groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
-    ObservationDrill, Observation, ObservationGroup
+    AbstractDrillModel, DrillModel,
+    ObservationDrill, DataDrill, ObservationGroupDrill, DataOrObsDrill, AbstractDataStructureDrill,
+    ExogTimeVars, _timestamp, _timevars, Quarter
 
 
+@testset "Drilling Data Structure" begin
+
+
+    nt = 12
+    startdate = Date(2003,10)
+    daterange = range(startdate; step=Quarter(1), length=nt)
+    etv = ExogTimeVars((randn(nt),), daterange)
+    @test (12,1,) == size(etv)
+
+end
 
 
 end # module
