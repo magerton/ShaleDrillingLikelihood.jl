@@ -10,10 +10,10 @@ abstract type AbstractObservation <: AbstractDataStructure end
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
 "Observation Groups are associated with an individual and shock (ψ₁,ψ₂)"
-struct ObservationGroup{D<:AbstractDataSet} <: AbstractDataStructure
+struct ObservationGroup{D<:AbstractDataStructure} <: AbstractDataStructure
     data::D
     i::Int
-    function ObservationGroup(data::D, i::Int) where {D<:AbstractDataSet}
+    function ObservationGroup(data::D, i::Int) where {D<:AbstractDataStructure}
         1 <= i <= length(data) || throw(BoundsError(data,i))
         return new{D}(data,i)
     end
@@ -59,6 +59,7 @@ obslength(d::AbstractDataSet, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
 _data(g::ObservationGroup) = g.data
 _i(g::ObservationGroup) = g.i
 _nparm(g::ObservationGroup) = _nparm(_data(g))
+_model(g::ObservationGroup) = _model(_data(g))
 
 length(    g::ObservationGroup) = grouplength(_data(g), _i(g))
 grouprange(g::ObservationGroup) = grouprange( _data(g), _i(g))

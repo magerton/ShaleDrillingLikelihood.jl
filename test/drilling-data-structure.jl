@@ -6,6 +6,7 @@ using Random
 using StatsBase
 using InteractiveUtils
 using Dates
+using BenchmarkTools
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
     AbstractDrillModel, DrillModel,
@@ -15,14 +16,16 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
 @testset "Drilling Data Structure" begin
 
-
-    nt = 12
-    startdate = Date(2003,10)
-    daterange = range(startdate; step=Quarter(1), length=nt)
-    etv = ExogTimeVars((randn(nt),), daterange)
-    @test (12,1,) == size(etv)
+    @testset "Exog Time Vars" begin
+        nt = 12
+        startdate = Date(2003,10)
+        daterange = range(startdate; step=Quarter(1), length=nt)
+        etv = ExogTimeVars([(x,) for x in randn(nt)], daterange)
+        @test (12,1,) == size(etv)
+        @test etv[2] == etv[Date(2004,1)]
+        @test_throws DomainError etv[Date(2004,2)]
+    end
 
 end
-
 
 end # module
