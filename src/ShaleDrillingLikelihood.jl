@@ -10,6 +10,7 @@ using Dates
 import Base: length, size, iterate, firstindex, lastindex, getindex, IndexStyle, view, ==, eltype
 using StatsBase: countmap, sample
 using Base: OneTo
+using Base.Iterators: flatten
 using Dates: Month
 
 using LinearAlgebra: checksquare

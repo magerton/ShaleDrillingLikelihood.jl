@@ -14,7 +14,7 @@ struct ObservationGroup{D<:AbstractDataStructure} <: AbstractDataStructure
     data::D
     i::Int
     function ObservationGroup(data::D, i::Int) where {D<:AbstractDataStructure}
-        1 <= i <= length(data) || throw(BoundsError(data,i))
+        i ∈ eachindex(data) || throw(BoundsError(data,i))
         return new{D}(data,i)
     end
 end
@@ -37,6 +37,8 @@ length(o::AbstractObservation) = length(_y(o))
 # default method
 length(    d::AbstractDataSet) = length(group_ptr(d))-1
 _num_obs(  d::AbstractDataSet) = length(obs_ptr(d))-1
+eachindex(d::AbstractDataset) = OneTo(length(d))
+
 
 getindex(  d::AbstractDataSet, i::Integer) = ObservationGroup(d,i)
 iterate(   d::AbstractDataSet, i::Integer=1) = i > length(d) ? nothing : (getindex(d, i), i+1,)

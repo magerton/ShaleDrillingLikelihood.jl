@@ -72,15 +72,6 @@ _nusumsq(d::DataOrObsProduction) = d.nusumsq
 
 obs_ptr(  d::DataProduce) = d.obs_ptr
 group_ptr(d::DataProduce) = d.group_ptr
-length(   d::DataProduce) = length(group_ptr(d))-1
-
-groupstart( d::DataProduce, i::Integer) = getindex(group_ptr(d), i)
-grouplength(d::DataProduce, i::Integer) = groupstart(d,i+1) - groupstart(d,i)
-grouprange( d::DataProduce, i::Integer) = groupstart(d,i) : groupstart(d,i+1)-1
-
-obsstart( d::DataProduce, j::Integer) = getindex(obs_ptr(d),j)
-obslength(d::DataProduce, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
-obsrange( d::DataProduce, j::Integer) = obsstart(d,j) : obsstart(d,j+1)-1
 
 # Observation-specific interfaces
 #---------------------------
@@ -197,7 +188,7 @@ a random draw of `ntrange` observations.
 function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vector)
 
     ngroups = length(psi)
-    @assert length(theta) > 3
+    length(theta) > 3 || throw(DimensionMismatch())
     alphapsi = theta[1]
     beta = theta[2:end-2]
     sigeta, sigu = theta[end-1:end]
