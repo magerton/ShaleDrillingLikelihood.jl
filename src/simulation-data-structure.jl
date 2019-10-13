@@ -95,3 +95,8 @@ end
 
 update_ψ1!(s::SimulationDraws, ρ)    = update_ψ1!(   _ψ1(s),    _u(s), _v(s), ρ)
 update_dψ1dρ!(s::SimulationDraws, ρ) = update_dψ1dρ!(_dψ1dρ(s), _u(s), _v(s), ρ)
+
+function update!(sim::SimulationDraws,ρ)
+    update_ψ1!(sim, ρ)
+    update_dψ1dρ!(sim, ρ)
+end

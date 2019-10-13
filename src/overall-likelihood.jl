@@ -30,28 +30,23 @@ end
 
 
 function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix,
-    dattup::NTuple{2,AbstractDataSet},
+    dattup::Union{Tuple{DataRoyalty,DataProduce},Tuple{DataDrill,DataRoyalty,DataProduce}},
     theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
     nparm, num_i = size(tmpgrad)
     all(length.(dattup) .== num_i) || throw(DimensionMismatch())
     nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
 
+    # indexes for theta
     idxs = idx_theta(dattup)
-    dat_roy, dat_pdxn = dattup
-    theta_roy, theta_pdxn = map(idx -> view(theta, idx), idxs)
+    thetavws = map(idx -> view(theta, idx), idxs)
 
-    ρ = first(theta_roy)
-
-    # for royalty
-    update_ψ1!(sim, ρ)
-    update_dψ1dρ!(sim, ρ)
-    update_xbeta!(dat_roy, theta_royalty_β(dat_roy, theta_roy))
-
-    # for pdxn
-    update_xsum!(dat_pdxn)
-    update_nu!(dat_pdxn, theta_pdxn)
-    update_xpnu!(dat_pdxn)
+    # do updates
+    ρ = first(thetavws[end-1])
+    update!(sim, ρ)
+    for (dat,thetavw) in zip(dattup,thetavws)
+        @views update!(dat, thetavw)
+    end
 
     LL = 0.0
     fill!(tmpgrad, 0)

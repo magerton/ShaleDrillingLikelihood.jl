@@ -1,6 +1,7 @@
-export ObservationDrilling
+export ObservationDrill
 
 # drilling data
 #----------------------------
 
-struct ObservationDrilling <: AbstractDataStructure end
+struct ObservationDrill <: AbstractDataStructure end
+struct DataDrill <: AbstractDataSet end

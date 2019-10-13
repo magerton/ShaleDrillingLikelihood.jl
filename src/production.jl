@@ -86,7 +86,6 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
 end
 
 
-
 function simloglik!(grp::ObservationGroupProduce, theta, sim, dograd)
     for obs in grp
         simloglik_produce!(obs, theta, sim)
@@ -109,8 +108,7 @@ function grad_simloglik_produce!(
     logM = log(M)
 
     # given θ update ν = y - X'β
-    update_nu!(data, θ)
-    update_xpnu!(data)
+    update!(data,θ)
     fill!(grad, 0)
 
     LL = 0.0

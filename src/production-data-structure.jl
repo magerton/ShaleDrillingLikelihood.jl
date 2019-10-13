@@ -107,6 +107,7 @@ end
 @deprecate ObservationProduce(d::DataProduce,j::Integer) Observation(d,j)
 
 function update_nu!(d::DataOrObsProduction, theta)
+    length(theta) == _nparm(d) || throw(DimensionMismatch())
     _nu(d) .= _y(d) - _x(d)'*theta_produce_β(d,theta)
     let d = d
         for j in OneTo(_num_obs(d))
@@ -134,6 +135,11 @@ end
 
 update_xsum!(data::DataProduce) = update_over_obs(update_xsum!, data)
 update_xpnu!(data::DataProduce) = update_over_obs(update_xpnu!, data)
+
+function update!(d::DataProduce, theta)
+    update_nu!(d, theta)
+    update_xpnu!(d)
+end
 
 # Abstract data strucutres
 #---------------------------

@@ -73,6 +73,8 @@ function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
     return nothing
 end
 
+update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
+
 # Iteration over data
 #---------------------------
 function Observation(d::DataRoyalty, k::Integer)
