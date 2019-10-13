@@ -116,7 +116,9 @@ end
     # simulations
     uv = SimulationDraws(M,nobs)
 
-    # @code_warntype simloglik_royalty!(rli, theta, false)
+    # let obs = first(first(data)), simi = view(uv,1)
+    #     @code_warntype simloglik_royalty!(obs, theta, simi, false)
+    # end
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))

@@ -4,32 +4,31 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{2,ObservationGroup}, th
     logM = log(_num_sim(sim))
 
     ncoefs = 0
-    for grp in grptup
-        nparm = _nparm(grp)
-        subthet = view(theta, ncoefs .+ OneTo(nparm) )
-        ncoefs += nparm
-        simloglik!(grp, subthet, sim, dograd)
-    end
+    grp_roy, grp_pdxn = grptup
+
+    @views theta_roy  = theta[1:_nparm(grp_roy)]
+    @views grad_roy   = grad[ 1:_nparm(grp_roy)]
+
+    @views theta_pdxn = theta[1+_nparm(grp_roy):end]
+    @views grad_pdxn  = grad[ 1+_nparm(grp_roy):end]
+
+    simloglik!(grp_roy,  theta_roy, sim, dograd)
+    simloglik!(grp_pdxn, theta_pdxn, sim, dograd)
 
     if !dograd
         LL = logsumexp(_llm(sim)) - logM
     else
         LL = logsumexp_and_softmax!(_llm(sim)) - logM
         ncoefs = 0
-        for grp in grptup
-            nparm = _nparm(grp)
-            subthet = view(theta, ncoefs .+ OneTo(nparm) )
-            subgrad = view(grad,  ncoefs .+ OneTo(nparm) )
-            ncoefs += nparm
-            grad_simloglik!(subgrad, grp, subthet, sim)
-        end
+        grad_simloglik!(grad_roy,  grp_roy,  theta_roy, sim)
+        grad_simloglik!(grad_pdxn, grp_pdxn, theta_pdxn, sim)
     end
     return LL
 end
 
 
 function simloglik!(grad, hess, tmpgrad,
-    dattup::NTuple{2,AbstractDataSet},
+    dattup::Tuple{DataRoyalty,DataProduce},
     theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
 

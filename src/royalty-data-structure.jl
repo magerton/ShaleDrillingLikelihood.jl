@@ -43,6 +43,8 @@ end
 
 const DataOrObsRoyalty = Union{ObservationRoyalty{M},DataRoyalty{M}} where {M}
 
+const ObservationGroupRoyalty = ObservationGroup{DataRoyalty}
+
 # Common interfaces
 #---------------------------
 

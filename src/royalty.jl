@@ -74,6 +74,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     bm  = _bm(sim)
     cm  = _cm(sim)
     LLm = _LLm(sim)
+    M = _num_sim(sim)
 
     psi = _ψ1(sim)
 
@@ -81,22 +82,22 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     xbeta = _xbeta(obs)
 
     βψ = theta_royalty_ψ(obs, theta)
-    βx = theta_royalty_β(obs, theta)
 
-    # @inbounds @threads
-    for (m,psi) in enumerate(_ψ1(sim))
-        zm  = xbeta + βψ * psi
-        eta12 = η12(obs, theta, zm)
+    let xbeta=xbeta, βψ=βψ, obs=obs, theta=theta, dograd=dograd
+        @inbounds @threads for m in OneTo(M)
+            zm  = xbeta + βψ * psi[m]
+            eta12 = η12(obs, theta, zm)
 
-        if dograd == false
-            LLm[m] += loglik_royalty(obs, eta12)
-        else
-            η1, η2 = eta12
-            F,LL  = lik_loglik_royalty(obs, eta12)
-            LLm[m] += LL
-            am[m] = normpdf(η1) / F
-            bm[m] = normpdf(η2) / F
-            cm[m] = dlogcdf_trunc(η1, η2)
+            if dograd == false
+                LLm[m] += loglik_royalty(obs, eta12)
+            else
+                η1, η2 = eta12
+                F,LL  = lik_loglik_royalty(obs, eta12)
+                LLm[m] += LL
+                am[m] = normpdf(η1) / F
+                bm[m] = normpdf(η2) / F
+                cm[m] = dlogcdf_trunc(η1, η2)
+            end
         end
     end
     return nothing
