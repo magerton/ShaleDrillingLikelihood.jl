@@ -138,12 +138,7 @@ update_xpnu!(data::DataProduce) = update_over_obs(update_xpnu!, data)
 # Abstract data strucutres
 #---------------------------
 
-_num_x(d::AbstractDataStructureProduction) = _num_x(d)
 _nparm(d::AbstractDataStructureProduction) = _num_x(d)+3
-@deprecate nparm(d::AbstractDataStructureProduction) _nparm(d)
-
-@deprecate length(m::ProductionModel, d::AbstractDataStructureProduction) _nparm(d)
-@deprecate _num_x(m::ProductionModel, d::AbstractDataStructureProduction) _num_x(d)
 
 idx_produce_ψ(  d::AbstractDataStructureProduction) = 1
 idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))

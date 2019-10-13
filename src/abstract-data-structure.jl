@@ -58,6 +58,7 @@ obslength(d::AbstractDataSet, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
 
 _data(g::ObservationGroup) = g.data
 _i(g::ObservationGroup) = g.i
+_nparm(g::ObservationGroup) = _nparm(_data(g))
 
 length(    g::ObservationGroup) = grouplength(_data(g), _i(g))
 grouprange(g::ObservationGroup) = grouprange( _data(g), _i(g))

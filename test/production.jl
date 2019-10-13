@@ -32,7 +32,6 @@ println("Starting production likelihood tests")
     M = 500
 
     data = DataProduce(num_i, 10, 10:20, theta)
-    pm   = ProductionModel()
     allsim = SimulationDraws(M,num_i)
 
     @test length(theta) == _nparm(data)
@@ -43,8 +42,8 @@ println("Starting production likelihood tests")
     @test     theta_produce_σ2η(data,theta)  == theta[end-1]
     @test     theta_produce_σ2u(data,theta)  == theta[end]
 
-    ff(x)          = grad_simloglik_produce!(zeros(length(x)), data, pm, x, allsim, false)
-    ffgg!(grad, x) = grad_simloglik_produce!(grad,             data, pm, x, allsim, true)
+    ff(x)          = grad_simloglik_produce!(zeros(length(x)), data, x, allsim, false)
+    ffgg!(grad, x) = grad_simloglik_produce!(grad,             data, x, allsim, true)
 
     tmpgrad = similar(theta)
     ff(theta)
@@ -76,7 +75,7 @@ _qm(sim) .= softmax(randn(M))
 @show @benchmark psi2_wtd_sum_and_sumsq(simi)
 
 obs = Observation(data,1)
-@show @benchmark simloglik_produce!(obs, ProductionModel(), theta, simi)
+@show @benchmark simloglik_produce!(obs, theta, simi)
 
 
 end # module

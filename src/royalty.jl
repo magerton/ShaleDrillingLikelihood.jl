@@ -133,6 +133,14 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     l < L && ( grad[idx_royalty_κ(obs,l)]   += dot(qm, bm) )
 end
 
+function simloglik!(grp::ObservationGroup{<:DataRoyalty}, theta, sim, dograd)
+    simloglik_royalty!(first(grp), theta, sim, dograd)
+end
+
+function grad_simloglik!(grad, grp::ObservationGroup{<:DataRoyalty}, theta, sim)
+    grad_simloglik_royalty!(grad, first(grp), theta, sim)
+end
+
 # ---------------------------------------------
 # mini version of royalty computations for sake of testing
 # ---------------------------------------------

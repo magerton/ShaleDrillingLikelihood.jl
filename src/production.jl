@@ -2,7 +2,7 @@
 # Production log lik
 # ---------------------------------------------
 
-function loglik_produce_scalars(obs::ObservationProduce, model::ProductionModel, theta::AbstractVector)
+function loglik_produce_scalars(obs::ObservationProduce, theta::AbstractVector)
 
     αψ  = theta_produce_ψ(  obs, theta)
     σ2η = theta_produce_σ2η(obs, theta)
@@ -26,8 +26,8 @@ function loglik_produce_scalars(obs::ObservationProduce, model::ProductionModel,
     return A0, A1, A2
 end
 
-function simloglik_produce!(obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
-    a, b, c = loglik_produce_scalars(obs, model, theta)
+function simloglik_produce!(obs::ObservationProduce, theta::AbstractVector, sim::SimulationDrawsVector)
+    a, b, c = loglik_produce_scalars(obs, theta)
     f(x) = a + (b + c*x)*x
     qm = _qm(sim) # breaks 1.1.0
     qm .+= f.(_psi2(sim))
@@ -37,7 +37,7 @@ end
 # Production gradient
 # ---------------------------------------------
 
-function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, model::ProductionModel, theta::AbstractVector, sim::SimulationDrawsVector)
+function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, theta::AbstractVector, sim::SimulationDrawsVector)
 
     αψ  = theta_produce_ψ(  obs, theta)
     σ2η = theta_produce_σ2η(obs, theta)
@@ -87,12 +87,26 @@ end
 
 
 
+function simloglik!(grp::ObservationGroupProduce, theta, sim, dograd)
+    for obs in grp
+        simloglik_produce!(obs, theta, sim)
+    end
+end
+
+function grad_simloglik!(grad, grp::ObservationGroupProduce, theta, sim)
+    for obs in grp
+        grad_simloglik_produce!(grad, obs, theta, sim)
+    end
+end
+
+
 function grad_simloglik_produce!(
-    grad::AbstractVector, data::DataProduce, model::ProductionModel,
+    grad::AbstractVector, data::DataProduce,
     θ::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
     qm = _qm(sim)
     M = _num_sim(sim)
+    logM = log(M)
 
     # given θ update ν = y - X'β
     update_nu!(data, θ)
@@ -105,15 +119,15 @@ function grad_simloglik_produce!(
         fill!(qm, 0)
 
         for obs in grp
-            simloglik_produce!(obs, model, θ, simi)
+            simloglik_produce!(obs, θ, simi)
         end
 
         if !dograd
-            LL += logsumexp(qm) - log(M)
+            LL += logsumexp(qm) - logM
         else
-            LL += logsumexp_and_softmax!(qm) - log(M)
+            LL += logsumexp_and_softmax!(qm) - logM
             for obs in grp
-                grad_simloglik_produce!(grad, obs, model, θ, simi)
+                grad_simloglik_produce!(grad, obs, θ, simi)
             end
         end
     end
