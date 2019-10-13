@@ -109,7 +109,7 @@ end
 "gradient for simulated likelihood when integrating"
 function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, theta::AbstractVector, sim::SimulationDrawsVector)
 
-    length(grad) == length(theta) == nparm(obs) || throw(DimensionMismatch())
+    length(grad) == length(theta) == _nparm(obs) || throw(DimensionMismatch())
 
     ψ1 = _ψ1(sim)
     dψ1dρ = _dψ1dρ(sim)

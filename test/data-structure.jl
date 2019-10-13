@@ -87,7 +87,7 @@ end
         obsptr = [j*n+1 for j in 0:nwell]
         groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
 
-        d = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groupptr)
+        d = DataProduce(ProductionModel(),y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groupptr)
         obs = Observation(d,2)
         @test isa(obs, ObservationProduce)
 
@@ -186,7 +186,7 @@ end
             end
         end
 
-        data = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groups)
+        data = DataProduce(ProductionModel(),y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groups)
 
         for g in data
             i = _i(g)

@@ -15,7 +15,8 @@ using ShaleDrillingLikelihood: _num_x,
     simloglik_produce!, grad_simloglik_produce!, loglik_produce_scalars,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
-    SimulationDraws, psi2_wtd_sum_and_sumsq, Observation
+    SimulationDraws, psi2_wtd_sum_and_sumsq, Observation,
+    _nparm
 
 println("Starting production likelihood tests")
 
@@ -34,13 +35,13 @@ println("Starting production likelihood tests")
     pm   = ProductionModel()
     allsim = SimulationDraws(M,num_i)
 
-    @test length(theta) == length(pm,data)
-    @test _num_x(pm,data) == k
+    @test length(theta) == _nparm(data)
+    @test _num_x(data) == k
 
-    @test     theta_produce_ψ(  pm,data,theta)  == theta[1]
-    @test all(theta_produce_β(  pm,data,theta) .== theta[1 .+ (1:k)])
-    @test     theta_produce_σ2η(pm,data,theta)  == theta[end-1]
-    @test     theta_produce_σ2u(pm,data,theta)  == theta[end]
+    @test     theta_produce_ψ(  data,theta)  == theta[1]
+    @test all(theta_produce_β(  data,theta) .== theta[1 .+ (1:k)])
+    @test     theta_produce_σ2η(data,theta)  == theta[end-1]
+    @test     theta_produce_σ2u(data,theta)  == theta[end]
 
     ff(x)          = grad_simloglik_produce!(zeros(length(x)), data, pm, x, allsim, false)
     ffgg!(grad, x) = grad_simloglik_produce!(grad,             data, pm, x, allsim, true)

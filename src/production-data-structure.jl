@@ -7,7 +7,8 @@ struct ProductionModel <: AbstractProductionModel end
 # Abstract data strucutres
 #---------------------------
 
-struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}} <: AbstractObservation
+struct ObservationProduce{PM<:ProductionModel,T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}} <: AbstractObservation
+    model::PM
     y::V1
     x::M
     xsum::V2
@@ -15,15 +16,16 @@ struct ObservationProduce{T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T},
     xpnu::V2
     nusum::T
     nusumsq::T
-    function ObservationProduce(y::V1, x::M, xsum::V2, nu::V1, xpnu::V2,nusum::T,nusumsq::T) where {T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
+    function ObservationProduce(model::PM, y::V1, x::M, xsum::V2, nu::V1, xpnu::V2,nusum::T,nusumsq::T) where {PM<:ProductionModel,T<:Real, V1<:AbstractVector{T}, V2<:AbstractVector{T}, M <:AbstractMatrix{T}}
         k,n = size(x)
         length(nu) == length(y) == n  || throw(DimensionMismatch())
         size(xpnu,1) == size(xsum,1) == k || throw(DimensionMismatch())
-        return new{T,V1,V2,M}(y,x,xsum,nu,xpnu,nusum,nusumsq)
+        return new{PM,T,V1,V2,M}(model,y,x,xsum,nu,xpnu,nusum,nusumsq)
     end
 end
 
-struct DataProduce{T<:Real} <: AbstractDataSet
+struct DataProduce{M<:ProductionModel,T<:Real} <: AbstractDataSet
+    model::M
     y::Vector{T}
     x::Matrix{T}
     xsum::Matrix{T}
@@ -35,7 +37,10 @@ struct DataProduce{T<:Real} <: AbstractDataSet
 
     obs_ptr::Vector{Int}
     group_ptr::Vector{Int}
-    function DataProduce(y::Vector{T}, x::Matrix{T}, xsum::Matrix{T}, nu::Vector{T}, xpnu::Matrix{T}, nusum::Vector{T}, nusumsq::Vector{T}, obs_ptr::Vector{Int}, group_ptr::Vector{Int}) where {T<:Real}
+    function DataProduce(
+        model::M, y::Vector{T}, x::Matrix{T}, xsum::Matrix{T}, nu::Vector{T}, xpnu::Matrix{T},
+        nusum::Vector{T}, nusumsq::Vector{T}, obs_ptr::Vector{Int}, group_ptr::Vector{Int}
+    ) where {M<:ProductionModel,T<:Real}
         k,n = size(x)
         length(nu) == length(y) == n  || throw(DimensionMismatch())
         size(xsum,1) == k || throw(DimensionMismatch())
@@ -44,7 +49,7 @@ struct DataProduce{T<:Real} <: AbstractDataSet
         issorted(group_ptr) || throw(error("group_ptr not sorted"))
         length(nusum)+1 == length(nusumsq)+1 == last(group_ptr) == length(obs_ptr) || throw(DimensionMismatch("last(group_ptr)-1 != length(obs_ptr)"))
         last(obs_ptr)-1 == n || throw(DimensionMismatch("last(obs_ptr)-1 != length(y)"))
-        return new{T}(y,x,xsum,nu,xpnu, nusum, nusumsq, obs_ptr,group_ptr)
+        return new{M,T}(model,y,x,xsum,nu,xpnu, nusum, nusumsq, obs_ptr,group_ptr)
     end
 end
 
@@ -96,13 +101,13 @@ function Observation(d::DataProduce, j::Integer)
     xpnu = view(_xpnu(d), :, j)
     nusum = getindex(_nusum(d), j)
     nusumsq = getindex(_nusumsq(d),j)
-    return ObservationProduce(y, x, xsum, nu, xpnu, nusum, nusumsq)
+    return ObservationProduce(_model(d),y, x, xsum, nu, xpnu, nusum, nusumsq)
 end
 
 @deprecate ObservationProduce(d::DataProduce,j::Integer) Observation(d,j)
 
-function update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta)
-    _nu(d) .= _y(d) - _x(d)'*theta_produce_β(m,d,theta)
+function update_nu!(d::DataOrObsProduction, theta)
+    _nu(d) .= _y(d) - _x(d)'*theta_produce_β(d,theta)
     let d = d
         for j in OneTo(_num_obs(d))
             obs = Observation(d, j)
@@ -113,6 +118,8 @@ function update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta)
     end
     return nothing
 end
+
+@deprecate update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta) update_nu!(d,theta)
 
 function update_xsum!(obs::ObservationProduce)
     xsum = reshape(_xsum(obs), :, 1)
@@ -131,19 +138,23 @@ update_xpnu!(data::DataProduce) = update_over_obs(update_xpnu!, data)
 # Abstract data strucutres
 #---------------------------
 
-_num_x(m::ProductionModel, d::AbstractDataStructureProduction) = _num_x(d)
-length(m::ProductionModel, d::AbstractDataStructureProduction) = _num_x(d) + 3
+_num_x(d::AbstractDataStructureProduction) = _num_x(d)
+_nparm(d::AbstractDataStructureProduction) = _num_x(d)+3
+@deprecate nparm(d::AbstractDataStructureProduction) _nparm(d)
 
-idx_produce_ψ(  m::ProductionModel, d) = 1
-idx_produce_β(  m::ProductionModel, d) = 1 .+ (1:_num_x(d))
-idx_produce_σ2η(m::ProductionModel, d) = 2 + _num_x(d)
-idx_produce_σ2u(m::ProductionModel, d) = 3 + _num_x(d)
+@deprecate length(m::ProductionModel, d::AbstractDataStructureProduction) _nparm(d)
+@deprecate _num_x(m::ProductionModel, d::AbstractDataStructureProduction) _num_x(d)
 
-theta_produce(    m::ProductionModel, d, theta) = theta
-theta_produce_ψ(  m::ProductionModel, d, theta) = theta[idx_produce_ψ(m,d)]
-theta_produce_β(  m::ProductionModel, d, theta) = view(theta, idx_produce_β(m,d))
-theta_produce_σ2η(m::ProductionModel, d, theta) = theta[idx_produce_σ2η(m,d)]
-theta_produce_σ2u(m::ProductionModel, d, theta) = theta[idx_produce_σ2u(m,d)]
+idx_produce_ψ(  d::AbstractDataStructureProduction) = 1
+idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))
+idx_produce_σ2η(d::AbstractDataStructureProduction) = 2 + _num_x(d)
+idx_produce_σ2u(d::AbstractDataStructureProduction) = 3 + _num_x(d)
+
+theta_produce(    d::AbstractDataStructureProduction, theta) = theta
+theta_produce_ψ(  d::AbstractDataStructureProduction, theta) = theta[idx_produce_ψ(d)]
+theta_produce_β(  d::AbstractDataStructureProduction, theta) = view(theta, idx_produce_β(d))
+theta_produce_σ2η(d::AbstractDataStructureProduction, theta) = theta[idx_produce_σ2η(d)]
+theta_produce_σ2u(d::AbstractDataStructureProduction, theta) = theta[idx_produce_σ2u(d)]
 
 # Dataset generator
 #---------------------------
@@ -165,7 +176,7 @@ function DataProduce(y::Vector{T}, x::Matrix{T}, obs_ptr::Vector, group_ptr::Vec
     nusum = Vector{T}(undef, nwells)
     nusumsq = similar(nusum)
 
-    data = DataProduce(y,x,xsum,nu,xpnu,nusum,nusumsq,obs_ptr,group_ptr)
+    data = DataProduce(ProductionModel(),y,x,xsum,nu,xpnu,nusum,nusumsq,obs_ptr,group_ptr)
 
     update_xsum!(data)
 
@@ -220,7 +231,7 @@ function DataProduce(ngroups::Int, maxwells::Int, ntrange::UnitRange, theta::Vec
         end
     end
 
-    update_nu!(data, ProductionModel(), theta)
+    update_nu!(data, theta)
 
     return data
 end
