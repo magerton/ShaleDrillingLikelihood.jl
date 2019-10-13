@@ -105,12 +105,11 @@ end
     eps    = randn(nobs)
     theta  = [0.1, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
 
-    # make more data
-    rstar  = X'*theta[2 .+ (1:k)] .+ eps
-    l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
-    data = DataRoyalty(RM,l,X)
+    data = DataRoyalty(500, theta, L)
 
     # check indexing is correct
+    @assert theta_royalty_ρ(data, theta) == theta[1]
+    @assert theta_royalty_ψ(data, theta) == theta[2]
     @test all(theta_royalty_β(data, theta) .== theta[2 .+ (1:k)])
     @test all(theta_royalty_κ(data, theta) .== theta[end-L+2:end])
 

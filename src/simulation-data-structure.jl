@@ -76,16 +76,22 @@ end
 
 
 # so we can pre-calculate shocks
-function update_ψ1!(s::SimulationDraws, ρ::Real)
+function update_ψ1!(ψ1::AA, u::AA, v::AA, ρ::Real) where {AA<:AbstractArray}
+    size(ψ1) == size(u) == size(v) || throw(DimensionMismatch())
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
     wt = sqrt(1-ρ^2)
-    _ψ1(s) .= ρ.*_u(s) .+ wt.*_v(s)
+    ψ1 .= ρ.*u .+ wt.*v
     return nothing
 end
 
-function update_dψ1dρ!(s::SimulationDraws, ρ::Real)
+
+function update_dψ1dρ!(dψ1dρ::A, u::A, v::A, ρ::Real) where {A<:AbstractArray}
+    size(dψ1dρ) == size(u) == size(v) || throw(DimensionMismatch())
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
     rhoinvwt = ρ/sqrt(1-ρ^2)
-    _dψ1dρ(s) .= _u(s) .- rhoinvwt .* _v(s)
+    dψ1dρ .= u .- rhoinvwt .* v
     return nothing
 end
+
+update_ψ1!(s::SimulationDraws, ρ)    = update_ψ1!(   _ψ1(s),    _u(s), _v(s), ρ)
+update_dψ1dρ!(s::SimulationDraws, ρ) = update_dψ1dρ!(_dψ1dρ(s), _u(s), _v(s), ρ)

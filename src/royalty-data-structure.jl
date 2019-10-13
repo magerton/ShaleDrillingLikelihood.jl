@@ -124,3 +124,37 @@ theta_royalty_κ(d::DataOrObsRoyalty, theta) = view(theta, idx_royalty_κ(d))
 theta_royalty_κ(d::DataOrObsRoyalty, theta, l) = theta[idx_royalty_κ(d,l)]
 # check if theta is okay
 theta_royalty_check(d::DataOrObsRoyalty, theta) = issorted(theta_royalty_κ(d,theta))
+
+
+"""
+    DataRoyalty(u,v,theta,L)
+
+Simulate dataset for `RoyaltyModel` using `u,v` to make `ψ1`
+"""
+function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Integer=3)
+
+    L >= 3 || throw(error("L = $L !>= 3"))
+    k = length(theta) - (L-1) - 2
+    k >= 1 || throw(error("theta too short"))
+    nobs = length(u)
+    nobs == length(v) || throw(DimensionMismatch())
+
+    # get ψ1
+    ψ1 = similar(u)
+    dψ1dρ = similar(u)
+    update_ψ1!(ψ1, u, v, first(theta))
+    update_dψ1dρ!(dψ1dρ, u, v, first(theta))
+
+    X      = randn(k,nobs)
+    eps    = randn(nobs)
+
+    rstar  = theta[2] .* ψ1 .+ X'*theta[2 .+ (1:k)] .+ eps
+    l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
+    data = DataRoyalty(RoyaltyModel(),l,X)
+
+    return data
+end
+
+function DataRoyalty(num_i::Integer, theta::Vector, L::Integer=3)
+    return DataRoyalty(randn(num_i), randn(num_i), theta, L)
+end
