@@ -5,7 +5,7 @@ Set `r` = softmax(x) and return `logsumexp(x)`.
 """
 function logsumexp_and_softmax!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
     n = length(x)
-    @assert length(r) == n
+    length(r) == n || throw(DimensionMismatch())
     isempty(x) && return -T(Inf)
 
     u = maximum(x)                                       # max value used to re-center
@@ -29,7 +29,7 @@ logsumexp_and_softmax!(x) = logsumexp_and_softmax!(x,x)
     sumprod(f, x, y, u, v) = sum(x .* y .* f.(u, v))
 """
 function sumprod(f::Function, x::AbstractArray{T}, y::AbstractArray{T}, u::AbstractArray{T}, v::AbstractArray{T}) where {T<:Real}
-    @assert length(x)==length(y)==length(u)==length(v)
+    length(x)==length(y)==length(u)==length(v) || throw(DimensionMismatch())
     s = zero(T)
     @inbounds @simd for i in eachindex(x)
         s += x[i] * y[i] * f(u[i], v[i])
@@ -52,7 +52,7 @@ end
 sumprod3 = sum( x .* y .* z)
 """
 function sumprod3(x::AbstractArray{T}, y::AbstractArray{T}, z::AbstractArray{T}) where {T<:Real}
-    @assert length(x)==length(y)==length(z)
+    length(x)==length(y)==length(z) || throw(DimensionMismatch())
     s = zero(T)
     @inbounds @simd for i in eachindex(x)
         s += x[i] * y[i] * z[i]

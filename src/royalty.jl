@@ -7,7 +7,7 @@ function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     L = _num_choices(obs)
     η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
     η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
-    @assert η1 < η2
+    η1 < η2 || throw(error("η1 < η2 is false"))
     return η1, η2
 end
 
@@ -158,7 +158,7 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
     L = _num_choices(data)
     ncoef = _nparm(data)
 
-    @assert ncoef == length(grad)
+    ncoef == length(grad) || throw(DimensionMismatch())
 
     gradtmp = zeros(Float64, ncoef, n)
     LL      = Vector{Float64}(undef, n)

@@ -35,8 +35,8 @@ struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataS
         k,n = size(x)
         length(y) == n  || throw(DimensionMismatch())
         l,L = extrema(y)
-        @assert l == 1
-        @assert L == length(countmap(y))
+        l == 1 || throw(error())
+        L == length(countmap(y)) || throw(error())
         return new{M,I,T}(model, y, x, Vector{T}(undef, n), L)
     end
 end

@@ -38,7 +38,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     eps    = randn(nobs)
 
     theta = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
-    @assert length(theta) == k + L - 1
+    @test length(theta) == k + L - 1
 
     rstar = X'*theta[1:k] .+ eps
     l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
@@ -108,8 +108,8 @@ end
     data = DataRoyalty(500, theta, L)
 
     # check indexing is correct
-    @assert theta_royalty_ρ(data, theta) == theta[1]
-    @assert theta_royalty_ψ(data, theta) == theta[2]
+    @test theta_royalty_ρ(data, theta) == theta[1]
+    @test theta_royalty_ψ(data, theta) == theta[2]
     @test all(theta_royalty_β(data, theta) .== theta[2 .+ (1:k)])
     @test all(theta_royalty_κ(data, theta) .== theta[end-L+2:end])
 

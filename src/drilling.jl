@@ -25,13 +25,13 @@ end
 
 
 function simloglik_drill!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
-    @assert length(y) == length(x) == num_i * num_t
+    length(y) == length(x) == num_i * num_t || throw(DimensionMismatch())
     L = maximum(y)
     M = size(psi,1)
     K = length(thet)
-    @assert minimum(y) == 1
-    @assert size(psi,2) == num_i
-    @assert length(grad) ∈ (0,K)
+    minimum(y) == 1 || throw(DomainError(y))
+    size(psi,2) == num_i || throw(DimensionMismatch())
+    length(grad) ∈ (0,K) || throw(DimensionMismatch())
 
     dograd = length(grad) > 0
 
