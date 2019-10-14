@@ -37,7 +37,7 @@ length(o::AbstractObservation) = length(_y(o))
 # default method
 length(    d::AbstractDataSet) = length(group_ptr(d))-1
 _num_obs(  d::AbstractDataSet) = length(obs_ptr(d))-1
-eachindex(d::AbstractDataset) = OneTo(length(d))
+eachindex(d::AbstractDataSet) = OneTo(length(d))
 
 
 getindex(  d::AbstractDataSet, i::Integer) = ObservationGroup(d,i)
