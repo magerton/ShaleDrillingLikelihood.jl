@@ -127,11 +127,12 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
             for lease in history
                 l += 1
-                @show typeof(lease)
-                @test isa(lease, DrillingHistoryUnit_Initial)
-                @test isa(_data(lease), DataDrillInitial)
-                @test isa(_data(_data(lease)), DataDrill)
-                # @test length(lease) == 4
+                @test isa(lease, ObservationGroup{<:DrillingHistoryUnit_Initial})
+                @test isa(lease, DrillingHistoryLease)
+                @test isa(_data(lease), DrillingHistoryUnit_Initial)
+                @test isa(_data(_data(lease)), DataDrillInitial)
+                @test isa(DataDrill(lease), DataDrillInitial)
+                @test length(lease) == 4
             end
         end
         @test (i,l) == (1,1,)

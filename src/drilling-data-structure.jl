@@ -108,6 +108,8 @@ _data(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d.data)
 
 # API for DataDrill
 #------------------------------------------
+
+# access DataDrill fields
 _data(   d::DataDrill) = d
 j1ptr(   d::DataDrill) = d.j1ptr
 j2ptr(   d::DataDrill) = d.j2ptr
@@ -118,6 +120,7 @@ ichars(  d::DataDrill) = d.ichars
 tchars(  d::DataDrill) = d.tchars
 j1chars( d::DataDrill) = d.j1chars
 
+# access DataDrill fields from any AbstractDataDrill
 j1ptr(   d::AbstractDataDrill) = j1ptr(_data(d))
 j2ptr(   d::AbstractDataDrill) = j2ptr(_data(d))
 tptr(    d::AbstractDataDrill) = tptr(_data(d))
@@ -128,9 +131,11 @@ tchars(  d::AbstractDataDrill) = tchars(_data(d))
 j1chars( d::AbstractDataDrill) = j1chars(_data(d))
 hasj1ptr(d::AbstractDataDrill) = length(j1ptr(d)) > 0
 
+# length
 length(     data::AbstractDataDrill) = length(j2ptr(data))
 maxj1length(data::AbstractDataDrill) = hasj1ptr(data) ? maximum( diff(j1ptr(data)) ) : 1
 
+# getindex in fields of AbstractDataDrill
 ichars( data::AbstractDataDrill, i::Integer) = getindex(ichars(data),  i)
 j1ptr(  data::AbstractDataDrill, i::Integer) = getindex(j1ptr(data),   i)
 j2ptr(  data::AbstractDataDrill, i::Integer) = getindex(j2ptr(data),   i)
@@ -208,7 +213,7 @@ function iterate(g::DrillingHistoryUnit, j::Integer=firstindex(g))
         throw(BoundsError(g,j))
     elseif j <= lastindex(g)
         jp1 = j == j1stop(g) ? j2ptr(g) : j+1
-        return g, jp1
+        return ObservationGroup(g,j), jp1
     else
         return nothing
     end
@@ -218,7 +223,7 @@ function iterate(g::DrillingHistoryUnit_InitOrDev, j::Integer=firstindex(g))
     if j < firstindex(g)
         throw(BoundsError(g,j))
     elseif j <= lastindex(g)
-        return g, j+1
+        return ObservationGroup(g,j), j+1
     else
         return nothing
     end
