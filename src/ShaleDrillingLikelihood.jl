@@ -30,8 +30,6 @@ const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
 # models
 #---------------------
 
-export AbstractModel
-
 "No model"
 struct NoModel <: AbstractModel end
 
