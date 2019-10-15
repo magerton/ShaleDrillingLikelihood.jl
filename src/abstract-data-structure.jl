@@ -57,13 +57,14 @@ IndexStyle(d::AbstractDataSet) = IndexLinear()
 eltype(    d::AbstractDataSet) = ObservationGroup{typeof(d)}
 
 groupstart( d::AbstractDataSet, i::Integer) = getindex(group_ptr(d), i)
-grouplength(d::AbstractDataSet, i::Integer) = groupstart(d,i+1) - groupstart(d,i)
-grouprange( d::AbstractDataSet, i::Integer) = groupstart(d,i) : groupstart(d,i+1)-1
+groupstop(  d::AbstractDataSet, i::Integer) = groupstart(d,i+1)-1
+grouplength(d::AbstractDataSet, i::Integer) = groupstop(d,i) - groupstart(d,i) + 1
+grouprange( d::AbstractDataSet, i::Integer) = groupstart(d,i) : groupstop(d,i)
 
 obsstart( d::AbstractDataSet, j::Integer) = getindex(obs_ptr(d),j)
-obsrange( d::AbstractDataSet, j::Integer) = obsstart(d,j) : obsstart(d,j+1)-1
-obslength(d::AbstractDataSet, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
-
+obsstop(  d::AbstractDataSet, j::Integer) = obsstart(d,j+1)-1
+obslength(d::AbstractDataSet, j::Integer) = obsstop(d,j) - obsstart(d,j) + 1
+obsrange( d::AbstractDataSet, j::Integer) = obsstart(d,j) : obsstop(d,j)
 # ObservationGroup iteration utilties
 #------------------------------------------
 
