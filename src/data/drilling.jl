@@ -215,6 +215,7 @@ j1start(  g::DrillUnit) = j1start( _data(g), _i(g))
 j1stop(   g::DrillUnit) = j1stop(  _data(g), _i(g))
 j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
 j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
+uniti(    g::DrillUnit) = _i(g)
 
 firstindex(grp::DrillUnit) = InitialDrilling()
 lastindex( grp::DrillUnit) = DevelopmentDrilling()
@@ -243,6 +244,8 @@ eachindex( g::DrillDevelopment) = j2ptr(_data(g))
 firstindex(g::DrillDevelopment) = j2ptr(_data(g))
 lastindex( g::DrillDevelopment) = j2ptr(_data(g))
 
+uniti(g::ObservationGroup) = uniti(_data(g))
+
 # Lease (third layer of iteration)
 #------------------------------------------
 
@@ -252,6 +255,13 @@ length(    g::DrillLease) = tlength(DataDrill(g), _i(g))
 eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
 firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
+
+_y(g::DrillLease) = view(_y(DataDrill(g)), eachindex(g))
+_x(g::DrillLease) = view(_x(DataDrill(g)), eachindex(g))
+
+jtstart(g::DrillLease) = jtstart(DataDrill(g), _i(g))
+ztrange(g::DrillLease) = (jtstart(g)-1) .+ OneTo(length(g))
+zchars( g::DrillLease) = view( zchars(DataDrill(g)), ztrange(g))
 
 function getindex(g::DrillLease, t)
     Observation(DataDrill(g), _i(_data(_data(g))), _i(_data(g)) ,_i(g), t)
