@@ -15,27 +15,27 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     _i, _data, _num_obs, update_nu!, Observation, update!
 
 
-# @testset "SimulationDraws" begin
-#
-#     Random.seed!(1234)
-#     k = 3
-#     nobs = 10
-#     M = 5
-#
-#     u = rand(M, nobs)
-#     v = rand(M, nobs)
-#     qm = zeros(M)
-#     x = SimulationDraws(u,v, similar(u), similar(v), qm, similar(qm), similar(qm), similar(qm))
-#
-#     @test size(x) == (M,nobs)
-#     @test isa(x, SimulationDrawsMatrix)
-#     vw = view(x, 1)
-#     @test isa(vw, SimulationDrawsVector)
-#     @test size(vw) == (M,)
-#
-#     @test size(SimulationDraws(M, nobs)) == (M,nobs,)
-#
-# end
+@testset "SimulationDraws" begin
+
+    Random.seed!(1234)
+    k = 3
+    nobs = 10
+    M = 5
+
+    u = rand(M, nobs)
+    v = rand(M, nobs)
+    qm = zeros(M)
+    x = SimulationDraws(u,v, similar(u), similar(v), qm, similar(qm), similar(qm), similar(qm))
+
+    @test size(x) == (M,nobs)
+    @test isa(x, SimulationDrawsMatrix)
+    vw = view(x, 1)
+    @test isa(vw, SimulationDrawsVector)
+    @test size(vw) == (M,)
+
+    @test size(SimulationDraws(M, nobs)) == (M,nobs,)
+
+end
 
 
 @testset "DataRoyalty" begin

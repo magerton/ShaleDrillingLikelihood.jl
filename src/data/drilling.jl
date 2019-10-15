@@ -84,13 +84,14 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
 
     # drilling histories
     ichars::Vector{ITup}
-    tchars::Vector{NTuple{2,Int}}
+    y::Vector{Int}
+    x::Vector{Int}
 
     # time indices
     zchars::ETV
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
-        jchars, ichars::Vector{ITup}, tchars, zchars::ETV
+        jchars, ichars::Vector{ITup}, y, x, zchars::ETV
     ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple}
 
         # check i
@@ -105,6 +106,10 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
         last(j2ptr) == length(jtstart) == length(tptr)-1     ||
             throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
 
+        # check tchars
+        length(y) == length(x) == last(tptr)-1 ||
+            throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
+
         # pointers are sorted
         issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
             throw(error("Pointers not sorted"))
@@ -115,7 +120,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
             jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
-        return new{M,ETV,ITup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, tchars, zchars)
+        return new{M,ETV,ITup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
     end
 end
 
@@ -129,8 +134,8 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: Abstra
     model::M
     ichars::ITup
     z::ZTup
-    action::Int
-    state::Int
+    y::Int
+    x::Int
 end
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
@@ -138,16 +143,15 @@ function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
     t in trange(d,j)   || throw(BoundsError())
     zt = t - tstart(d,j) + jtstart(d,j)
-    action, state = tchars(d,t)
-    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
+    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), _y(d,t), _x(d,t))
 end
 
 Observation(d::AbstractDataDrill, i, r::AbstractRegimeType, j, t) = Observation(d,i,j,t)
 
 ichars(obs::ObservationDrill) = obs.ichars
 zchars(obs::ObservationDrill) = obs.z
-action(obs::ObservationDrill) = obs.action
-state( obs::ObservationDrill) = obs.state
+@deprecate action(obs::ObservationDrill) _y(obs)
+@deprecate state(obs::ObservationDrill) _x(obs)
 
 # API for DataDrill
 #------------------------------------------
@@ -160,7 +164,6 @@ tptr(    d::DataDrill) = d.tptr
 zchars(  d::DataDrill) = d.zchars
 jtstart( d::DataDrill) = d.jtstart
 ichars(  d::DataDrill) = d.ichars
-tchars(  d::DataDrill) = d.tchars
 j1chars( d::DataDrill) = d.j1chars
 
 # length
@@ -177,7 +180,8 @@ tptr(   d::AbstractDataDrill, j) = getindex(tptr(d),    j)
 jtstart(d::AbstractDataDrill, j) = getindex(jtstart(d), j)
 j1chars(d::AbstractDataDrill, j) = getindex(j1chars(d), j)
 
-tchars( d::AbstractDataDrill, t) = getindex(tchars(d),  t)
+_y(     d::AbstractDataDrill, t) = getindex(_y(d), t)
+_x(     d::AbstractDataDrill, t) = getindex(_x(d), t)
 zchars( d::AbstractDataDrill, t) = getindex(zchars(d), t)
 
 # Iteration through j1
