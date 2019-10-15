@@ -94,7 +94,6 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     end
 end
 
-_data(d::AbstractDataDrill) = d
 DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
@@ -143,35 +142,31 @@ length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = hasj1ptr(d) ? maximum( diff(j1ptr(d)) ) : 1
 
 # getindex in fields of AbstractDataDrill
-ichars( d::AbstractDataDrill, i::Integer) = getindex(ichars(d),  i)
-j1ptr(  d::AbstractDataDrill, i::Integer) = getindex(j1ptr(d),   i)
-j2ptr(  d::AbstractDataDrill, i::Integer) = getindex(j2ptr(d),   i)
-tptr(   d::AbstractDataDrill, j::Integer) = getindex(tptr(d),    j)
-jtstart(d::AbstractDataDrill, j::Integer) = getindex(jtstart(d), j)
-j1chars(d::AbstractDataDrill, j::Integer) = getindex(j1chars(d), j)
-tchars( d::AbstractDataDrill, t::Integer) = getindex(tchars(d),  t)
-zchars( d::AbstractDataDrill, t::Union{Integer,Date}) = getindex(zchars(d), t)
+ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
+j1ptr(  d::AbstractDataDrill, i) = getindex(j1ptr(d),   i)
+j2ptr(  d::AbstractDataDrill, i) = getindex(j2ptr(d),   i)
+
+tptr(   d::AbstractDataDrill, j) = getindex(tptr(d),    j)
+jtstart(d::AbstractDataDrill, j) = getindex(jtstart(d), j)
+j1chars(d::AbstractDataDrill, j) = getindex(j1chars(d), j)
+
+tchars( d::AbstractDataDrill, t) = getindex(tchars(d),  t)
+zchars( d::AbstractDataDrill, t) = getindex(zchars(d), t)
 
 # Iteration through j1
-j1start( d::AbstractDataDrill, i::Integer) = j1ptr(d,i)
-j1stop(  d::AbstractDataDrill, i::Integer) = j1ptr(d,i+1)-1
-j1length(d::AbstractDataDrill, i::Integer)::Int = hasj1ptr(d) ? j1stop(d,i) - j1start(d,i) + 1 : 0
-function j1_range(d::AbstractDataDrill, i::Integer)::UnitRange{Int}
-    if hasj1ptr(d)
-        return j1start(d,i) : j1stop(d,i)
-    else
-        return 1:0
-    end
-end
+j1start( d::AbstractDataDrill, i) = j1ptr(d,i)
+j1stop(  d::AbstractDataDrill, i) = j1ptr(d,i+1)-1
+j1length(d::AbstractDataDrill, i) = hasj1ptr(d) ? j1stop(d,i) - j1start(d,i) + 1 : 0
+j1_range(d::AbstractDataDrill, i) = hasj1ptr(d) ? (j1start(d,i) : j1stop(d,i)) : (1:0)
 
 # iteration through t
-tstart( d::AbstractDataDrill, j::Integer) = tptr(d,j)
-tstop(  d::AbstractDataDrill, j::Integer) = tptr(d,j+1)-1
-trange( d::AbstractDataDrill, j::Integer) = tstart(d,j) : tstop(d,j)
-tlength(d::AbstractDataDrill, j::Integer) = tstop(d,j) - tstart(d,j) + 1
+tstart( d::AbstractDataDrill, j) = tptr(d,j)
+tstop(  d::AbstractDataDrill, j) = tptr(d,j+1)-1
+trange( d::AbstractDataDrill, j) = tstart(d,j) : tstop(d,j)
+tlength(d::AbstractDataDrill, j) = tstop(d,j) - tstart(d,j) + 1
 
 # iteration through zchars
-zcharsvec(d::AbstractDataDrill, t0::Integer) = view(zchars(d), t0:length(zchars(d)))
+zcharsvec(d::AbstractDataDrill, t0) = view(zchars(d), t0:length(zchars(d)))
 
 @deprecate j2_index(data::DataDrill, i::Integer) j2ptr(data,i)
 @deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)

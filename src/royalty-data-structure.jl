@@ -42,8 +42,8 @@ struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataS
 end
 
 const DataOrObsRoyalty = Union{ObservationRoyalty{M},DataRoyalty{M}} where {M}
-const ObservationGroupRoyalty = ObservationGroup{DataRoyalty}
-const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,ObservationGroup{<:DataRoyalty}}
+const ObservationGroupRoyalty = ObservationGroup{<:DataRoyalty}
+const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,ObservationGroupRoyalty}
 
 # Common interfaces
 #---------------------------
@@ -54,8 +54,31 @@ _num_choices(d::DataOrObsRoyalty) = d.num_choices
 # DataRoyalty interface
 #---------------------------
 
-group_ptr(d::DataRoyalty) = OneTo(length(_y(d))+1)
-obs_ptr(  d::DataRoyalty) = OneTo(length(_y(d))+1)
+length(   d::DataRoyalty) = length(_y(d))
+group_ptr(d::DataRoyalty) = OneTo(length(d)+1)
+obs_ptr(  d::DataRoyalty) = OneTo(length(d)+1)
+
+function choice_in_model(d::DataOrObsRoyalty, l::Integer)
+    0 < l <= _num_choices(d) && return true
+    throw(DomainError(l, "$l outside of 1:$(_num_choices(d))"))
+end
+
+# Iteration over data
+#---------------------------
+
+function Observation(d::DataRoyalty, k::Integer)
+    k ∈ eachindex(d) || throw(BoundsError(d,k))
+    y = getindex(_y(d), k)
+    x = view(_x(d), :, k)
+    xbeta = getindex(_xbeta(d), k)
+    return ObservationRoyalty(_model(d), y, x, xbeta, _num_choices(d))
+end
+
+getindex(   g::ObservationGroupRoyalty, k) = Observation(_data(g), getindex(grouprange(g), k))
+Observation(g::ObservationGroupRoyalty, k) = getindex(g,k)
+
+# Observation
+#---------------------------
 
 function ==(a::ObservationRoyalty, b::ObservationRoyalty)
     _y(a) == _y(b) &&
@@ -64,7 +87,7 @@ function ==(a::ObservationRoyalty, b::ObservationRoyalty)
     _num_choices(a) == _num_choices(b)
 end
 
-# Observation-specific interfaces
+# Updating data
 #---------------------------
 
 function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
@@ -75,30 +98,12 @@ end
 
 update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 
-# Iteration over data
-#---------------------------
-
-function Observation(d::DataRoyalty, k::Integer)
-    0 < k < length(d)+1 || throw(BoundsError(d,k))
-    y = getindex(_y(d), k)
-    x = view(_x(d), :, k)
-    xbeta = getindex(_xbeta(d), k)
-    return ObservationRoyalty(_model(d), y, x, xbeta, _num_choices(d))
-end
-
-@deprecate ObservationRoyalty(d::DataRoyalty, k::Integer) Observation(d,k)
-
-# Model / data interfaces
+# Parameter interfaces
 #---------------------------
 
 # length of RoyaltyModel parameters & gradient
 _nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) + 1
 _nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
-
-function choice_in_model(d::DataOrObsRoyalty, l::Integer)
-    0 < l <= _num_choices(d) && return true
-    throw(DomainError(l, "$l outside of 1:$(_num_choices(d))"))
-end
 
 # parameter vector
 idx_royalty_ρ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = 1:0
