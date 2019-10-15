@@ -93,6 +93,9 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     end
 end
 
+_data(d::DataDrill) = d
+DataDrill(d::DataDrill) = _data(d)
+
 # Specify whether we want Initial or Development drilling
 #------------------------------------------
 
@@ -105,12 +108,13 @@ struct DataDrillDevelopment{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tupl
 end
 
 _data(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d.data)
+DataDrill(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d)
 
 # API for DataDrill
 #------------------------------------------
 
 # access DataDrill fields
-_data(   d::DataDrill) = d
+_model(  d::DataDrill) = d.model
 j1ptr(   d::DataDrill) = d.j1ptr
 j2ptr(   d::DataDrill) = d.j2ptr
 tptr(    d::DataDrill) = d.tptr
@@ -120,7 +124,9 @@ ichars(  d::DataDrill) = d.ichars
 tchars(  d::DataDrill) = d.tchars
 j1chars( d::DataDrill) = d.j1chars
 
+
 # access DataDrill fields from any AbstractDataDrill
+_model(  d::AbstractDataDrill) = _model(_data(d))
 j1ptr(   d::AbstractDataDrill) = j1ptr(_data(d))
 j2ptr(   d::AbstractDataDrill) = j2ptr(_data(d))
 tptr(    d::AbstractDataDrill) = tptr(_data(d))
@@ -180,7 +186,8 @@ const DrillingHistoryUnit_Initial     = ObservationGroup{<:DataDrillInitial}
 const DrillingHistoryUnit_Development = ObservationGroup{<:DataDrillDevelopment}
 const DrillingHistoryUnit_InitOrDev   = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
 
-DataDrill(g::AbstractDrillingHistoryUnit) = _data(g)
+# _data(g::AbstractDrillingHistoryUnit) already defined for ObservationGroup
+DataDrill(g::AbstractDrillingHistoryUnit) = DataDrill(_data(g))
 
 # Drilling History Unit (first layer of iteration)
 #------------------------------------------
@@ -240,14 +247,19 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: Abstra
     state::Int
 end
 
-function Observation(d::DataDrill, i::Integer, j::Integer, t::Integer)
+function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
     j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
     t in trange(d,j)   || throw(BoundsError())
-    zt = t - tstart(d,j) + jtstart(data,j)
-    action, state = tchars(data,t)
-    return Observation(_model(d), ichars(d,i), zchars(d,zt), action, state)
+    zt = t - tstart(d,j) + jtstart(d,j)
+    action, state = tchars(d,t)
+    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
 end
+
+ichars(obs::ObservationDrill) = obs.ichars
+zchars(obs::ObservationDrill) = obs.z
+action(obs::ObservationDrill) = obs.action
+state( obs::ObservationDrill) = obs.state
 
 # Drilling History Lease (second layer of iteration)
 #------------------------------------------
