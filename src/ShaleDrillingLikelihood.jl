@@ -9,7 +9,7 @@ using Dates
 
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
-    view, ==, eltype
+    view, ==, eltype, +, -, isless
 using StatsBase: countmap, sample
 using Base: OneTo
 using Base.Iterators: flatten

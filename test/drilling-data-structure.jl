@@ -17,17 +17,19 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     zcharsvec,
     AbstractDataDrill, DataDrill,
     DataDrillInitial, DataDrillDevelopment,
-    AbstractDrillingHistoryUnit,
-    DrillingHistoryUnit_Initial,
-    DrillingHistoryUnit_Development,
-    DrillingHistoryUnit,
-    DrillingHistoryUnit_InitOrDev,
+    # AbstractDrillingHistoryUnit,
+    # DrillingHistoryUnit_Initial,
+    # DrillingHistoryUnit_Development,
+    # DrillingHistoryUnit,
+    # DrillingHistoryUnit_InitOrDev,
     ObservationDrill,
     Observation,
-    DrillingHistoryLease,
+    # DrillingHistoryLease,
     _i, _data,
     ObservationGroup,
-    action, state
+    action, state,
+    AbstractDrillingRegime, InitialDrilling, DevelopmentDrilling, FinishedDrilling
+
 
 @testset "Drilling Data Structure" begin
 
@@ -41,6 +43,15 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         @test_throws DomainError etv[Date(2004,2)]
     end
 
+    @testset "initial vs dev't" begin
+        @test InitialDrilling()+1 == InitialDrilling()+100 == DevelopmentDrilling()
+        @test InitialDrilling()-1 == nothing
+        @test DevelopmentDrilling()+1 == FinishedDrilling()
+        @test DevelopmentDrilling()-1 == InitialDrilling()
+        @test FinishedDrilling()+1 == nothing
+        @test FinishedDrilling()-1 == DevelopmentDrilling()
+        @test InitialDrilling() in (InitialDrilling(), DevelopmentDrilling())
+    end
 
     @testset "DataDrill Construction" begin
         nt = 12
@@ -59,6 +70,8 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         @test_throws ErrorException    DataDrill(DrillModel(),       _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, _tchars, _zchars_short)
     end
 
+
+
     @testset "Iteration over DataDrill" begin
         nt = 12
         _j1ptr   = [1, 2]
@@ -76,7 +89,6 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
         @test isa(_data(datainitial), DataDrill)
         @test isa(_data(datadevelopment), DataDrill)
-
 
         @testset "DataDrill" begin
             @test length(data) == 1
@@ -98,105 +110,106 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
             # iterate through all
             i,l,t = (0,0,0,)
-            for history in data
+            for unit in data
                 i+= 1
-                @test _i(history) == i
-                for lease in history
+                @test _i(unit) == i
+                @show typeof(unit)
+                for leaseset in unit
                     l += 1
-                    for obs in lease
-                        t+= 1
-                        @test isa(obs, ObservationDrill)
-                        @test ichars(obs) == (1.0,)
-                        @test state(obs) == t
-                        @test action(obs) == t
-                        @test zchars(obs) == _zchars[t]
-                    end
+                    # for obs in lease
+                    #     t+= 1
+                    #     @test isa(obs, ObservationDrill)
+                    #     @test ichars(obs) == (1.0,)
+                    #     @test state(obs) == t
+                    #     @test action(obs) == t
+                    #     @test zchars(obs) == _zchars[t]
+                    # end
                 end
             end
             @test (i,l) == (1,2)
         end
 
 
-        @testset "DataDrillDevelopment" begin
-            i,l,t = (0,0,0,)
-            for history in datadevelopment
-                i+= 1
-                @test _i(history) == i
-
-                @test isa(history, ObservationGroup{<:DataDrillDevelopment})
-                @test isa(history, DrillingHistoryUnit_Development)
-                @test isa(history, DrillingHistoryUnit_InitOrDev)
-
-                @test isa(_data(history), DataDrillDevelopment)
-                @test isa(_data(history), DataDrillDevelopment)
-                @test isa(_data(_data(history)), DataDrill)
-                @test isa(DataDrill(history), DataDrill)
-
-                @test length(history) == 1
-                @test eachindex(history) == 2
-                @test firstindex(history) == 2
-                @test lastindex(history) == 2
-
-                for lease in history
-                    l += 1
-                    for obs in lease
-                        t += 1
-                        @test isa(obs, ObservationDrill)
-                        @test ichars(obs) == (1.0,)
-                        @test state(obs) == 4+t
-                        @test action(obs) == 4+t
-                        @test zchars(obs) == _zchars[4+t]
-                    end
-                end
-            end
-            @test (i,l,t) == (1,1,1)
-        end
-
-
-        @testset "DataDrillInitial" begin
-            i,l,t = (0,0,0,)
-            for history in datainitial
-                i+= 1
-                @test _i(history) == i
-
-                @test isa(history, ObservationGroup{<:DataDrillInitial})
-                @test isa(history, DrillingHistoryUnit_Initial)
-                @test isa(history, DrillingHistoryUnit_InitOrDev)
-                @test isa(_data(history), DataDrillInitial)
-                @test isa(DataDrill(history), DataDrill)
-
-                @test j1length(history) == 1
-                @test j1_range(history) == 1:1
-                @test j1start(history) == 1
-                @test j1stop(history) == 1
-                @test j1chars(history) == [1.0,]
-                @test eachindex(history) == 1:1
-                @test firstindex(history) == 1
-                @test lastindex(history) == 1
-
-                for lease in history
-                    l += 1
-                    @test isa(lease, ObservationGroup{<:DrillingHistoryUnit_Initial})
-                    @test isa(lease, DrillingHistoryLease)
-                    @test isa(_data(lease), DrillingHistoryUnit_Initial)
-                    @test isa(_data(_data(lease)), DataDrillInitial)
-                    @test isa(DataDrill(lease), DataDrill)
-                    @test isa(_data(_data(_data(lease))), DataDrill)
-                    @test length(lease) == 4
-                    @test j1chars(lease) == 1.0
-                    @test eachindex(lease) == 1:4
-                    for obs in lease
-                        t += 1
-                        @test isa(obs, ObservationDrill)
-                        @test ichars(obs) == (1.0,)
-                        @test state(obs) == t
-                        @test action(obs) == t
-                        @test zchars(obs) == _zchars[t]
-                    end
-                end
-            end
-            @test (i,l,t) == (1,1,4)
-        end
+        # @testset "DataDrillDevelopment" begin
+        #     i,l,t = (0,0,0,)
+        #     for history in datadevelopment
+        #         i+= 1
+        #         @test _i(history) == i
+        #
+        #         @test isa(history, ObservationGroup{<:DataDrillDevelopment})
+        #         @test isa(history, DrillingHistoryUnit_Development)
+        #         @test isa(history, DrillingHistoryUnit_InitOrDev)
+        #
+        #         @test isa(_data(history), DataDrillDevelopment)
+        #         @test isa(_data(history), DataDrillDevelopment)
+        #         @test isa(_data(_data(history)), DataDrill)
+        #         @test isa(DataDrill(history), DataDrill)
+        #
+        #         @test length(history) == 1
+        #         @test eachindex(history) == 2
+        #         @test firstindex(history) == 2
+        #         @test lastindex(history) == 2
+        #
+        #         for lease in history
+        #             l += 1
+        #             for obs in lease
+        #                 t += 1
+        #                 @test isa(obs, ObservationDrill)
+        #                 @test ichars(obs) == (1.0,)
+        #                 @test state(obs) == 4+t
+        #                 @test action(obs) == 4+t
+        #                 @test zchars(obs) == _zchars[4+t]
+        #             end
+        #         end
+        #     end
+        #     @test (i,l,t) == (1,1,1)
+        # end
+        #
+        #
+        # @testset "DataDrillInitial" begin
+        #     i,l,t = (0,0,0,)
+        #     for history in datainitial
+        #         i+= 1
+        #         @test _i(history) == i
+        #
+        #         @test isa(history, ObservationGroup{<:DataDrillInitial})
+        #         @test isa(history, DrillingHistoryUnit_Initial)
+        #         @test isa(history, DrillingHistoryUnit_InitOrDev)
+        #         @test isa(_data(history), DataDrillInitial)
+        #         @test isa(DataDrill(history), DataDrill)
+        #
+        #         @test j1length(history) == 1
+        #         @test j1_range(history) == 1:1
+        #         @test j1start(history) == 1
+        #         @test j1stop(history) == 1
+        #         @test j1chars(history) == [1.0,]
+        #         @test eachindex(history) == 1:1
+        #         @test firstindex(history) == 1
+        #         @test lastindex(history) == 1
+        #
+        #         for lease in history
+        #             l += 1
+        #             @test isa(lease, ObservationGroup{<:DrillingHistoryUnit_Initial})
+        #             @test isa(lease, DrillingHistoryLease)
+        #             @test isa(_data(lease), DrillingHistoryUnit_Initial)
+        #             @test isa(_data(_data(lease)), DataDrillInitial)
+        #             @test isa(DataDrill(lease), DataDrill)
+        #             @test isa(_data(_data(_data(lease))), DataDrill)
+        #             @test length(lease) == 4
+        #             @test j1chars(lease) == 1.0
+        #             @test eachindex(lease) == 1:4
+        #             for obs in lease
+        #                 t += 1
+        #                 @test isa(obs, ObservationDrill)
+        #                 @test ichars(obs) == (1.0,)
+        #                 @test state(obs) == t
+        #                 @test action(obs) == t
+        #                 @test zchars(obs) == _zchars[t]
+        #             end
+        #         end
+        #     end
+        #     @test (i,l,t) == (1,1,4)
+        # end
 
     end
 

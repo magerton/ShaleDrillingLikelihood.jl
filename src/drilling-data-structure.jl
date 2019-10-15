@@ -205,120 +205,129 @@ zcharsvec(d::AbstractDataDrill, t0::Integer) = view(zchars(d), t0:length(zchars(
 abstract type AbstractDrillingRegime end
 struct InitialDrilling <: AbstractDrillingRegime end
 struct DevelopmentDrilling <: AbstractDrillingRegime end
+struct FinishedDrilling <: AbstractDrillingRegime end
 
-+(::InitialDrilling, i) = DevelopmentDrilling()
 -(::InitialDrilling, i) = nothing
-+(::DevelopmentDrilling, i) = nothing
++(::InitialDrilling, i) = DevelopmentDrilling()
 -(::DevelopmentDrilling, i) = InitialDrilling()
++(::DevelopmentDrilling, i) = FinishedDrilling()
+-(::FinishedDrilling, i) = DevelopmentDrilling()
++(::FinishedDrilling, i) = nothing
 
-# ObservationGroup Structures
-#------------------------------------------
+==(::AbstractDrillingRegime, i) = false
+==(::A, ::A) where {A<:AbstractDrillingRegime} = true
+
+isless(::A, ::A) where {A<:AbstractDrillingRegime} = false
+isless(::InitialDrilling, ::DevelopmentDrilling)  = true
+isless(::InitialDrilling, ::FinishedDrilling)     = true
+isless(::DevelopmentDrilling, ::InitialDrilling)  = false
+isless(::DevelopmentDrilling, ::FinishedDrilling) = true
+isless(::FinishedDrilling, ::InitialDrilling)     = false
+isless(::FinishedDrilling, ::DevelopmentDrilling) = false
 
 # At the Unit level
-const DrillingHistoryUnit = ObservationGroup{<:DataDrill}
+const DrillingHistoryUnit = ObservationGroup{<:AbstractDataDrill,Int}
 const DrillingHistoryUnit_Initial = ObservationGroup{<:DrillingHistoryUnit,InitialDrilling}
 const DrillingHistoryUnit_Development = ObservationGroup{<:DrillingHistoryUnit,DevelopmentDrilling}
 
+InitialDrilling(    d::DrillingHistoryUnit) = ObservationGroup(d,InitialDrilling())
+DevelopmentDrilling(d::DrillingHistoryUnit) = ObservationGroup(d,DevelopmentDrilling())
 
-struct DrillingHistoryUnit_Initial{D<:AbstractDataDrill} <: AbstractObservationGroup
-    data::D
-    i::Int
-    function DrillingHistoryUnit_Initial(data::D, i::Int) where {D<:AbstractDataDrill}
-        i ∈ eachindex(data) || throw(BoundsError(data,i))
-        return new{D}(data,i)
-    end
-end
+firstindex(grp::DrillingHistoryUnit) = InitialDrilling()
+lastindex( grp::DrillingHistoryUnit) = DevelopmentDrilling()
+length(    grp::DrillingHistoryUnit) = DevelopmentDrilling()
+eachindex( grp::DrillingHistoryUnit) = (InitialDrilling(), DevelopmentDrilling())
 
-struct DrillingHistoryUnit_Development{D<:AbstractDataDrill} <: AbstractObservationGroup
-    data::D
-    i::Int
-    function DrillingHistoryUnit_Development(data::D, i::Int) where {D<:AbstractDataDrill}
-        i ∈ eachindex(data) || throw(BoundsError(data,i))
-        return new{D}(data,i)
-    end
-end
-const DrillingHistoryUnit_InitOrDev = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
-
-_data(d::DrillingHistoryUnit_InitOrDev) = d.data
-
-
-
-# at the lease level
-const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
-
-# either
-const AbstractDrillingHistory = Union{AbstractDrillingHistoryUnit,DrillingHistoryLease}
-
-# _data(g::AbstractDrillingHistoryUnit) already defined for ObservationGroup
-DataDrill(g::AbstractDrillingHistory) = DataDrill(_data(g))
-
-# Unit (first layer of iteration)
-#------------------------------------------
-
-j1length( g::AbstractDrillingHistoryUnit) = j1length( _data(g), _i(g))
-j1_range( g::AbstractDrillingHistoryUnit) = j1_range( _data(g), _i(g))
-j1start(  g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g))
-j1stop(   g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g)+1)-1
-j2ptr(    g::AbstractDrillingHistoryUnit) = j2ptr(    _data(g), _i(g))
-j1chars(  g::AbstractDrillingHistoryUnit) = view(j1chars(_data(g)), j1_range(g))
-
-length(    g::DrillingHistoryUnit) = j1length(g) + 1
-eachindex( g::DrillingHistoryUnit) = flatten((j1_range(g), j2ptr(g),))
-firstindex(g::DrillingHistoryUnit) = j1length(g) > 0 ? j1start(g) : j2ptr(g)
-lastindex( g::DrillingHistoryUnit) = j2ptr(g)
-
-length(    g::DrillingHistoryUnit_Initial) = j1length(g)
-eachindex( g::DrillingHistoryUnit_Initial) = j1_range(g)
-firstindex(g::DrillingHistoryUnit_Initial) = j1start(g)
-lastindex( g::DrillingHistoryUnit_Initial) = j1stop(g)
-
-length(    g::DrillingHistoryUnit_Development) = 1
-eachindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
-firstindex(g::DrillingHistoryUnit_Development) = j2ptr(g)
-lastindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
-
-
-function iterate(g::DrillingHistoryUnit, j::Integer=firstindex(g))
-    if j < firstindex(g)
-        throw(BoundsError(g,j))
-    elseif j <= lastindex(g)
-        jp1 = j == j1stop(g) ? j2ptr(g) : j+1
-        return ObservationGroup(g,j), jp1
-    else
-        return nothing
-    end
-end
-
-function iterate(g::DrillingHistoryUnit_InitOrDev, j::Integer=firstindex(g))
-    if j < firstindex(g)
-        throw(BoundsError(g,j))
-    elseif j <= lastindex(g)
-        return ObservationGroup(g,j), j+1
-    else
-        return nothing
-    end
-end
-
-# Lease (second layer of iteration)
-#------------------------------------------
-
-j1length( g::DrillingHistoryLease) = j1length(_data(g))
-j1_range( g::DrillingHistoryLease) = j1_range(_data(g))
-j2ptr(    g::DrillingHistoryLease) = j2ptr(   _data(g))
-j1chars(  g::DrillingHistoryLease) = getindex(j1chars(DataDrill(g)), _i(g))
-
-length(    g::DrillingHistoryLease) = tlength(DataDrill(g), _i(g))
-eachindex( g::DrillingHistoryLease) = trange( DataDrill(g), _i(g))
-firstindex(g::DrillingHistoryLease) = tstart( DataDrill(g), _i(g))
-lastindex( g::DrillingHistoryLease) = tstop(  DataDrill(g), _i(g))
-
-function iterate(g::DrillingHistoryLease, t::Integer=firstindex(g))
-    if t < firstindex(g)
-        throw(BoundsError(g,t))
-    elseif t > lastindex(g)
+function iterate(grp::DrillingHistoryUnit, i=firstindex(grp))
+    if i > length(grp)
         return nothing
     else
-        obs = Observation(DataDrill(g), _i(_data(g)), _i(g), t)
-        return obs, t+1
+        return ObservationGroup(grp,i), i+1
     end
 end
+
+# const DrillingHistoryUnit_InitOrDev = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
+#
+# _data(d::DrillingHistoryUnit_InitOrDev) = d.data
+#
+#
+#
+# # at the lease level
+# const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
+#
+# # either
+# const AbstractDrillingHistory = Union{AbstractDrillingHistoryUnit,DrillingHistoryLease}
+#
+# # _data(g::AbstractDrillingHistoryUnit) already defined for ObservationGroup
+# DataDrill(g::AbstractDrillingHistory) = DataDrill(_data(g))
+#
+# # Unit (first layer of iteration)
+# #------------------------------------------
+#
+# j1length( g::AbstractDrillingHistoryUnit) = j1length( _data(g), _i(g))
+# j1_range( g::AbstractDrillingHistoryUnit) = j1_range( _data(g), _i(g))
+# j1start(  g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g))
+# j1stop(   g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g)+1)-1
+# j2ptr(    g::AbstractDrillingHistoryUnit) = j2ptr(    _data(g), _i(g))
+# j1chars(  g::AbstractDrillingHistoryUnit) = view(j1chars(_data(g)), j1_range(g))
+#
+# length(    g::DrillingHistoryUnit) = j1length(g) + 1
+# eachindex( g::DrillingHistoryUnit) = flatten((j1_range(g), j2ptr(g),))
+# firstindex(g::DrillingHistoryUnit) = j1length(g) > 0 ? j1start(g) : j2ptr(g)
+# lastindex( g::DrillingHistoryUnit) = j2ptr(g)
+#
+# length(    g::DrillingHistoryUnit_Initial) = j1length(g)
+# eachindex( g::DrillingHistoryUnit_Initial) = j1_range(g)
+# firstindex(g::DrillingHistoryUnit_Initial) = j1start(g)
+# lastindex( g::DrillingHistoryUnit_Initial) = j1stop(g)
+#
+# length(    g::DrillingHistoryUnit_Development) = 1
+# eachindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
+# firstindex(g::DrillingHistoryUnit_Development) = j2ptr(g)
+# lastindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
+#
+#
+# function iterate(g::DrillingHistoryUnit, j::Integer=firstindex(g))
+#     if j < firstindex(g)
+#         throw(BoundsError(g,j))
+#     elseif j <= lastindex(g)
+#         jp1 = j == j1stop(g) ? j2ptr(g) : j+1
+#         return ObservationGroup(g,j), jp1
+#     else
+#         return nothing
+#     end
+# end
+#
+# function iterate(g::DrillingHistoryUnit_InitOrDev, j::Integer=firstindex(g))
+#     if j < firstindex(g)
+#         throw(BoundsError(g,j))
+#     elseif j <= lastindex(g)
+#         return ObservationGroup(g,j), j+1
+#     else
+#         return nothing
+#     end
+# end
+#
+# # Lease (second layer of iteration)
+# #------------------------------------------
+#
+# j1length( g::DrillingHistoryLease) = j1length(_data(g))
+# j1_range( g::DrillingHistoryLease) = j1_range(_data(g))
+# j2ptr(    g::DrillingHistoryLease) = j2ptr(   _data(g))
+# j1chars(  g::DrillingHistoryLease) = getindex(j1chars(DataDrill(g)), _i(g))
+#
+# length(    g::DrillingHistoryLease) = tlength(DataDrill(g), _i(g))
+# eachindex( g::DrillingHistoryLease) = trange( DataDrill(g), _i(g))
+# firstindex(g::DrillingHistoryLease) = tstart( DataDrill(g), _i(g))
+# lastindex( g::DrillingHistoryLease) = tstop(  DataDrill(g), _i(g))
+#
+# function iterate(g::DrillingHistoryLease, t::Integer=firstindex(g))
+#     if t < firstindex(g)
+#         throw(BoundsError(g,t))
+#     elseif t > lastindex(g)
+#         return nothing
+#     else
+#         obs = Observation(DataDrill(g), _i(_data(g)), _i(g), t)
+#         return obs, t+1
+#     end
+# end

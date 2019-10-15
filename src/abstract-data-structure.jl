@@ -42,10 +42,10 @@ _num_obs(  d::AbstractDataSet) = length(obs_ptr(d))-1
 eachindex(d::AbstractDataSet) = OneTo(length(d))
 
 
-getindex(  d::AbstractDataSet, i::Integer) = ObservationGroup(d,i)
-iterate(   d::AbstractDataSet, i::Integer=1) = i > length(d) ? nothing : (getindex(d, i), i+1,)
-firstindex(d::AbstractDataSet) = getindex(d,1)
-lastindex( d::AbstractDataSet) = getindex(d,length(d))
+firstindex(d::AbstractDataSet) = 1
+lastindex( d::AbstractDataSet) = length(d)
+getindex(  d::AbstractDataSet, i) = ObservationGroup(d,i)
+iterate(   d::AbstractDataSet, i=firstindex(d)) = i > length(d) ? nothing : (getindex(d, i), i+1,)
 IndexStyle(d::AbstractDataSet) = IndexLinear()
 eltype(    d::AbstractDataSet) = ObservationGroup{typeof(d)}
 
