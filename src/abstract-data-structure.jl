@@ -44,7 +44,15 @@ eachindex(d::AbstractDataSet) = OneTo(length(d))
 firstindex(d::AbstractDataSet) = 1
 lastindex( d::AbstractDataSet) = length(d)
 getindex(  d::AbstractDataSet, i) = ObservationGroup(d,i)
-iterate(   d::AbstractDataSet, i=firstindex(d)) = i > length(d) ? nothing : (getindex(d, i), i+1,)
+
+function iterate(d::AbstractDataSet, i=firstindex(d))
+    if i <= lastindex(d)
+        return getindex(d, i), i+1
+    else
+        return nothing
+    end
+end
+
 IndexStyle(d::AbstractDataSet) = IndexLinear()
 eltype(    d::AbstractDataSet) = ObservationGroup{typeof(d)}
 
@@ -74,10 +82,17 @@ obslength(g::AbstractObservationGroup, k) = obslength(_data(g), getindex(groupra
 getindex(   g::AbstractObservationGroup, k) = Observation(_data(g), getindex(grouprange(g), k))
 Observation(g::AbstractObservationGroup, k) = getindex(g,k)
 
-iterate(   g::AbstractObservationGroup, k=1) = k > length(g) ? nothing : (Observation(g,k), k+1,)
 firstindex(g::AbstractObservationGroup) = 1
 lastindex( g::AbstractObservationGroup) = length(g)
 IndexStyle(g::AbstractObservationGroup) = IndexLinear()
+
+function iterate(g::AbstractObservationGroup, k=firstindex(g))
+    if k <= lastindex(g)
+        return Observation(g,k), k+1
+    else
+        return nothing
+    end
+end
 
 # Observation iteration utilties
 #------------------------------------------
