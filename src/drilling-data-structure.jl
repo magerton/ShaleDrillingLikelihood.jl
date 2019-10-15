@@ -1,3 +1,28 @@
+# Types to define Initial vs Development Drilling
+#------------------------------------------
+
+abstract type AbstractRegimeType end
+struct InitialDrilling     <: AbstractRegimeType end
+struct DevelopmentDrilling <: AbstractRegimeType end
+struct FinishedDrilling    <: AbstractRegimeType end
+
++(::InitialDrilling, i) = DevelopmentDrilling()
++(::DevelopmentDrilling, i) = FinishedDrilling()
++(::FinishedDrilling, i) = nothing
+
+-(::InitialDrilling, i) = nothing
+-(::DevelopmentDrilling, i) = InitialDrilling()
+-(::FinishedDrilling, i) = DevelopmentDrilling()
+
+==(::AbstractRegimeType, i) = false
+==(::A, ::A) where {A<:AbstractRegimeType} = true
+
+isless(::A, ::A) where {A<:AbstractRegimeType} = false
+isless(::InitialDrilling,  ::Union{DevelopmentDrilling,FinishedDrilling}) = true
+isless(::FinishedDrilling, ::Union{InitialDrilling,DevelopmentDrilling})  = false
+isless(::DevelopmentDrilling, ::InitialDrilling)  = false
+isless(::DevelopmentDrilling, ::FinishedDrilling) = true
+
 # drilling data
 #----------------------------
 
@@ -117,6 +142,8 @@ function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
 end
 
+Observation(d::AbstractDataDrill, i, r::AbstractRegimeType, j, t) = Observation(d,i,j,t)
+
 ichars(obs::ObservationDrill) = obs.ichars
 zchars(obs::ObservationDrill) = obs.z
 action(obs::ObservationDrill) = obs.action
@@ -155,13 +182,13 @@ zchars( d::AbstractDataDrill, t) = getindex(zchars(d), t)
 
 # Iteration through j1
 j1start( d::AbstractDataDrill, i) = j1ptr(d,i)
-j1stop(  d::AbstractDataDrill, i) = j1ptr(d,i+1)-1
+j1stop(  d::AbstractDataDrill, i) = j1start(d,i+1)-1
 j1length(d::AbstractDataDrill, i) = hasj1ptr(d) ? j1stop(d,i) - j1start(d,i) + 1 : 0
 j1_range(d::AbstractDataDrill, i) = hasj1ptr(d) ? (j1start(d,i) : j1stop(d,i)) : (1:0)
 
 # iteration through t
 tstart( d::AbstractDataDrill, j) = tptr(d,j)
-tstop(  d::AbstractDataDrill, j) = tptr(d,j+1)-1
+tstop(  d::AbstractDataDrill, j) = tstart(d,j+1)-1
 trange( d::AbstractDataDrill, j) = tstart(d,j) : tstop(d,j)
 tlength(d::AbstractDataDrill, j) = tstop(d,j) - tstart(d,j) + 1
 
@@ -173,31 +200,6 @@ zcharsvec(d::AbstractDataDrill, t0) = view(zchars(d), t0:length(zchars(d)))
 @deprecate tend(         data::DataDrill, j::Integer) tstop(  data,j)
 @deprecate ilength(      data::DataDrill)             length( data)
 
-# Types to define Initial vs Development Drilling
-#------------------------------------------
-
-abstract type AbstractRegimeType end
-struct InitialDrilling     <: AbstractRegimeType end
-struct DevelopmentDrilling <: AbstractRegimeType end
-struct FinishedDrilling    <: AbstractRegimeType end
-
-+(::InitialDrilling, i) = DevelopmentDrilling()
-+(::DevelopmentDrilling, i) = FinishedDrilling()
-+(::FinishedDrilling, i) = nothing
-
--(::InitialDrilling, i) = nothing
--(::DevelopmentDrilling, i) = InitialDrilling()
--(::FinishedDrilling, i) = DevelopmentDrilling()
-
-==(::AbstractRegimeType, i) = false
-==(::A, ::A) where {A<:AbstractRegimeType} = true
-
-isless(::A, ::A) where {A<:AbstractRegimeType} = false
-isless(::InitialDrilling,  ::Union{DevelopmentDrilling,FinishedDrilling}) = true
-isless(::FinishedDrilling, ::Union{InitialDrilling,DevelopmentDrilling})  = false
-isless(::DevelopmentDrilling, ::InitialDrilling)  = false
-isless(::DevelopmentDrilling, ::FinishedDrilling) = true
-
 # Unit (first layer of iteration)
 #------------------------------------------
 
@@ -205,8 +207,8 @@ const DrillUnit = ObservationGroup{<:AbstractDataDrill}
 
 j1length( g::DrillUnit) = j1length(_data(g), _i(g))
 j1_range( g::DrillUnit) = j1_range(_data(g), _i(g))
-j1start(  g::DrillUnit) = j1ptr(   _data(g), _i(g))
-j1stop(   g::DrillUnit) = j1ptr(   _data(g), _i(g)+1)-1
+j1start(  g::DrillUnit) = j1start( _data(g), _i(g))
+j1stop(   g::DrillUnit) = j1stop(  _data(g), _i(g))
 j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
 j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
 
@@ -247,4 +249,6 @@ eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
 firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
 
-getindex(g::DrillLease, t) = Observation(DataDrill(g), _i(_data(_data(g))), _i(g), t)
+function getindex(g::DrillLease, t)
+    Observation(DataDrill(g), _i(_data(_data(g))), _i(_data(g)) ,_i(g), t)
+end

@@ -12,7 +12,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     DataProduce, _xsum, obs_ptr, group_ptr, _nu,
     groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
     ObservationProduce, ObservationGroup,
-    _i, _data, _num_obs, update_nu!, Observation
+    _i, _data, _num_obs, update_nu!, Observation, update!
 
 
 # @testset "SimulationDraws" begin
@@ -74,6 +74,10 @@ end
         ngroups = 3
         nobs = n*nwell
         beta = rand(2)
+        alphapsi = 0.5
+        sigeta = 0.3
+        sigu = 0.5
+        theta = vcat(alphapsi, beta, sigeta, sigu)
 
         x = rand(k, nobs)
         y = x' * beta + rand(nobs)
@@ -88,6 +92,7 @@ end
         groupptr = vcat(1,2,fill(nwell+1,ngroups+1-2))
 
         d = DataProduce(ProductionModel(),y,x,xsum,nu,xpnu,nusum,nusumsq,obsptr,groupptr)
+        update!(d, theta)
         obs = Observation(d,2)
         @test isa(obs, ObservationProduce)
 

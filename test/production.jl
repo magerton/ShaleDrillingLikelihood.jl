@@ -16,7 +16,7 @@ using ShaleDrillingLikelihood: _num_x,
     DataProduce, ObservationGroupProduce, ObservationProduce,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
     SimulationDraws, psi2_wtd_sum_and_sumsq, Observation,
-    _nparm
+    _nparm, update!
 
 println("Starting production likelihood tests")
 
