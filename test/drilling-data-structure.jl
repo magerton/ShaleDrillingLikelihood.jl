@@ -16,19 +16,14 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     tstart, tstop, trange, tlength,
     zcharsvec,
     AbstractDataDrill, DataDrill,
-    DataDrillInitial, DataDrillDevelopment,
-    # AbstractDrillingHistoryUnit,
-    # DrillingHistoryUnit_Initial,
-    # DrillingHistoryUnit_Development,
-    # DrillingHistoryUnit,
-    # DrillingHistoryUnit_InitOrDev,
-    ObservationDrill,
-    Observation,
-    # DrillingHistoryLease,
+    ObservationGroup,
+    Observation, ObservationDrill,
+    DrillUnit,
+    AbstractRegimeType, InitialDrilling, DevelopmentDrilling, FinishedDrilling,
+    AbstractDrillRegime, DrillInitial, DrillDevelopment, DrillLease,
     _i, _data,
     ObservationGroup,
-    action, state,
-    AbstractDrillingRegime, InitialDrilling, DevelopmentDrilling, FinishedDrilling
+    action, state
 
 
 @testset "Drilling Data Structure" begin
@@ -84,11 +79,6 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         _zchars  = ExogTimeVars([(x,) for x in randn(nt)], range(Date(2003,10); step=Quarter(1), length=nt))
 
         data = DataDrill(DrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, _tchars, _zchars)
-        datadevelopment = DataDrillDevelopment(data)
-        datainitial = DataDrillInitial(data)
-
-        @test isa(_data(datainitial), DataDrill)
-        @test isa(_data(datadevelopment), DataDrill)
 
         @testset "DataDrill" begin
             @test length(data) == 1
@@ -109,24 +99,33 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
             @test zcharsvec(data, 2) == _timevars(_zchars)[2:end]
 
             # iterate through all
-            i,l,t = (0,0,0,)
+            i,r,l,t = (0,0,0,0)
             for unit in data
                 i+= 1
                 @test _i(unit) == i
-                @show typeof(unit)
-                for leaseset in unit
-                    l += 1
-                    # for obs in lease
-                    #     t+= 1
-                    #     @test isa(obs, ObservationDrill)
-                    #     @test ichars(obs) == (1.0,)
-                    #     @test state(obs) == t
-                    #     @test action(obs) == t
-                    #     @test zchars(obs) == _zchars[t]
-                    # end
+                @test isa(unit, DrillUnit)
+                @test DataDrill(unit) === data
+                @test length(unit) == DevelopmentDrilling()
+                for regime in unit
+                    r += 1
+                    @test isa(regime, AbstractDrillRegime)
+                    @test DataDrill(regime) === data
+                    for lease in regime
+                        @test isa(lease, DrillLease)
+                        @test DataDrill(lease) === data
+                        l += 1
+                        for obs in lease
+                            t+= 1
+                            @test isa(obs, ObservationDrill)
+                            @test ichars(obs) == (1.0,)
+                            @test state(obs) == t
+                            @test action(obs) == t
+                            @test zchars(obs) == _zchars[t]
+                        end
+                    end
                 end
             end
-            @test (i,l) == (1,2)
+            @test (i,r,l,t) == (1,2,2,5)
         end
 
 
@@ -135,15 +134,6 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         #     for history in datadevelopment
         #         i+= 1
         #         @test _i(history) == i
-        #
-        #         @test isa(history, ObservationGroup{<:DataDrillDevelopment})
-        #         @test isa(history, DrillingHistoryUnit_Development)
-        #         @test isa(history, DrillingHistoryUnit_InitOrDev)
-        #
-        #         @test isa(_data(history), DataDrillDevelopment)
-        #         @test isa(_data(history), DataDrillDevelopment)
-        #         @test isa(_data(_data(history)), DataDrill)
-        #         @test isa(DataDrill(history), DataDrill)
         #
         #         @test length(history) == 1
         #         @test eachindex(history) == 2

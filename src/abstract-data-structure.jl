@@ -41,7 +41,6 @@ length(    d::AbstractDataSet) = length(group_ptr(d))-1
 _num_obs(  d::AbstractDataSet) = length(obs_ptr(d))-1
 eachindex(d::AbstractDataSet) = OneTo(length(d))
 
-
 firstindex(d::AbstractDataSet) = 1
 lastindex( d::AbstractDataSet) = length(d)
 getindex(  d::AbstractDataSet, i) = ObservationGroup(d,i)
