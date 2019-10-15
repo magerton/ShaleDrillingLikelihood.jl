@@ -40,7 +40,32 @@ function Quarter(i::Integer)
     return Month(3*i)
 end
 
-# Data Structs
+# What is an observation?
+#------------------------------------------
+
+struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
+    model::M
+    ichars::ITup
+    z::ZTup
+    action::Int
+    state::Int
+end
+
+function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
+    0 < i <= length(d) || throw(BoundsError())
+    j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
+    t in trange(d,j)   || throw(BoundsError())
+    zt = t - tstart(d,j) + jtstart(d,j)
+    action, state = tchars(d,t)
+    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
+end
+
+ichars(obs::ObservationDrill) = obs.ichars
+zchars(obs::ObservationDrill) = obs.z
+action(obs::ObservationDrill) = obs.action
+state( obs::ObservationDrill) = obs.state
+
+# DataSet
 #---------------------------
 
 abstract type AbstractDataDrill <: AbstractDataSet end
@@ -96,7 +121,7 @@ end
 _data(d::DataDrill) = d
 DataDrill(d::DataDrill) = _data(d)
 
-# Specify whether we want Initial or Development drilling
+# Wrapper specifies whether we want Initial or Development drilling
 #------------------------------------------
 
 struct DataDrillInitial{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
@@ -180,16 +205,23 @@ zcharsvec(data::AbstractDataDrill, t0::Integer) = view(zchars(data), t0:length(z
 # ObservationGroup Structures
 #------------------------------------------
 
+# At the Unit level
 const AbstractDrillingHistoryUnit     = ObservationGroup{<:AbstractDataDrill}
 const DrillingHistoryUnit             = ObservationGroup{<:DataDrill}
 const DrillingHistoryUnit_Initial     = ObservationGroup{<:DataDrillInitial}
 const DrillingHistoryUnit_Development = ObservationGroup{<:DataDrillDevelopment}
 const DrillingHistoryUnit_InitOrDev   = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
 
-# _data(g::AbstractDrillingHistoryUnit) already defined for ObservationGroup
-DataDrill(g::AbstractDrillingHistoryUnit) = DataDrill(_data(g))
+# at the lease level
+const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
 
-# Drilling History Unit (first layer of iteration)
+# either
+const AbstractDrillingHistory = Union{AbstractDrillingHistoryUnit,DrillingHistoryLease}
+
+# _data(g::AbstractDrillingHistoryUnit) already defined for ObservationGroup
+DataDrill(g::AbstractDrillingHistory) = DataDrill(_data(g))
+
+# Unit (first layer of iteration)
 #------------------------------------------
 
 j1length( g::AbstractDrillingHistoryUnit) = j1length( _data(g), _i(g))
@@ -236,36 +268,8 @@ function iterate(g::DrillingHistoryUnit_InitOrDev, j::Integer=firstindex(g))
     end
 end
 
-# Iteration through layers of DataDrill
+# Lease (second layer of iteration)
 #------------------------------------------
-
-struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
-    model::M
-    ichars::ITup
-    z::ZTup
-    action::Int
-    state::Int
-end
-
-function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
-    0 < i <= length(d) || throw(BoundsError())
-    j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
-    t in trange(d,j)   || throw(BoundsError())
-    zt = t - tstart(d,j) + jtstart(d,j)
-    action, state = tchars(d,t)
-    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
-end
-
-ichars(obs::ObservationDrill) = obs.ichars
-zchars(obs::ObservationDrill) = obs.z
-action(obs::ObservationDrill) = obs.action
-state( obs::ObservationDrill) = obs.state
-
-# Drilling History Lease (second layer of iteration)
-#------------------------------------------
-const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
-
-DataDrill(g::DrillingHistoryLease) = DataDrill(_data(g))
 
 j1length( g::DrillingHistoryLease) = j1length(_data(g))
 j1_range( g::DrillingHistoryLease) = j1_range(_data(g))
