@@ -19,7 +19,7 @@ end
 
 _timevars(tv::ExogTimeVars) = tv.timevars
 _timestamp(tv::ExogTimeVars) = tv.timestamp
-getindex(tv::ExogTimeVars, t::Integer) = getindex(_timevars(tv), t)
+getindex(tv::ExogTimeVars, t) = getindex(_timevars(tv), t)
 function getindex(tv::ExogTimeVars, t::Date)
     ts = _timestamp(tv)
     t in ts || throw(DomainError(t))
@@ -40,7 +40,8 @@ function Quarter(i::Integer)
     return Month(3*i)
 end
 
-# Data Structs
+
+# DataSet
 #---------------------------
 
 abstract type AbstractDataDrill <: AbstractDataSet end
@@ -54,7 +55,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     jtstart::Vector{Int}           # zvars for lease j start at zchars[jtstart(data,j)]
 
     # leases per unit
-    jchars::Vector{Float64}        # weights for lease observations
+    j1chars::Vector{Float64}       # weights for lease observations
 
     # drilling histories
     ichars::Vector{ITup}
@@ -67,139 +68,36 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
         jchars, ichars::Vector{ITup}, tchars, zchars::ETV
     ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple}
 
-        length(j1ptr)-1 == length(ichars) == length(j2ptr)   || throw(DimensionMismatch())                     # check i
-        last(j1ptr) == first(j2ptr)                          || throw(error("j1ptr and j2ptr must be conts"))  # check j
-        last(j2ptr) == length(jtstart) == length(tptr)-1     || throw(DimensionMismatch())                     # check t
-        issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) || throw(error("Not sorted"))                     # check sort
+        # check i
+        length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
+            throw(DimensionMismatch("Lengths of ichars, j2ptr, and j1ptr must agree"))
+
+        # check j
+        last(j1ptr) == first(j2ptr)                          ||
+            throw(error("j1ptr and j2ptr must be conts"))
+
+        # check t
+        last(j2ptr) == length(jtstart) == length(tptr)-1     ||
+            throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
+
+        # pointers are sorted
+        issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
+            throw(error("Pointers not sorted"))
+
+        # time vars are OK
         for j in 1:length(tptr)-1
-            0 < jtstart[j] || throw(BoundsError())
-            jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) || throw(BoundsError())
+            0 < jtstart[j] || throw(DomainError())
+            jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
+                throw(error("don't have z for all times implied by jtstart"))
         end
-        return new{M,ETV,Itup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, tchars, zchars)
+        return new{M,ETV,ITup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, tchars, zchars)
     end
 end
 
-# API for DataDrill
-#------------------------------------------
+DataDrill(d::AbstractDataDrill) = _data(d)
+DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
-j1ptr(   data::DataDrill) = data.j1ptr
-j2ptr(   data::DataDrill) = data.j2ptr
-tptr(    data::DataDrill) = data.tptr
-zchars(  data::DataDrill) = data.zchars
-jtstart( data::DataDrill) = data.jtstart
-ichars(  data::DataDrill) = data.ichars
-tchars(  data::DataDrill) = data.tchars
-j1chars( data::DataDrill) = data.j1chars
-hasj1ptr(data::DataDrill) = length(_j1ptr(data)) > 0
-
-length(     data::DataDrill) = length(j2ptr(data))
-maxj1length(data::DataDrill) = hasj1ptr(data) ? maximum( diff(j1ptr(data)) ) : 1
-
-ichars( data::DataDrill, i::Integer) = getindex(ichars(data),  i)
-j1ptr(  data::DataDrill, i::Integer) = getindex(j1ptr(data),   i)
-j2ptr(  data::DataDrill, i::Integer) = getindex(j2ptr(data),   i)
-tptr(   data::DataDrill, j::Integer) = getindex(tptr(data),    j)
-jtstart(data::DataDrill, j::Integer) = getindex(jtstart(data), j)
-j1chars(data::DataDrill, j::Integer) = getindex(j1chars(data), j)
-tchars( data::DataDrill, t::Integer) = getindex(tchars(data),  t)
-zchars( data::DataDrill, t::Union{Integer,Date}) = getindex(zchars(data), t)
-
-
-# Iteration through j1
-j1start( data::DataDrill, i::Integer) = j1ptr(data,i)
-j1stop(  data::DataDrill, i::Integer) = j1ptr(data,i+1)-1
-j1length(data::DataDrill, i::Integer)::Int = hasj1ptr(data) ? j1stop(data,i) - j1start(data,i) + 1 : 0
-j1_range(data::DataDrill, i::Integer)::UnitRange{Int}
-    if hasj1ptr(data)
-        return j1start(data,i) : j1stop(data,i)
-    else
-        return 1:0
-    end
-end
-
-# iteration through t
-tstart(data::DataDrill, j::Integer) = tptr(data,j)
-tstop( data::DataDrill, j::Integer) = tptr(data,j+1)-1
-trange(data::DataDrill, j::Integer) = tstart(data,j) : tstop(data,j)
-tlength(data::DataDrill, j::Integer) = tend(data,j) - tstart(data,j) + 1
-
-# iteration through zchars
-zcharsvec(data::DataDrill, t0::Integer) = view(zchars(data), t0:length(zchars(data)))
-
-
-@deprecate j2_index(data::DataDrill, i::Integer) j2ptr(data,i)
-@deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
-@deprecate tend(data::DataDrill, j::Integer) tstop(data,j)
-@deprecate ilength(data::DataDrill) length(data)
-
-# Specify whether we want Initial or Development drilling
-#------------------------------------------
-
-struct DataDrillInitial{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
-    data::DataDrill{M,ETV,ITup}
-end
-
-struct DataDrillDevelopment{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
-    data::DataDrill{M,ETV,ITup}
-end
-
-_data(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d.data)
-DataDrill(g::AbstractDrillingHistoryUnit) = _data(g)
-
-# Drilling History Unit (first layer of iteration)
-#------------------------------------------
-
-const AbstractDrillingHistoryUnit     = ObservationGroup{<:AbstractDataDrill}
-const DrillingHistoryUnit_Initial     = ObservationGroup{<:DataDrillInitial}
-const DrillingHistoryUnit_Development = ObservationGroup{<:DataDrillDevelopment}
-const DrillingHistoryUnit             = ObservationGroup{<:DataDrill}
-const DrillingHistoryUnit_InitOrDev   = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
-
-j1length( g::AbstractDrillingHistoryUnit) = j1length( _data(g), _i(g))
-j1_range( g::AbstractDrillingHistoryUnit) = j1_range( _data(g), _i(g))
-j1start(  g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g))
-j1stop(   g::AbstractDrillingHistoryUnit) = j1ptr(    _data(g), _i(g)+1)-1
-j2ptr(    g::AbstractDrillingHistoryUnit) = j2ptr(    _data(g), _i(g))
-j1chars(  g::AbstractDrillingHistoryUnit) = view(_j1chars(_data(g)), j1_range(g))
-
-length(    g::DrillingHistoryUnit) = j1length(g) + 1
-eachindex( g::DrillingHistoryUnit) = flatten((j1_range(g), j2ptr(g),))
-firstindex(g::DrillingHistoryUnit) = j1length(g) > 0 ? j1start(g) : j2ptr(g)
-lastindex( g::DrillingHistoryUnit) = j2ptr(g)
-
-length(    g::DrillingHistoryUnit_Initial) = j1length(g)
-eachindex( g::DrillingHistoryUnit_Initial) = j1_range(g)
-firstindex(g::DrillingHistoryUnit_Initial) = j1start(g)
-lastindex( g::DrillingHistoryUnit_Initial) = j1stop(g)
-
-length(    g::DrillingHistoryUnit_Development) = 1
-eachindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
-firstindex(g::DrillingHistoryUnit_Development) = j2ptr(g)
-lastindex( g::DrillingHistoryUnit_Development) = j2ptr(g)
-
-
-function iterate(g::DrillingHistoryUnit, j=firstindex(g))
-    if j < firstindex(g)
-        throw(BoundsError(g,j))
-    elseif j > lastindex(g)
-        return nothing
-    else
-        jp1 = j == j1stop(g) ? j2ptr(g) : j+1
-        return g, jp1
-    end
-end
-
-function iterate(g::DrillingHistoryUnit_InitOrDev, j=firstindex(g))
-    if j < firstindex(g)
-        throw(BoundsError(g,j))
-    elseif j > lastindex(g)
-        return g, j+1
-    else
-        return nothing
-    end
-end
-
-# Iteration through layers of DataDrill
+# What is an observation?
 #------------------------------------------
 
 struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
@@ -210,38 +108,143 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: Abstra
     state::Int
 end
 
-function Observation(d::DataDrill, i::Integer, j::Integer, t::Integer)
+function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
     j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
     t in trange(d,j)   || throw(BoundsError())
-    zt = t - tstart(d,j) + jtstart(data,j)
-    action, state = tchars(data,t)
-    return Observation(_model(d), ichars(d,i), zchars(d,zt), action, state)
+    zt = t - tstart(d,j) + jtstart(d,j)
+    action, state = tchars(d,t)
+    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
 end
 
-# Drilling History Lease (second layer of iteration)
+ichars(obs::ObservationDrill) = obs.ichars
+zchars(obs::ObservationDrill) = obs.z
+action(obs::ObservationDrill) = obs.action
+state( obs::ObservationDrill) = obs.state
+
+# API for DataDrill
 #------------------------------------------
-const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
 
-DataDrill(g::DrillingHistoryLease) = DataDrill(_data(g))
+# access DataDrill fields
+_model(  d::DataDrill) = d.model
+j1ptr(   d::DataDrill) = d.j1ptr
+j2ptr(   d::DataDrill) = d.j2ptr
+tptr(    d::DataDrill) = d.tptr
+zchars(  d::DataDrill) = d.zchars
+jtstart( d::DataDrill) = d.jtstart
+ichars(  d::DataDrill) = d.ichars
+tchars(  d::DataDrill) = d.tchars
+j1chars( d::DataDrill) = d.j1chars
 
-j1length( g::DrillingHistoryLease) = j1length(_data(g))
-j1_range( g::DrillingHistoryLease) = j1_range(_data(g))
-j2ptr(    g::DrillingHistoryLease) = j2ptr(   _data(g))
-j1chars(  g::DrillingHistoryLease) = getindex(j1chars(DataDrill(g)), _i(g))
+# length
+hasj1ptr(   d::AbstractDataDrill) = length(j1ptr(d)) > 0
+length(     d::AbstractDataDrill) = length(j2ptr(d))
+maxj1length(d::AbstractDataDrill) = hasj1ptr(d) ? maximum( diff(j1ptr(d)) ) : 1
 
-length(    g::DrillingHistoryLease) = tlength(DataDrill(g), _i(g))
-eachindex( g::DrillingHistoryLease) = trange( DataDrill(g), _i(g))
-firstindex(g::DrillingHistoryLease) = tstart( DataDrill(g), _i(g))
-lastindex( g::DrillingHistoryLease) = tstop(  DataDrill(g), _i(g))
+# getindex in fields of AbstractDataDrill
+ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
+j1ptr(  d::AbstractDataDrill, i) = getindex(j1ptr(d),   i)
+j2ptr(  d::AbstractDataDrill, i) = getindex(j2ptr(d),   i)
 
-function iterate(g::DrillingHistoryLease, t=firstindex(g))
-    if t < firstindex(g)
-        throw(BoundsError(g,t))
-    elseif t > lastindex(g)
-        return nothing
-    else
-        obs = Observation(DataDrill(g), _i(_data(g)), _i(g), t)
-        return obs, t+1
-    end
-end
+tptr(   d::AbstractDataDrill, j) = getindex(tptr(d),    j)
+jtstart(d::AbstractDataDrill, j) = getindex(jtstart(d), j)
+j1chars(d::AbstractDataDrill, j) = getindex(j1chars(d), j)
+
+tchars( d::AbstractDataDrill, t) = getindex(tchars(d),  t)
+zchars( d::AbstractDataDrill, t) = getindex(zchars(d), t)
+
+# Iteration through j1
+j1start( d::AbstractDataDrill, i) = j1ptr(d,i)
+j1stop(  d::AbstractDataDrill, i) = j1ptr(d,i+1)-1
+j1length(d::AbstractDataDrill, i) = hasj1ptr(d) ? j1stop(d,i) - j1start(d,i) + 1 : 0
+j1_range(d::AbstractDataDrill, i) = hasj1ptr(d) ? (j1start(d,i) : j1stop(d,i)) : (1:0)
+
+# iteration through t
+tstart( d::AbstractDataDrill, j) = tptr(d,j)
+tstop(  d::AbstractDataDrill, j) = tptr(d,j+1)-1
+trange( d::AbstractDataDrill, j) = tstart(d,j) : tstop(d,j)
+tlength(d::AbstractDataDrill, j) = tstop(d,j) - tstart(d,j) + 1
+
+# iteration through zchars
+zcharsvec(d::AbstractDataDrill, t0) = view(zchars(d), t0:length(zchars(d)))
+
+@deprecate j2_index(     data::DataDrill, i::Integer) j2ptr(  data,i)
+@deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
+@deprecate tend(         data::DataDrill, j::Integer) tstop(  data,j)
+@deprecate ilength(      data::DataDrill)             length( data)
+
+# Types to define Initial vs Development Drilling
+#------------------------------------------
+
+abstract type AbstractRegimeType end
+struct InitialDrilling     <: AbstractRegimeType end
+struct DevelopmentDrilling <: AbstractRegimeType end
+struct FinishedDrilling    <: AbstractRegimeType end
+
++(::InitialDrilling, i) = DevelopmentDrilling()
++(::DevelopmentDrilling, i) = FinishedDrilling()
++(::FinishedDrilling, i) = nothing
+
+-(::InitialDrilling, i) = nothing
+-(::DevelopmentDrilling, i) = InitialDrilling()
+-(::FinishedDrilling, i) = DevelopmentDrilling()
+
+==(::AbstractRegimeType, i) = false
+==(::A, ::A) where {A<:AbstractRegimeType} = true
+
+isless(::A, ::A) where {A<:AbstractRegimeType} = false
+isless(::InitialDrilling,  ::Union{DevelopmentDrilling,FinishedDrilling}) = true
+isless(::FinishedDrilling, ::Union{InitialDrilling,DevelopmentDrilling})  = false
+isless(::DevelopmentDrilling, ::InitialDrilling)  = false
+isless(::DevelopmentDrilling, ::FinishedDrilling) = true
+
+# Unit (first layer of iteration)
+#------------------------------------------
+
+const DrillUnit = ObservationGroup{<:AbstractDataDrill}
+
+j1length( g::DrillUnit) = j1length(_data(g), _i(g))
+j1_range( g::DrillUnit) = j1_range(_data(g), _i(g))
+j1start(  g::DrillUnit) = j1ptr(   _data(g), _i(g))
+j1stop(   g::DrillUnit) = j1ptr(   _data(g), _i(g)+1)-1
+j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
+j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
+
+firstindex(grp::DrillUnit) = InitialDrilling()
+lastindex( grp::DrillUnit) = DevelopmentDrilling()
+length(    grp::DrillUnit) = DevelopmentDrilling()
+eachindex( grp::DrillUnit) = (InitialDrilling(), DevelopmentDrilling())
+
+# Convenience Constructors
+InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
+DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
+
+# Regime (second layer of iteration)
+#------------------------------------------
+
+# At the Unit level
+const AbstractDrillRegime = ObservationGroup{<:DrillUnit}
+const DrillInitial        = ObservationGroup{<:DrillUnit,InitialDrilling}
+const DrillDevelopment    = ObservationGroup{<:DrillUnit,DevelopmentDrilling}
+
+length(    g::DrillInitial) = j1length(_data(g))
+eachindex( g::DrillInitial) = j1_range(_data(g))
+firstindex(g::DrillInitial) = j1start( _data(g))
+lastindex( g::DrillInitial) = j1stop(  _data(g))
+
+length(    g::DrillDevelopment) = 1
+eachindex( g::DrillDevelopment) = j2ptr(_data(g))
+firstindex(g::DrillDevelopment) = j2ptr(_data(g))
+lastindex( g::DrillDevelopment) = j2ptr(_data(g))
+
+# Lease (third layer of iteration)
+#------------------------------------------
+
+const DrillLease = ObservationGroup{<:AbstractDrillRegime}
+
+length(    g::DrillLease) = tlength(DataDrill(g), _i(g))
+eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
+firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
+lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
+
+getindex(g::DrillLease, t) = Observation(DataDrill(g), _i(_data(_data(g))), _i(g), t)

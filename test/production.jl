@@ -72,10 +72,10 @@ sim = SimulationDraws(M, num_i)
 simi = view(sim, 1)
 _qm(sim) .= softmax(randn(M))
 
-@show @benchmark psi2_wtd_sum_and_sumsq(simi)
+# @show @benchmark psi2_wtd_sum_and_sumsq(simi)
 
 obs = Observation(data,1)
-@show @benchmark simloglik_produce!(obs, theta, simi)
+# @show @benchmark simloglik_produce!(obs, theta, simi)
 
 
 end # module

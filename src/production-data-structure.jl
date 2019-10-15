@@ -73,18 +73,11 @@ _nusumsq(d::DataOrObsProduction) = d.nusumsq
 obs_ptr(  d::DataProduce) = d.obs_ptr
 group_ptr(d::DataProduce) = d.group_ptr
 
-# Observation-specific interfaces
-#---------------------------
-
-function ==(o1::ObservationProduce, o2::ObservationProduce)
-    _y(o1)==_y(o2) && _x(o1)==_x(o2) && _xsum(o1)==_xsum(o2) && _nu(o1)==_nu(o2)
-end
-
 # Observation Group interfaces
 #---------------------------
 
 function Observation(d::DataProduce, j::Integer)
-    rng = obsrange(d,j)
+    rng  = obsrange(d,j)
     y    = view(_y(d), rng)
     nu   = view(_nu(d), rng)
     x    = view(_x(d), :, rng)
@@ -95,7 +88,22 @@ function Observation(d::DataProduce, j::Integer)
     return ObservationProduce(_model(d),y, x, xsum, nu, xpnu, nusum, nusumsq)
 end
 
-@deprecate ObservationProduce(d::DataProduce,j::Integer) Observation(d,j)
+getindex(g::ObservationGroupProduce, k) = Observation(_data(g), getindex(grouprange(g), k))
+Observation(g::ObservationGroupProduce, k) = getindex(g,k)
+
+# Observation-specific interfaces
+#---------------------------
+
+function ==(o1::ObservationProduce, o2::ObservationProduce)
+    _y(o1)       == _y(o2) &&
+    _x(o1)       == _x(o2) &&
+    _xsum(o1)    == _xsum(o2) &&
+    _nu(o1)      == _nu(o2) &&
+    _xpnu(o1)    == _xpnu(o2) &&
+    _nusum(o1)   == _nusum(o2) &&
+    _nusumsq(o1) == _nusumsq(o2)
+end
+
 
 function update_nu!(d::DataOrObsProduction, theta)
     length(theta) == _nparm(d) || throw(DimensionMismatch())
@@ -110,8 +118,6 @@ function update_nu!(d::DataOrObsProduction, theta)
     end
     return nothing
 end
-
-@deprecate update_nu!(d::DataOrObsProduction, m::AbstractProductionModel, theta) update_nu!(d,theta)
 
 function update_xsum!(obs::ObservationProduce)
     xsum = reshape(_xsum(obs), :, 1)
