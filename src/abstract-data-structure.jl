@@ -9,13 +9,15 @@ abstract type AbstractObservation <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+abstract type AbstractObservationGroup <: AbstractDataStructure end
+
 "Observation Groups are associated with an individual and shock (ψ₁,ψ₂)"
-struct ObservationGroup{D<:AbstractDataStructure} <: AbstractDataStructure
+struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
     data::D
-    i::Int
-    function ObservationGroup(data::D, i::Int) where {D<:AbstractDataStructure}
+    i::I
+    function ObservationGroup(data::D, i::I) where {D<:AbstractDataStructure,I}
         i ∈ eachindex(data) || throw(BoundsError(data,i))
-        return new{D}(data,i)
+        return new{D,I}(data,i)
     end
 end
 
@@ -58,25 +60,25 @@ obslength(d::AbstractDataSet, j::Integer) = obsstart(d,j+1) - obsstart(d,j)
 # ObservationGroup iteration utilties
 #------------------------------------------
 
-_data(g::ObservationGroup) = g.data
-_i(g::ObservationGroup) = g.i
-_nparm(g::ObservationGroup) = _nparm(_data(g))
-_model(g::ObservationGroup) = _model(_data(g))
+_data( g::AbstractObservationGroup) = g.data
+_i(    g::AbstractObservationGroup) = g.i
+_nparm(g::AbstractObservationGroup) = _nparm(_data(g))
+_model(g::AbstractObservationGroup) = _model(_data(g))
 
-length(    g::ObservationGroup) = grouplength(_data(g), _i(g))
-grouprange(g::ObservationGroup) = grouprange( _data(g), _i(g))
+length(    g::AbstractObservationGroup) = grouplength(_data(g), _i(g))
+grouprange(g::AbstractObservationGroup) = grouprange( _data(g), _i(g))
 
-obsstart( g::ObservationGroup, k::Integer) = obsstart( _data(g), getindex(grouprange(g), k))
-obsrange( g::ObservationGroup, k::Integer) = obsrange( _data(g), getindex(grouprange(g), k))
-obslength(g::ObservationGroup, k::Integer) = obslength(_data(g), getindex(grouprange(g), k))
+obsstart( g::AbstractObservationGroup, k) = obsstart( _data(g), getindex(grouprange(g), k))
+obsrange( g::AbstractObservationGroup, k) = obsrange( _data(g), getindex(grouprange(g), k))
+obslength(g::AbstractObservationGroup, k) = obslength(_data(g), getindex(grouprange(g), k))
 
-getindex(   g::ObservationGroup, k::Integer) = Observation(_data(g), getindex(grouprange(g), k))
-Observation(g::ObservationGroup, k::Integer) = getindex(g,k)
+getindex(   g::AbstractObservationGroup, k) = Observation(_data(g), getindex(grouprange(g), k))
+Observation(g::AbstractObservationGroup, k) = getindex(g,k)
 
-iterate(g::ObservationGroup, k::Integer=1) = k > length(g) ? nothing : (Observation(g,k), k+1,)
-firstindex(g::ObservationGroup) = 1
-lastindex( g::ObservationGroup) = length(g)
-IndexStyle(g::ObservationGroup) = IndexLinear()
+iterate(   g::AbstractObservationGroup, k=1) = k > length(g) ? nothing : (Observation(g,k), k+1,)
+firstindex(g::AbstractObservationGroup) = 1
+lastindex( g::AbstractObservationGroup) = length(g)
+IndexStyle(g::AbstractObservationGroup) = IndexLinear()
 
 # Observation iteration utilties
 #------------------------------------------

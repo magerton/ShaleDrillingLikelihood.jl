@@ -40,30 +40,6 @@ function Quarter(i::Integer)
     return Month(3*i)
 end
 
-# What is an observation?
-#------------------------------------------
-
-struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
-    model::M
-    ichars::ITup
-    z::ZTup
-    action::Int
-    state::Int
-end
-
-function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
-    0 < i <= length(d) || throw(BoundsError())
-    j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
-    t in trange(d,j)   || throw(BoundsError())
-    zt = t - tstart(d,j) + jtstart(d,j)
-    action, state = tchars(d,t)
-    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
-end
-
-ichars(obs::ObservationDrill) = obs.ichars
-zchars(obs::ObservationDrill) = obs.z
-action(obs::ObservationDrill) = obs.action
-state( obs::ObservationDrill) = obs.state
 
 # DataSet
 #---------------------------
@@ -118,12 +94,6 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     end
 end
 
-_data(d::DataDrill) = d
-DataDrill(d::DataDrill) = _data(d)
-
-# Wrapper specifies whether we want Initial or Development drilling
-#------------------------------------------
-
 struct DataDrillInitial{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
     data::DataDrill{M,ETV,ITup}
 end
@@ -132,8 +102,35 @@ struct DataDrillDevelopment{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tupl
     data::DataDrill{M,ETV,ITup}
 end
 
+_data(d::DataDrill) = d
 _data(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d.data)
-DataDrill(d::Union{DataDrillInitial,DataDrillDevelopment}) = _data(d)
+
+DataDrill(d::AbstractDataDrill) = _data(d)
+
+# What is an observation?
+#------------------------------------------
+
+struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
+    model::M
+    ichars::ITup
+    z::ZTup
+    action::Int
+    state::Int
+end
+
+function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
+    0 < i <= length(d) || throw(BoundsError())
+    j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())
+    t in trange(d,j)   || throw(BoundsError())
+    zt = t - tstart(d,j) + jtstart(d,j)
+    action, state = tchars(d,t)
+    return ObservationDrill(_model(d), ichars(d,i), zchars(d,zt), action, state)
+end
+
+ichars(obs::ObservationDrill) = obs.ichars
+zchars(obs::ObservationDrill) = obs.z
+action(obs::ObservationDrill) = obs.action
+state( obs::ObservationDrill) = obs.state
 
 # API for DataDrill
 #------------------------------------------
@@ -160,42 +157,42 @@ jtstart( d::AbstractDataDrill) = jtstart(_data(d))
 ichars(  d::AbstractDataDrill) = ichars(_data(d))
 tchars(  d::AbstractDataDrill) = tchars(_data(d))
 j1chars( d::AbstractDataDrill) = j1chars(_data(d))
-hasj1ptr(d::AbstractDataDrill) = length(j1ptr(d)) > 0
 
 # length
-length(     data::AbstractDataDrill) = length(j2ptr(data))
-maxj1length(data::AbstractDataDrill) = hasj1ptr(data) ? maximum( diff(j1ptr(data)) ) : 1
+hasj1ptr(   d::AbstractDataDrill) = length(j1ptr(d)) > 0
+length(     d::AbstractDataDrill) = length(j2ptr(d))
+maxj1length(d::AbstractDataDrill) = hasj1ptr(d) ? maximum( diff(j1ptr(d)) ) : 1
 
 # getindex in fields of AbstractDataDrill
-ichars( data::AbstractDataDrill, i::Integer) = getindex(ichars(data),  i)
-j1ptr(  data::AbstractDataDrill, i::Integer) = getindex(j1ptr(data),   i)
-j2ptr(  data::AbstractDataDrill, i::Integer) = getindex(j2ptr(data),   i)
-tptr(   data::AbstractDataDrill, j::Integer) = getindex(tptr(data),    j)
-jtstart(data::AbstractDataDrill, j::Integer) = getindex(jtstart(data), j)
-j1chars(data::AbstractDataDrill, j::Integer) = getindex(j1chars(data), j)
-tchars( data::AbstractDataDrill, t::Integer) = getindex(tchars(data),  t)
-zchars( data::AbstractDataDrill, t::Union{Integer,Date}) = getindex(zchars(data), t)
+ichars( d::AbstractDataDrill, i::Integer) = getindex(ichars(d),  i)
+j1ptr(  d::AbstractDataDrill, i::Integer) = getindex(j1ptr(d),   i)
+j2ptr(  d::AbstractDataDrill, i::Integer) = getindex(j2ptr(d),   i)
+tptr(   d::AbstractDataDrill, j::Integer) = getindex(tptr(d),    j)
+jtstart(d::AbstractDataDrill, j::Integer) = getindex(jtstart(d), j)
+j1chars(d::AbstractDataDrill, j::Integer) = getindex(j1chars(d), j)
+tchars( d::AbstractDataDrill, t::Integer) = getindex(tchars(d),  t)
+zchars( d::AbstractDataDrill, t::Union{Integer,Date}) = getindex(zchars(d), t)
 
 # Iteration through j1
-j1start( data::AbstractDataDrill, i::Integer) = j1ptr(data,i)
-j1stop(  data::AbstractDataDrill, i::Integer) = j1ptr(data,i+1)-1
-j1length(data::AbstractDataDrill, i::Integer)::Int = hasj1ptr(data) ? j1stop(data,i) - j1start(data,i) + 1 : 0
-function j1_range(data::AbstractDataDrill, i::Integer)::UnitRange{Int}
-    if hasj1ptr(data)
-        return j1start(data,i) : j1stop(data,i)
+j1start( d::AbstractDataDrill, i::Integer) = j1ptr(d,i)
+j1stop(  d::AbstractDataDrill, i::Integer) = j1ptr(d,i+1)-1
+j1length(d::AbstractDataDrill, i::Integer)::Int = hasj1ptr(d) ? j1stop(d,i) - j1start(d,i) + 1 : 0
+function j1_range(d::AbstractDataDrill, i::Integer)::UnitRange{Int}
+    if hasj1ptr(d)
+        return j1start(d,i) : j1stop(d,i)
     else
         return 1:0
     end
 end
 
 # iteration through t
-tstart( data::AbstractDataDrill, j::Integer) = tptr(data,j)
-tstop(  data::AbstractDataDrill, j::Integer) = tptr(data,j+1)-1
-trange( data::AbstractDataDrill, j::Integer) = tstart(data,j) : tstop(data,j)
-tlength(data::AbstractDataDrill, j::Integer) = tstop(data,j) - tstart(data,j) + 1
+tstart( d::AbstractDataDrill, j::Integer) = tptr(d,j)
+tstop(  d::AbstractDataDrill, j::Integer) = tptr(d,j+1)-1
+trange( d::AbstractDataDrill, j::Integer) = tstart(d,j) : tstop(d,j)
+tlength(d::AbstractDataDrill, j::Integer) = tstop(d,j) - tstart(d,j) + 1
 
 # iteration through zchars
-zcharsvec(data::AbstractDataDrill, t0::Integer) = view(zchars(data), t0:length(zchars(data)))
+zcharsvec(d::AbstractDataDrill, t0::Integer) = view(zchars(d), t0:length(zchars(d)))
 
 @deprecate j2_index(data::DataDrill, i::Integer) j2ptr(data,i)
 @deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
@@ -205,12 +202,46 @@ zcharsvec(data::AbstractDataDrill, t0::Integer) = view(zchars(data), t0:length(z
 # ObservationGroup Structures
 #------------------------------------------
 
+abstract type AbstractDrillingRegime end
+struct InitialDrilling <: AbstractDrillingRegime end
+struct DevelopmentDrilling <: AbstractDrillingRegime end
+
++(::InitialDrilling, i) = DevelopmentDrilling()
+-(::InitialDrilling, i) = nothing
++(::DevelopmentDrilling, i) = nothing
+-(::DevelopmentDrilling, i) = InitialDrilling()
+
+# ObservationGroup Structures
+#------------------------------------------
+
 # At the Unit level
-const AbstractDrillingHistoryUnit     = ObservationGroup{<:AbstractDataDrill}
-const DrillingHistoryUnit             = ObservationGroup{<:DataDrill}
-const DrillingHistoryUnit_Initial     = ObservationGroup{<:DataDrillInitial}
-const DrillingHistoryUnit_Development = ObservationGroup{<:DataDrillDevelopment}
-const DrillingHistoryUnit_InitOrDev   = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
+const DrillingHistoryUnit = ObservationGroup{<:DataDrill}
+const DrillingHistoryUnit_Initial = ObservationGroup{<:DrillingHistoryUnit,InitialDrilling}
+const DrillingHistoryUnit_Development = ObservationGroup{<:DrillingHistoryUnit,DevelopmentDrilling}
+
+
+struct DrillingHistoryUnit_Initial{D<:AbstractDataDrill} <: AbstractObservationGroup
+    data::D
+    i::Int
+    function DrillingHistoryUnit_Initial(data::D, i::Int) where {D<:AbstractDataDrill}
+        i ∈ eachindex(data) || throw(BoundsError(data,i))
+        return new{D}(data,i)
+    end
+end
+
+struct DrillingHistoryUnit_Development{D<:AbstractDataDrill} <: AbstractObservationGroup
+    data::D
+    i::Int
+    function DrillingHistoryUnit_Development(data::D, i::Int) where {D<:AbstractDataDrill}
+        i ∈ eachindex(data) || throw(BoundsError(data,i))
+        return new{D}(data,i)
+    end
+end
+const DrillingHistoryUnit_InitOrDev = Union{DrillingHistoryUnit_Development,DrillingHistoryUnit_Initial}
+
+_data(d::DrillingHistoryUnit_InitOrDev) = d.data
+
+
 
 # at the lease level
 const DrillingHistoryLease = ObservationGroup{<:AbstractDrillingHistoryUnit}
