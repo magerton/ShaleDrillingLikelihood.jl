@@ -1,8 +1,9 @@
 using Revise
 
-include("data-structure.jl")
-include("royalty.jl")
-include("production.jl")
-include("drilling-data-structure.jl")
-include("drilling.jl")
-include("overall-likelihood.jl")
+include("data/data-structure.jl")
+include("data/drilling.jl")
+
+include("likelihood/royalty.jl")
+include("likelihood/production.jl")
+include("likelihood/drilling.jl")
+include("likelihood/overall.jl")

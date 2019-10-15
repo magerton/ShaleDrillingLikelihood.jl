@@ -16,7 +16,7 @@ struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
     data::D
     i::I
     function ObservationGroup(data::D, i::I) where {D<:AbstractDataStructure,I}
-        i ∈ eachindex(data) || throw(BoundsError(data,i))
+        i in eachindex(data) || throw(BoundsError(data,i))
         return new{D,I}(data,i)
     end
 end
