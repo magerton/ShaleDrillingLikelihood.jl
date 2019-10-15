@@ -168,10 +168,10 @@ tlength(d::AbstractDataDrill, j) = tstop(d,j) - tstart(d,j) + 1
 # iteration through zchars
 zcharsvec(d::AbstractDataDrill, t0) = view(zchars(d), t0:length(zchars(d)))
 
-@deprecate j2_index(data::DataDrill, i::Integer) j2ptr(data,i)
+@deprecate j2_index(     data::DataDrill, i::Integer) j2ptr(  data,i)
 @deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
-@deprecate tend(data::DataDrill, j::Integer) tstop(data,j)
-@deprecate ilength(data::DataDrill) length(data)
+@deprecate tend(         data::DataDrill, j::Integer) tstop(  data,j)
+@deprecate ilength(      data::DataDrill)             length( data)
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------
@@ -215,16 +215,6 @@ lastindex( grp::DrillUnit) = DevelopmentDrilling()
 length(    grp::DrillUnit) = DevelopmentDrilling()
 eachindex( grp::DrillUnit) = (InitialDrilling(), DevelopmentDrilling())
 
-getindex(g::DrillUnit, i) = ObservationGroup(g,i)
-
-function iterate(grp::DrillUnit, i=firstindex(grp))
-    if i == FinishedDrilling()
-        return nothing
-    else
-        return getindex(grp,i), i+1
-    end
-end
-
 # Convenience Constructors
 InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
 DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
@@ -247,18 +237,6 @@ eachindex( g::DrillDevelopment) = j2ptr(_data(g))
 firstindex(g::DrillDevelopment) = j2ptr(_data(g))
 lastindex( g::DrillDevelopment) = j2ptr(_data(g))
 
-getindex(g::AbstractDrillRegime, j) = ObservationGroup(g,j)
-
-function iterate(g::AbstractDrillRegime, j::Integer=firstindex(g))
-    if j < firstindex(g)
-        throw(BoundsError(g,j))
-    elseif j <= lastindex(g)
-        return getindex(g,j), j+1
-    else
-        return nothing
-    end
-end
-
 # Lease (third layer of iteration)
 #------------------------------------------
 
@@ -270,13 +248,3 @@ firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
 
 getindex(g::DrillLease, t) = Observation(DataDrill(g), _i(_data(_data(g))), _i(g), t)
-
-function iterate(g::DrillLease, t::Integer=firstindex(g))
-    if t < firstindex(g)
-        throw(BoundsError(g,t))
-    elseif t > lastindex(g)
-        return nothing
-    else
-        return getindex(g,t), t+1
-    end
-end
