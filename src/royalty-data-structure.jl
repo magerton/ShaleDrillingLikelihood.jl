@@ -77,6 +77,7 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 
 # Iteration over data
 #---------------------------
+
 function Observation(d::DataRoyalty, k::Integer)
     0 < k < length(d)+1 || throw(BoundsError(d,k))
     y = getindex(_y(d), k)

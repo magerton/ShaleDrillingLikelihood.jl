@@ -220,11 +220,13 @@ lastindex( grp::DrillUnit) = DevelopmentDrilling()
 length(    grp::DrillUnit) = DevelopmentDrilling()
 eachindex( grp::DrillUnit) = (InitialDrilling(), DevelopmentDrilling())
 
+getindex(g::DrillUnit, i) = ObservationGroup(g,i)
+
 function iterate(grp::DrillUnit, i=firstindex(grp))
     if i == FinishedDrilling()
         return nothing
     else
-        return ObservationGroup(grp,i), i+1
+        return getindex(grp,i), i+1
     end
 end
 
@@ -250,11 +252,13 @@ eachindex( g::DrillDevelopment) = j2ptr(_data(g))
 firstindex(g::DrillDevelopment) = j2ptr(_data(g))
 lastindex( g::DrillDevelopment) = j2ptr(_data(g))
 
+getindex(g::AbstractDrillRegime, j) = ObservationGroup(g,j)
+
 function iterate(g::AbstractDrillRegime, j::Integer=firstindex(g))
     if j < firstindex(g)
         throw(BoundsError(g,j))
     elseif j <= lastindex(g)
-        return ObservationGroup(g,j), j+1
+        return getindex(g,j), j+1
     else
         return nothing
     end
@@ -270,13 +274,14 @@ eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
 firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
 
+getindex(g::DrillLease, t) = Observation(DataDrill(g), _i(_data(_data(g))), _i(g), t)
+
 function iterate(g::DrillLease, t::Integer=firstindex(g))
     if t < firstindex(g)
         throw(BoundsError(g,t))
     elseif t > lastindex(g)
         return nothing
     else
-        obs = Observation(DataDrill(g), _i(_data(_data(g))), _i(g), t)
-        return obs, t+1
+        return getindex(g,t), t+1
     end
 end
