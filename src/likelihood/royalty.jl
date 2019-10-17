@@ -73,7 +73,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     am  = _am(sim)
     bm  = _bm(sim)
     cm  = _cm(sim)
-    LLm = _LLm(sim)
+    LLm = _llm(sim)
     M = _num_sim(sim)
 
     psi = _ψ1(sim)

@@ -1,5 +1,52 @@
+# functions to define simulations
+
+# convert θρ ∈ R ↦ ρ ∈ (0,1)
+@inline _ρ(θρ) = θρ # logistic(θρ)
+@inline _dρdθρ(θρ) = one(eltype(θρ)) # = (z = logistic(θρ); z*(1-z) )
+@inline _ρsq(θρ) = _ρ(θρ)^2
+@deprecate _dρdσ(θρ) _dρdθρ(θρ)
+@deprecate _ρ2(θρ) _ρsq(θρ)
+
+# go from iid normal u,v to correlated shocks
+@inline _ψ1(u::Number, v::Number, ρ::Number) = ρ*u + sqrt(1-ρ^2)*v
+@inline _ψ2(u::Number, v::Number, ρ::Number) = _ψ2(u,v)
+@inline _ψ2(u::Number, v::Number) = u
+
+# derivative of ψ1 wrt ρ and θρ
+@inline _dψ1dρ( u::Number, v::Number, ρ::Number) = u - ρ/sqrt(1-ρ^2)*v
+@inline _dψ1dθρ(u::Number, v::Number, ρ::Number, θρ::Number) = _dψ1dρ(u,v,ρ)*_dρdθρ(θρ)
+
+# z(ψ2|ψ1)
+@inline cond_z(x2::Number, x1::Number, Δ::Number, ρ::Number) = (x2 - ρ*x1 + Δ)/sqrt(1-ρ^2)
+@deprecate  _z(x2::Number, x1::Number, Δ::Number, ρ::Number) conditional_z(x2, x1, Δ, ρ)
+
+# derivatives
+@inline dcond_zdρ(x2::Number, x1::Number, ρ::Number, z::Number) = -x1/sqrt(1-ρ^2) + ρ*z/(1-ρ^2)
+@deprecate  _dzdρ(x2::Number, x1::Number, ρ::Number, z::Number) dcond_zdρ(x2,x1,ρ,z)
+
+@inline _dcond_probdρ(x2::Number, x1::Number, Δ::Number, ρ::Number) = (z = cond_z(x2,x1,Δ,ρ);  normpdf(z) * dcond_zdρ(x2,x1,ρ,z))
+@deprecate      _dπdρ(x2::Number, x1::Number, Δ::Number, ρ::Number) _dcond_probdρ(x2,x1,Δ,ρ)
+
+# finite difference versions
+@inline _ρfd(x::Number, h::Number) = _ρ(x+h)
+@inline cond_zfd(x2::Number, x1::Number, Δ::Number, ρ::Number, h::Number) = cond_z(x2, x1+h, Δ, ρ)
+@deprecate    _z(x2::Number, x1::Number, Δ::Number, ρ::Number, h::Number) cond_zfd(x2,x1,Δ,ρ,h)
+
 # data strucutres
 #---------------------------
+
+struct SimulationDraw{T}
+    psi1::T
+    u::T
+    dpsidrho::T
+    qm::T
+end
+
+function SimulationDraw(θρ::Float64)
+    ρ = _ρ(θρ)
+    u,v = randn(2)
+    return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), 1.0)
+end
 
 struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
     u::A
@@ -21,6 +68,7 @@ end
 
 const SimulationDrawsVector{T,A} = SimulationDraws{T,1,A} where {T,A}
 const SimulationDrawsMatrix{T,A} = SimulationDraws{T,2,A} where {T,A}
+const SimulationDrawOrDraws = Union{<:SimulationDraws,<:SimulationDraw}
 
 # generate simulations using Halton
 #---------------------------
@@ -41,21 +89,23 @@ end
 #---------------------------
 
 # access fields
-_u(    s::SimulationDraws) = s.u
 _v(    s::SimulationDraws) = s.v
-_ψ1(   s::SimulationDraws) = s.psi1
-_dψ1dρ(s::SimulationDraws) = s.dpsidrho
-_qm(   s::SimulationDraws) = s.qm
+_u(    s::SimulationDrawOrDraws) = s.u
+_ψ1(   s::SimulationDrawOrDraws) = s.psi1
+_dψ1dρ(s::SimulationDrawOrDraws) = s.dpsidrho
+_qm(   s::SimulationDrawOrDraws) = s.qm
 _am(   s::SimulationDraws) = s.am
 _bm(   s::SimulationDraws) = s.bm
 _cm(   s::SimulationDraws) = s.cm
 
+_ψ2(   s::SimulationDrawOrDraws) = _u(s)
+_psi1( s::SimulationDrawOrDraws) = _ψ1(s)
+_psi2( s::SimulationDrawOrDraws) = _ψ2(s)
+_llm(  s::SimulationDrawOrDraws) = _qm(s)
+
+@deprecate _LLm(s::SimulationDrawOrDraws) _llm(s)
+
 _num_sim(s::SimulationDraws) = size(_u(s),1)
-_ψ2(   s::SimulationDraws) = _u(s)
-_psi1( s::SimulationDraws) = _ψ1(s)
-_psi2( s::SimulationDraws) = _ψ2(s)
-_llm(  s::SimulationDraws) = _qm(s)
-_LLm(  s::SimulationDraws) = _llm(s)
 
 # manipulate like array
 tup(s::SimulationDrawsMatrix) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
@@ -79,8 +129,7 @@ end
 function update_ψ1!(ψ1::AA, u::AA, v::AA, ρ::Real) where {AA<:AbstractArray}
     size(ψ1) == size(u) == size(v) || throw(DimensionMismatch())
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
-    wt = sqrt(1-ρ^2)
-    ψ1 .= ρ.*u .+ wt.*v
+    ψ1 .= _ψ1.(u, v, ρ)
     return nothing
 end
 
@@ -88,8 +137,7 @@ end
 function update_dψ1dρ!(dψ1dρ::A, u::A, v::A, ρ::Real) where {A<:AbstractArray}
     size(dψ1dρ) == size(u) == size(v) || throw(DimensionMismatch())
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
-    rhoinvwt = ρ/sqrt(1-ρ^2)
-    dψ1dρ .= u .- rhoinvwt .* v
+    dψ1dρ .= _dψ1dρ.(u,v,ρ)
     return nothing
 end
 

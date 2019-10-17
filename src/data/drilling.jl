@@ -220,7 +220,51 @@ _x(g::DrillLease) = view(_x(DataDrill(g)), eachindex(g))
 jtstart(g::DrillLease) = jtstart(DataDrill(g), _i(g))
 ztrange(g::DrillLease) = (jtstart(g)-1) .+ OneTo(length(g))
 zchars( g::DrillLease) = view( zchars(DataDrill(g)), ztrange(g))
+ichars( g::DrillLease) = ichars(DataDrill(g), uniti(g))
+_j(g::DrillLease) = _i(g)
+_regime(g::DrillLease) = _i(_data(g))
+
 
 function getindex(g::DrillLease, t)
-    Observation(DataDrill(g), _i(_data(_data(g))), _i(_data(g)) ,_i(g), t)
+    Observation(DataDrill(g), uniti(g), _regime(g) ,_j(g), t)
+end
+
+
+
+# Simulation of data
+# -----------------------------------------------------
+
+is_development(lease::ObservationGroup{<:DrillInitial}) = false
+is_development(lease::ObservationGroup{<:DrillDevelopment}) = true
+
+function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
+    m = _model(DataDrill(lease))
+    length(theta) == length(m) || throw(DimensionMismatch())
+
+    nper = length(lease)
+    zc = zchars(lease)
+    ic = ichars(lease)
+    x = _x(lease)
+    y = _y(lease)
+    x .= (1 + is_development(lease))
+
+    i = uniti(lease)
+    sim = SimulationDraw(theta_drill_ρ(m,theta))
+
+    ubv = Vector{Float64}(undef, length(actionspace(m)))
+
+    if nper > 0
+        x[1] = initial_state(m) + is_development(lease)
+
+        for t in 1:nper
+            obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
+            f(d) = flow(d,obs,theta,sim)
+            ubv .= f.(actionspace(obs))
+            softmax!(ubv)
+            cumsum!(ubv, ubv)
+            choice = searchsortedfirst(ubv, rand())-1
+            y[t] = choice
+            t < nper && (x[t+1] = next_state(m,x[t],choice))
+        end
+    end
 end

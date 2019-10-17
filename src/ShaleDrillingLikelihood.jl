@@ -46,7 +46,6 @@ include("sum-functions.jl")
 
 # drilling model
 include("drilling-model/models.jl")
-include("drilling-model/flow.jl")
 
 # data structures
 include("data/simulation.jl")
@@ -55,6 +54,10 @@ include("data/royalty.jl")
 include("data/production.jl")
 include("data/time-variable-type.jl")
 include("data/drilling.jl")
+
+# flow for drilling
+include("drilling-model/flow.jl")
+
 
 # likelihoods
 include("likelihood/royalty.jl")

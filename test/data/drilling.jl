@@ -10,7 +10,7 @@ using Dates
 using BenchmarkTools
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
-    AbstractDrillModel, DrillModel,
+    AbstractDrillModel, DrillModel, TestDrillModel,
     ExogTimeVars, _timestamp, _timevars, Quarter,
     j1ptr, j2ptr, tptr, zchars, jtstart, ichars, _y, _x, j1chars, hasj1ptr, maxj1length,
     j1start, j1stop, j1length, j1_range,
@@ -25,7 +25,8 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     _i, _data,
     ObservationGroup,
     action, state,
-    uniti
+    uniti,
+    simulate_lease
 
 
 function randsumtoone(n)
@@ -155,8 +156,7 @@ end
         nper = 0:10
         _zchars = ExogTimeVars([(x,) for x in randn(nt)], range(Date(2003,10); step=Quarter(1), length=nt))
 
-        psi2 = rand(num_i)
-        psi1 = rho .* psi2 .+ (1-rho^2) .* rand(num_i)
+        theta = [1.0, 1.0, 1.0, 0.5]
 
         leases_per_unit = [sample(minmaxleases) for i in 1:num_i]
 
@@ -178,44 +178,16 @@ end
 
         choice_set = 0:2
         payoffs = zeros(length(choice_set))
-        theta = randn(3)
 
-        data = DataDrill(DrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
-
-        pickpsi(a, b, lease::ObservationGroup{<:DrillInitial}) = a
-        pickpsi(a, b, lease::ObservationGroup{<:DrillDevelopment}) = b
-
-        function payoff(d::Integer, psi::Real,x::Real,z::Tuple{Real},theta::AbstractVector)
-            0 <= d <= 2 || throw(DomainError())
-            length(theta)==3 || throw(DimensionMismatch())
-            out = d*(theta[1]*psi + theta[2]*x + theta[3]*first(z))
-            return Float64(out)
-        end
-
-        function simulate_lease(lease)
-            nper = length(lease)
-            zc = zchars(lease)
-            x = _x(lease)
-            y = _y(lease)
-            @test length(zc) == length(x) == length(y) == nper
-
-            i = uniti(lease)
-            psi = pickpsi(psi1[i], psi2[i], lease)
-
-            for t in 1:nper
-                f(d) = payoff(d,psi,x[t],zc[t],theta)
-                payoffs .=  f.(choice_set)
-                @views softmax!(payoffs)
-                cumsum!(payoffs, payoffs)
-                y[t] = searchsortedfirst(payoffs, rand())-1
-            end
-        end
+        data = DataDrill(TestDrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
 
         # update leases
         for (i,unit) in enumerate(data)
             for regimes in unit
                 for lease in regimes
-                    simulate_lease(lease)
+                    @test uniti(lease) == i
+                    @test isa(lease, DrillLease)
+                    simulate_lease(lease, theta)
                 end
             end
         end
