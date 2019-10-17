@@ -229,13 +229,17 @@ function getindex(g::DrillLease, t)
     Observation(DataDrill(g), uniti(g), _regime(g) ,_j(g), t)
 end
 
-
-
 # Simulation of data
 # -----------------------------------------------------
 
 is_development(lease::ObservationGroup{<:DrillInitial}) = false
 is_development(lease::ObservationGroup{<:DrillDevelopment}) = true
+
+function randsumtoone(n)
+    x = rand(n)
+    x ./= sum(x)
+    return x
+end
 
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
     m = _model(DataDrill(lease))
@@ -253,7 +257,7 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
         sim = SimulationDraw(theta_drill_ρ(m,theta))
         ubv = Vector{Float64}(undef, length(actionspace(m)))
 
-        x[1] = initial_state(m) + is_development(lease)
+        x[1] = initial_state(m) + is_development(lease) # FIXME
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
@@ -266,4 +270,64 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
             t < nper && (x[t+1] = next_state(m,x[t],choice))
         end
     end
+end
+
+ExogTimeVarsSample(m::AbstractDrillModel, nt::Integer) = throw(error("not defined for $(m)"))
+function ExogTimeVarsSample(m::TestDrillModel, nt::Integer)
+    timespan = range(Date(2003,10); step=Quarter(1), length=nt)
+    timevars = [(x,) for x in randn(nt)]
+    return ExogTimeVars(timevars, timespan)
+end
+
+ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
+function ichars_sample(m::TestDrillModel, num_i)
+    [(x,) for x in sample(0:1, num_i)]
+end
+
+function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
+    num_i=100, num_zt=30,
+    minmaxleases=0:3, nperinitial=0:10,
+    nper_development=1:10,
+    tstart=10
+)
+    _zchars = ExogTimeVarsSample(m, num_zt)
+
+    # ichars
+    _ichars = ichars_sample(m,num_i)
+
+    # initial leases per unit
+    initial_leases_per_unit = sample(minmaxleases, num_i)
+    _jchars = vcat(collect(randsumtoone(lpu) for lpu in initial_leases_per_unit )...)
+    num_initial_leases = length(_jchars)
+
+    # observations per lease
+    obs_per_lease = vcat(
+        sample(nper_development, num_initial_leases),
+        sample(nperinitial, num_i)
+    )
+
+    # pointers to observations
+    _tptr  = 1 .+ cumsum(vcat(0, obs_per_lease))
+    _j1ptr = 1 .+ cumsum(vcat(0, initial_leases_per_unit))
+    _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
+
+    nobs = last(_tptr)-1
+    x = sample(1:2, nobs)
+    y = zeros(Int, nobs)
+    _jtstart = fill(tstart, num_initial_leases + num_i)
+
+    choice_set = actionspace(m)
+
+    data = DataDrill(m, _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
+
+    # update leases
+    for (i,unit) in enumerate(data)
+        for regimes in unit
+            for lease in regimes
+                simulate_lease(lease, theta)
+            end
+        end
+    end
+
+    return data
 end
