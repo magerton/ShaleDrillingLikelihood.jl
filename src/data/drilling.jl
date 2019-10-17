@@ -242,18 +242,17 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
     length(theta) == length(m) || throw(DimensionMismatch())
 
     nper = length(lease)
-    zc = zchars(lease)
-    ic = ichars(lease)
-    x = _x(lease)
-    y = _y(lease)
-    x .= (1 + is_development(lease))
-
-    i = uniti(lease)
-    sim = SimulationDraw(theta_drill_ρ(m,theta))
-
-    ubv = Vector{Float64}(undef, length(actionspace(m)))
-
     if nper > 0
+
+        zc = zchars(lease)
+        ic = ichars(lease)
+        x = _x(lease)
+        y = _y(lease)
+
+        i = uniti(lease)
+        sim = SimulationDraw(theta_drill_ρ(m,theta))
+        ubv = Vector{Float64}(undef, length(actionspace(m)))
+
         x[1] = initial_state(m) + is_development(lease)
 
         for t in 1:nper
