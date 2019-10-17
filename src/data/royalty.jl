@@ -1,13 +1,11 @@
-export AbstractRoyaltyModel, RoyaltyModelNoHet, RoyaltyModel,
-    ObservationRoyalty, DataRoyalty
+export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty
 
 # Model structure
 #---------------------------
 
 "Royalty rates"
-abstract type AbstractRoyaltyModel <: AbstractModel        end
-struct RoyaltyModelNoHet           <: AbstractRoyaltyModel end
-struct RoyaltyModel                <: AbstractRoyaltyModel end
+struct RoyaltyModelNoHet <: AbstractRoyaltyModel end
+struct RoyaltyModel      <: AbstractRoyaltyModel end
 
 # Abstract data strucutres
 #---------------------------

@@ -1,28 +1,25 @@
 module ShaleDrillingLikelihood
 
+# general libraries
 using StatsFuns
-using Distributions: _F1
 using LinearAlgebra
 using Base.Threads
 using Halton
 using Dates
 
+# extend these methods
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
     view, ==, eltype, +, -, isless
+
+# specific functions
+using Distributions: _F1
 using StatsBase: countmap, sample
 using Base: OneTo
 using Base.Iterators: flatten
 using Dates: Month
-
 using LinearAlgebra: checksquare
 
-# for computations
-abstract type AbstractIntermediateComputations end
-abstract type AbstractTempVar end
-
-# for modeling
-abstract type AbstractModel end
 
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
@@ -30,20 +27,33 @@ const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
 # models
 #---------------------
 
+export AbstractModel, NoModel, AbstractDrillModel, AbstractProductionModel, AbstractRoyaltyModel
+
+# for modeling
+abstract type AbstractModel end
+
 "No model"
 struct NoModel <: AbstractModel end
+abstract type AbstractDrillModel      <: AbstractModel end
+abstract type AbstractProductionModel <: AbstractModel end
+abstract type AbstractRoyaltyModel    <: AbstractModel end
+
 
 # Overall structure
 #----------------------------
 
 include("sum-functions.jl")
-include("flow.jl")
+
+# drilling model
+include("drilling-model/models.jl")
+include("drilling-model/flow.jl")
 
 # data structures
 include("data/simulation.jl")
 include("data/abstract.jl")
 include("data/royalty.jl")
 include("data/production.jl")
+include("data/time-variable-type.jl")
 include("data/drilling.jl")
 
 # likelihoods
