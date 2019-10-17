@@ -185,6 +185,13 @@ end
         pickpsi(a, b, lease::ObservationGroup{<:DrillInitial}) = a
         pickpsi(a, b, lease::ObservationGroup{<:DrillDevelopment}) = b
 
+        function payoff(d::Integer, psi::Real,x::Real,z::Tuple{Real},theta::AbstractVector)
+            0 <= d <= 2 || throw(DomainError())
+            length(theta)==3 || throw(DimensionMismatch())
+            out = d*(theta[1]*psi + theta[2]*x + theta[3]*first(z))
+            return Float64(out)
+        end
+
         function simulate_lease(lease)
             nper = length(lease)
             zc = zchars(lease)
@@ -196,8 +203,8 @@ end
             psi = pickpsi(psi1[i], psi2[i], lease)
 
             for t in 1:nper
-                xbet = theta[1]*psi + theta[2]*x[t] + theta[3]*first(zc[t])
-                payoffs .=  xbet .* choice_set
+                f(d) = payoff(d,psi,x[t],zc[t],theta)
+                payoffs .=  f.(choice_set)
                 @views softmax!(payoffs)
                 cumsum!(payoffs, payoffs)
                 y[t] = searchsortedfirst(payoffs, rand())-1
