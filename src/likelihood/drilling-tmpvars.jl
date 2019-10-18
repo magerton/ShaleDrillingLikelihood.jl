@@ -16,21 +16,19 @@ function check_lengths(ubv::VV, llj::VV, grad::VV, gradj::VM) where {T,VV<:Vecto
     size(gradj) == (length(grad), length(llj)) || throw(DimensionMismatch())
 end
 
-struct DrillingTmpVars{T, VM<:VecOrMat} <: AbstractTmpVars
-    ubv::Vector{T}
-    llj::Vector{T}
-    grad::Vector{T}
+struct DrillingTmpVars{V<:Vector, VM<:VecOrMat} <: AbstractTmpVars
+    ubv::V
+    llj::V
+    grad::V
     gradJ::VM
-    function DrillingTmpVars(ubv::V, llj::V, grad::V, gradJ::VM) where {
-        T, V<:Union{Vector{T},Vector{Vector{T}}}, VM<:Union{Matrix{T}, Vector{Matrix{T}}}
-    }
-        check_lengths(ubv, llj, grad, gradJ)
-        return new{T,VM}(ubv, llj, grad, gradJ)
+    function DrillingTmpVars(ubv::V, llj::V, grad::V, gradJ::VM) where {V,VM}
+        # check_lengths(ubv, llj, grad, gradJ)
+        return new{V,VM}(ubv, llj, grad, gradJ)
     end
 end
 
-const DrillingTmpVarsAll = DrillingTmpVars{<:Vector}
-const DrillingTmpVarsThread = DrillingTmpVars{<:Number}
+const DrillingTmpVarsAll = DrillingTmpVars{<:Vector{<:Vector}}
+const DrillingTmpVarsThread = DrillingTmpVars{<:Vector{<:Number}}
 
 _ubv(  dtv::DrillingTmpVars) = dtv.ubv
 _llj(  dtv::DrillingTmpVars) = dtv.llj
@@ -68,12 +66,12 @@ end
         end
     end
 
-    for i in OneTo(nth)
-        @assert ubvs[i][1] == i
-        @assert lljs[i][1] == i
-        @assert grads[i][1] == i
-        @assert gradJs[i][1] == i
-    end
+    # for i in OneTo(nth)
+    #     @assert ubvs[i][1] == i
+    #     @assert lljs[i][1] == i
+    #     @assert grads[i][1] == i
+    #     @assert gradJs[i][1] == i
+    # end
 
     return DrillingTmpVars(ubvs, lljs, grads, gradJs)
 end

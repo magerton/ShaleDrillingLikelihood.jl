@@ -26,6 +26,8 @@ isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 # DataSet
 #---------------------------
 
+export DataDrill
+
 abstract type AbstractDataDrill <: AbstractDataSet end
 
 struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
@@ -288,9 +290,9 @@ end
 
 function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     num_i=100, num_zt=30,
-    minmaxleases=0:3, nperinitial=0:10,
-    nper_development=1:10,
-    tstart=10
+    minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
+    nper_development::UnitRange=0:10,
+    tstart::Integer=10
 )
     _zchars = ExogTimeVarsSample(m, num_zt)
 

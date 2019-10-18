@@ -42,11 +42,16 @@ struct SimulationDraw{T,V<:AbstractVector{T}}
     drillgradm::V
 end
 
-function SimulationDraw(θρ::T) where {T}
+function SimulationDraw(u::Real, v::Real, θρ::T) where {T}
     ρ = _ρ(θρ)
-    u,v = randn(2)
     return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), Vector{T}(undef,0))
 end
+
+function SimulationDrawFD(s::SimulationDraw, x::Real)
+    SimulationDraw(_ψ1(s)+x, _u(s)+x, _dψ1dρ(s), _drillgradm(s))
+end
+
+SimulationDraw(θρ) = SimulationDraw(randn(), randn(), θρ)
 
 struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
     u::A
@@ -77,7 +82,7 @@ const SimulationDrawOrDraws = Union{<:SimulationDraws,<:SimulationDraw}
 # generate simulations using Halton
 #---------------------------
 
-function SimulationDraws(M::Integer, N::Integer, K::Integer; bases::NTuple{2,Int}=(2,3))
+function SimulationDraws(M::Integer, N::Integer, K::Integer=0; bases::NTuple{2,Int}=(2,3))
     uvs = map((b) -> Matrix{Float64}(undef, M,N), bases)
     HaltonDraws!.(uvs, bases; skip=5000, distr=Normal())
     psi1 = similar(uvs[1])
@@ -90,8 +95,8 @@ function SimulationDraws(M::Integer, N::Integer, K::Integer; bases::NTuple{2,Int
     return SimulationDraws(uvs..., psi1, dpsidrho, qm, am, bm, cm, drillgradm)
 end
 
-function SimulationDraws(M, N, m::Mod=NoModel(); kwargs...) where {Mod<:Union{<:AbstractDrillModel,NoModel}}
-    return SimulationDraws(M,N,length(m); kwargs...)
+function SimulationDraws(M, data::AbstractDataSet; kwargs...)
+    return SimulationDraws(M, length(data), length(_model(data)); kwargs...)
 end
 
 # interface

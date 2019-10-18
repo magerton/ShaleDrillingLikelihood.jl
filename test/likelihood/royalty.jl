@@ -59,7 +59,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     @test_throws DomainError idx_royalty_κ(data, 0)
 
     M = 10
-    RT = SimulationDraws(M,nobs)
+    RT = SimulationDraws(M,nobs,1)
     am = _am(RT)
     bm = _bm(RT)
     cm = _cm(RT)
@@ -114,7 +114,7 @@ end
     @test all(theta_royalty_κ(data, theta) .== theta[end-L+2:end])
 
     # simulations
-    uv = SimulationDraws(M,nobs)
+    uv = SimulationDraws(M,nobs,1)
 
     # let obs = first(first(data)), simi = view(uv,1)
     #     @code_warntype simloglik_royalty!(obs, theta, simi, false)

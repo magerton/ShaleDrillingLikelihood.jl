@@ -6,6 +6,7 @@ using LinearAlgebra
 using Base.Threads
 using Halton
 using Dates
+using Calculus
 
 # extend these methods
 import Base: length, size, iterate,
@@ -13,7 +14,7 @@ import Base: length, size, iterate,
     view, ==, eltype, +, -, isless
 
 # specific functions
-using Distributions: _F1
+using Distributions: _F1, Normal
 using StatsBase: countmap, sample
 using Base: OneTo
 using Base.Iterators: flatten
@@ -52,8 +53,8 @@ include("sum-functions.jl")
 include("drilling-model/models.jl")
 
 # data structures
-include("data/simulation.jl")
 include("data/abstract.jl")
+include("data/simulation.jl")
 include("data/royalty.jl")
 include("data/production.jl")
 include("data/time-variable-type.jl")
@@ -61,7 +62,6 @@ include("data/drilling.jl")
 
 # flow for drilling
 include("drilling-model/flow.jl")
-
 
 # likelihoods
 include("likelihood/royalty.jl")

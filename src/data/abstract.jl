@@ -1,3 +1,5 @@
+export ObservationGrup
+
 # For data structures
 abstract type AbstractDataStructure end
 

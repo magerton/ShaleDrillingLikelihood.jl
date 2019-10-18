@@ -1,3 +1,5 @@
+export TestDrillModel
+
 actionspace(obs::ObservationDrill) = actionspace(_model(obs),_x(obs))
 actionspace(m::AbstractDrillModel, state::Integer) = actionspace(m)
 actionspace(m::TestDrillModel) = 0:2
@@ -10,7 +12,7 @@ Dgt0(m::AbstractDrillModel, state::Integer) = throw(error("Dgt0 not defined for 
 Dgt0(m::TestDrillModel,     state::Integer) = state > 1
 
 _ψ(    m::AbstractDrillModel, state::Integer, s::SimulationDraw) = Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
-_dψdθρ(m::AbstractDrillModel, state::Integer, s::SimulationDraw) = Dgt0(m, state) ? zero(eltype(s)) : _dψ1dρ(s)
+_dψdθρ(m::AbstractDrillModel, state::Integer, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dρ(s)
 
 next_state(m::TestDrillModel, state::Integer, d::Integer) = state + d
 initial_state(m::TestDrillModel) = 1
@@ -26,9 +28,41 @@ function check_model_dims(d::Integer, obs::ObservationDrill, theta::AbstractVect
     d in actionspace(model, _x(obs)) || throw(BoundsError())
 end
 
+# Check Derivatives
+#-------------------------------------------------------------
+
+function check_flow_grad(m::AbstractDrillModel, d::Integer, obs::ObservationDrill, theta::AbstractVector)
+
+    u, v = rand(2)
+
+    # set up simulations
+    simdraw(x) = SimulationDraw(u, v, theta_drill_ρ(m, x))
+    sim = simdraw(theta)
+
+    # compute analytic
+    grad = similar(theta)
+    dflow!(grad, d, obs, theta, sim)
+
+    # check finite difference for dθ
+    f(x) = flow(d, obs, x, simdraw(x))
+    grad ≈ Calculus.gradient(f, theta) || return false
+
+    # check finite difference for dψ
+    fdpsi(x) = flow(d, obs, theta, SimulationDrawFD(sim, x))
+    dflowdψ(d, obs, theta, sim) ≈ Calculus.derivative(fdpsi, 0.0) || return false
+
+    return true
+end
+
+
+
+
+
+
 # FOR TESTING ONLY
 #---------------------------------------------------------------
 const TestObs = ObservationDrill{TestDrillModel}
+
 
 length(     m::TestDrillModel) = 4
 
@@ -59,10 +93,16 @@ function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s
     k == idx_drill_ρ(m) && return T(d*_dψdθρ(m,x,s))
 end
 
+function dflow!(grad::AbstractVector, d, obs, theta, s)
+    for k in OneTo(length(grad))
+        grad[k] = dflow(k, d, obs, theta, s)
+    end
+end
+
 function dflowdψ(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
     check_model_dims(d,obs,theta)
     m, x, z = _model(obs), _x(obs), zchars(obs)
-    return T(d*_ψ(m,x,s))
+    return T(d*theta_drill_ψ(m,theta))
 end
 
 function dflowdθρ(d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw)
