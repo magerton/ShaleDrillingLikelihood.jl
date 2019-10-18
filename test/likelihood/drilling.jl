@@ -8,10 +8,10 @@ using StatsFuns
 using Random
 using BenchmarkTools
 using Base.Threads
-using Profile
-using ProfileView
+# using Profile
+# using ProfileView
 using BenchmarkTools
-using InteractiveUtils
+# using InteractiveUtils
 
 using Calculus
 using Optim
@@ -66,6 +66,7 @@ println("testing drilling likelihood")
     @test isfinite(LL2)
     @test LL1 ≈ LL2
 
+    @show @btime logL($data,$sim,$dtv,$theta)
 
     # # -----------------------------------------------
     # # simulate data
