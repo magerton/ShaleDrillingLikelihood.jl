@@ -45,9 +45,9 @@ println("testing drilling likelihood")
 
     data = DataDrill(
         TestDrillModel(), theta;
-        minmaxleases=10:100,
-        num_i=1_000, nperinitial=1:30, nper_development=0:40,
-        num_zt=200
+        minmaxleases=1:10,
+        num_i=100, nperinitial=1:10, nper_development=1:10,
+        num_zt=40
     )
 
     sim = SimulationDraws(500, data)
