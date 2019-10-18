@@ -2,6 +2,10 @@ actionspace(obs::ObservationDrill) = actionspace(_model(obs),_x(obs))
 actionspace(m::AbstractDrillModel, state::Integer) = actionspace(m)
 actionspace(m::TestDrillModel) = 0:2
 
+num_choices(m::TestDrillModel) = 3
+num_choices(m::AbstractDrillModel) = throw(error("num_choices not defined for $m"))
+num_choices(obs::ObservationDrill) = num_choices(_model(obs))
+
 Dgt0(m::AbstractDrillModel, state::Integer) = throw(error("Dgt0 not defined for $(m)"))
 Dgt0(m::TestDrillModel,     state::Integer) = state > 1
 
@@ -11,6 +15,9 @@ _dψdθρ(m::AbstractDrillModel, state::Integer, s::SimulationDraw) = Dgt0(m, st
 next_state(m::TestDrillModel, state::Integer, d::Integer) = state + d
 initial_state(m::TestDrillModel) = 1
 
+function full_payoff(d::Integer,obs::ObservationDrill,theta::AbstractVector,s::SimulationDraw)
+    throw(error("not defined for model $(_model(obs))"))
+end
 # -------------------------------------------------------
 
 function check_model_dims(d::Integer, obs::ObservationDrill, theta::AbstractVector)
@@ -29,6 +36,8 @@ idx_drill_ψ(m::TestDrillModel) = 1
 idx_drill_x(m::TestDrillModel) = 2
 idx_drill_z(m::TestDrillModel) = 3
 idx_drill_ρ(m::TestDrillModel) = 4
+
+full_payoff(d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
 
 function flow(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
     check_model_dims(d,obs,theta)

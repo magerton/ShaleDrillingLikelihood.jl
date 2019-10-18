@@ -35,17 +35,17 @@
 # data strucutres
 #---------------------------
 
-struct SimulationDraw{T}
+struct SimulationDraw{T,V<:AbstractVector{T}}
     psi1::T
     u::T
     dpsidrho::T
-    qm::T
+    drillgradm::V
 end
 
-function SimulationDraw(θρ::Float64)
+function SimulationDraw(θρ::T) where {T}
     ρ = _ρ(θρ)
     u,v = randn(2)
-    return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), 1.0)
+    return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), Vector{T}(undef,0))
 end
 
 struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
@@ -57,12 +57,16 @@ struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
     am::Vector{T} # pdf(η₁) / cdf(η₁)
     bm::Vector{T} # pdf(η₂) / cdf(η₂)
     cm::Vector{T} # (pdf(η₂) - pdf(η₁)) / (cdf(η₂) - cdf(η₁))
+    drillgradm::Matrix{T}
+
     function SimulationDraws(
-        u::A, v::A, psi1::A, dpsidrho::A, qm::V, am::V, bm::V, cm::V
+        u::A, v::A, psi1::A, dpsidrho::A, qm::V, am::V, bm::V, cm::V,
+        drillgradm::Matrix{T}
     ) where {T,N,A<:AbstractRealArray{T,N},V<:Vector{T}}
         size(dpsidrho) == size(psi1) == size(u) == size(v)  || throw(DimensionMismatch())
         length(qm) == length(am) == length(bm) == length(cm) == size(u,1) || throw(DimensionMismatch())
-        return new{T,N,A}(u,v,psi1,dpsidrho,qm,am,bm,cm)
+        length(qm) == size(drillgradm,2) || throw(DimensionMismatch())
+        return new{T,N,A}(u,v,psi1,dpsidrho,qm,am,bm,cm,drillgradm)
     end
 end
 
@@ -73,16 +77,21 @@ const SimulationDrawOrDraws = Union{<:SimulationDraws,<:SimulationDraw}
 # generate simulations using Halton
 #---------------------------
 
-function SimulationDraws(M::Integer, N::Integer, bases::NTuple{2,Int}=(2,3); kwargs...)
+function SimulationDraws(M::Integer, N::Integer, K::Integer; bases::NTuple{2,Int}=(2,3))
     uvs = map((b) -> Matrix{Float64}(undef, M,N), bases)
-    HaltonDraws!.(uvs, bases; kwargs...)
+    HaltonDraws!.(uvs, bases; skip=5000, distr=Normal())
     psi1 = similar(uvs[1])
     dpsidrho = similar(uvs[1])
     qm = Vector{Float64}(undef, M)
     am = similar(qm)
     bm = similar(qm)
     cm = similar(qm)
-    return SimulationDraws(uvs..., psi1, dpsidrho, qm, am, bm, cm)
+    drillgradm = Matrix{Float64}(undef,K,M)
+    return SimulationDraws(uvs..., psi1, dpsidrho, qm, am, bm, cm, drillgradm)
+end
+
+function SimulationDraws(M, N, m::Mod=NoModel(); kwargs...) where {Mod<:Union{<:AbstractDrillModel,NoModel}}
+    return SimulationDraws(M,N,length(m); kwargs...)
 end
 
 # interface
@@ -94,6 +103,7 @@ _u(    s::SimulationDrawOrDraws) = s.u
 _ψ1(   s::SimulationDrawOrDraws) = s.psi1
 _dψ1dρ(s::SimulationDrawOrDraws) = s.dpsidrho
 _qm(   s::SimulationDrawOrDraws) = s.qm
+_drillgradm(s::SimulationDrawOrDraws) = s.drillgradm
 _am(   s::SimulationDraws) = s.am
 _bm(   s::SimulationDraws) = s.bm
 _cm(   s::SimulationDraws) = s.cm
@@ -108,12 +118,19 @@ _llm(  s::SimulationDrawOrDraws) = _qm(s)
 _num_sim(s::SimulationDraws) = size(_u(s),1)
 
 # manipulate like array
-tup(s::SimulationDrawsMatrix) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
-tup(s::SimulationDrawsVector) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s), _qm(s)
+tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
+size(s::SimulationDraws) = size(_u(s))
 
-size(    s::SimulationDraws) = size(_u(s))
-view(    s::SimulationDrawsMatrix, i::Integer) = SimulationDraws(view.(tup(s), :, i)..., _qm(s), _am(s), _bm(s), _cm(s))
-getindex(s::SimulationDrawsVector, m) = getindex.(tup(s), m)
+function view(s::SimulationDrawsMatrix, i::Integer)
+    psiviews = view.(tup(s), :, i)
+    SimulationDraws(psiviews..., _qm(s), _am(s), _bm(s), _cm(s), _drillgradm(s))
+end
+
+function getindex(s::SimulationDrawsVector, m)
+    u, v, ψ1, dψ1dρ = getindex.(tup(s), m)
+    gradmvw = view(_drillgradm(s), :, m)
+    return SimulationDraw(ψ1, u, dψ1dρ, gradmvw)
+end
 
 # doing mean(psi) and mean(psi^2)
 function psi2_wtd_sum_and_sumsq(s::SimulationDrawsVector{T}) where {T}

@@ -27,7 +27,8 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     action, state,
     uniti,
     simulate_lease,
-    randsumtoone
+    randsumtoone,
+    num_initial_leases
 
 
 
@@ -117,6 +118,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
             @test isa(unit, DrillUnit)
             @test DataDrill(unit) === data
             @test length(unit) == DevelopmentDrilling()
+            @test num_initial_leases(unit) == j1length(unit)
 
             for regime in unit
                 r += 1

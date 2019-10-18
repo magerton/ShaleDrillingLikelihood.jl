@@ -24,6 +24,8 @@ using LinearAlgebra: checksquare
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
 
+abstract type AbstractTmpVars end
+
 # models
 #---------------------
 
@@ -34,6 +36,8 @@ abstract type AbstractModel end
 
 "No model"
 struct NoModel <: AbstractModel end
+length(::NoModel) = 0
+
 abstract type AbstractDrillModel      <: AbstractModel end
 abstract type AbstractProductionModel <: AbstractModel end
 abstract type AbstractRoyaltyModel    <: AbstractModel end
@@ -62,6 +66,7 @@ include("drilling-model/flow.jl")
 # likelihoods
 include("likelihood/royalty.jl")
 include("likelihood/production.jl")
+include("likelihood/drilling-tmpvars.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
 

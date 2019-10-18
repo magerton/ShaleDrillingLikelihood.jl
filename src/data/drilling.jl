@@ -184,6 +184,8 @@ eachindex( grp::DrillUnit) = (InitialDrilling(), DevelopmentDrilling())
 InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
 DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
 
+num_initial_leases(d::DrillUnit) = j1length(d)
+
 # Regime (second layer of iteration)
 #------------------------------------------
 
