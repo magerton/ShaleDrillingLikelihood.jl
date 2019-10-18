@@ -1,7 +1,26 @@
-function loglik_drill_lease(lease::DrillLease, theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread, dograd::Bool=false)::T where {T}
+function gradweight(could_choose, did_choose, payoff)
+    if did_choose == could_choose
+        return 1-payoff
+    else
+        return -payoff
+    end
+end
+
+"""
+    loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
+
+Return log lik of `lease` history. Optionally *adds* to gradient vector `grad`.
+
+Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
+"""
+function loglik_drill_lease!(
+    grad::AbstractVector, lease::DrillLease,
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread,
+    dograd::Bool
+)::T where {T}
+
     LL = zero(T)
     ubv = _ubv(dtv)
-    grad = _grad(dtv)
 
     for obs in lease
         actions = actionspace(obs)
@@ -9,72 +28,99 @@ function loglik_drill_lease(lease::DrillLease, theta::AbstractVector{T}, sim::Si
         ubv_vw = view(ubv, OneTo(n))
 
         @inbounds @simd for d in actions
-            ubv_vw[d+1] = full_payoff(d, obs, theta, sim)
+            ubv[d+1] = full_payoff(d, obs, theta, sim)
         end
 
         if !dograd
-            LL += ubv_vw[_y(obs)+1] - logsumexp(ubv_vw)
+            LL += ubv[_y(obs)+1] - logsumexp(ubv_vw)
         else
-            LL += ubv_vw[_y(obs)+1] - logsumexp_and_softmax!(ubv_vw)
+            LL += ubv[_y(obs)+1] - logsumexp_and_softmax!(ubv_vw)
 
             @inbounds for d in actions
-                wt = d==_y(obs) ? 1-ubv_vw[d+1] : -ubv_vw[d+1]
-                @inbounds @simd for k in eachindex(grad)
+                wt = gradweight(d, _y(obs), ubv[d+1])
+                @simd for k in eachindex(grad)
                     grad[k] += wt * dfull_payoff(k, d, obs, theta, sim)
                 end
             end
+
         end
     end
 
     return LL
 end
 
-function loglik_drill_unit(unit::DrillUnit, theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread, dograd::Bool=false)::T where {T}
-    LL = zero(T)
-    nJ = num_initial_leases(unit)
-    grad = _grad(dtv)
-    gradJ = view(_gradJ(dtv), :, nJ)
-    LLj = view(_llj(dtv), OneTo(nJ))
+"""
+    loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
 
+Return log lik of `unit` history, integrating over `J`. possible leases.
+
+If `dograd`, then `grad .+= ∇(log Lᵢ)` using thread-specific temp variables
+`dtv::DrillingTmpVarsThread`. This overwrites `_gradJ(dtv)`
+"""
+function loglik_drill_unit!(
+    grad::AbstractVector, unit::DrillUnit,
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread,
+    dograd::Bool
+)::T where {T}
+
+    nJ    = num_initial_leases(unit)
+    gradJ = view(_gradJ(dtv), :, OneTo(nJ))
+    LLj   = view(_llj(dtv),      OneTo(nJ))
+
+    fill!(gradJ, 0)
+
+    LL = zero(T)
     if nJ > 0
         for (ji,lease) in enumerate(InitialDrilling(unit))
-            fill!(grad, 0)
-            LLj[ji] = loglik_drill_lease(lease, theta, sim, dtv, dograd)
-            if dograd
-                gradJ[:,ji] .= grad   # FIXME
-            end
+            gradj = view(gradJ, :, ji)
+            LLj[ji] = loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         if dograd
             LL += logsumexp_and_softmax!(LLj)
-            mul!(grad, gradJ, LLj)
+            BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
         else
             LL += logsumexp(LLj)
         end
     end
 
     for lease in DevelopmentDrilling(unit)
-        LL += loglik_drill_lease(lease, theta, sim, dtv, dograd)
+        LL += loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
     end
-    dograd && _drillgradm(dtv) .= _grad(dtv)
+
     return LL
 end
 
-function simloglik_drill!(grad::AbstractVector, unit::DrillUnit, theta::AbstractVector{T}, sims::SimulationDrawsVector, dtv::DrillingTmpVarsAll, dograd::Bool=false)::T where {T}
+"""
+    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+
+Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
+`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
+
+Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+"""
+function simloglik_drill_unit!(
+    grad::AbstractVector, unit::DrillUnit,
+    theta::AbstractVector{T}, sims::SimulationDrawsVector,
+    dtv::DrillingTmpVarsAll, dograd::Bool
+)::T where {T}
+
     M = _num_sim(sims)
     llm = _llm(sims)
-    gradm = _drillgradm(sims)
+    gradM = _drillgradm(sims)
+    fill!(gradM, 0)
 
-    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv
+    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM
         @threads for m in OneTo(M)
-            local sims_m = sims[m]
-            local dtvi = dtv[threadid()]
-            llm[m] = loglik_drill_unit(unit, theta, sims_m, dtvi)
+            local sims_m = sims[m]        # get 1 particular simulation
+            local dtvi = dtv[threadid()]  # thread-specific tmpvars
+            local gradm_i = view(gradM, :, m)
+            llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
         end
     end
 
     if dograd
         LL = logsumexp_and_softmax!(llm) - log(M)
-        grad .+= _drillgradm(sims) * llm
+        BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
         return LL
     else
         return logsumexp(llm) - log(M)
@@ -83,11 +129,17 @@ end
 
 
 
-function logL!(grad::AbstractVector, data::DataDrill, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll, theta::AbstractVector, dograd::Bool=false)
-    lik = 0.0
+function simloglik_drill_data!(grad::AbstractVector, data::DataDrill,
+    theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,
+    dograd::Bool=false
+) where {T}
+
+    LL = zero(T)
     update!(sim, theta_drill_ρ(_model(data), theta))
+
     for (i,unit) in enumerate(data)
-        lik += simloglik_drill!(grad, unit, theta, view(sim, i), dtv, dograd)
+        LL += simloglik_drill_unit!(grad, unit, theta, view(sim, i), dtv, dograd)
     end
-    return lik
+
+    return LL
 end

@@ -1,6 +1,5 @@
 module ShaleDrillingLikelihood_Drilling_Test
 
-# using Revise
 using ShaleDrillingLikelihood
 
 using Test
@@ -8,9 +7,6 @@ using StatsFuns
 using Random
 using BenchmarkTools
 using Base.Threads
-# using Profile
-# using ProfileView
-using BenchmarkTools
 # using InteractiveUtils
 
 using Calculus
@@ -21,7 +17,6 @@ using ShaleDrillingLikelihood: SimulationDraws,
     DataDrill,
     TestDrillModel,
     DrillingTmpVars,
-    simloglik_drill!,
     DrillUnit,
     AbstractDrillRegime,
     DrillLease,
@@ -31,7 +26,10 @@ using ShaleDrillingLikelihood: SimulationDraws,
     theta_drill_ρ,
     _model,
     update!,
-    logL,
+    loglik_drill_lease!,
+    loglik_drill_unit!,
+    simloglik_drill_unit!,
+    simloglik_drill_data!,
     _y
 
 
@@ -56,63 +54,27 @@ println("testing drilling likelihood")
     grad = zeros(length(theta))
     dtv = DrillingTmpVars(data, theta)
 
-    LL1 = logL(data,sim,dtv,theta)
-    LL2 = logL(data,sim,dtv,theta)
+    LL1 = simloglik_drill_data!(grad, data, theta, sim, dtv, true)
+    LL2 = simloglik_drill_data!(grad, data, theta, sim, dtv, false)
     @test isfinite(LL1)
     @test isfinite(LL2)
     @test LL1 ≈ LL2
 
-    @show @benchmark logL($data,$sim,$dtv,$theta)
+    # check that we don't update gradient here
+    simloglik_drill_data!(grad, data, theta, sim, dtv, true)
+    gradcopy = copy(grad)
+    simloglik_drill_data!(grad, data, theta.*2, sim, dtv, false)
+    @test all(grad .== gradcopy)
 
-    # # -----------------------------------------------
-    # # simulate data
-    # # -----------------------------------------------
-    #
-    #
-    # num_i = 100
-    # num_t = 50
-    # nobs = num_i *num_t
-    # β = [1.0, -2.0, 1.0, 2.0]
-    # k = length(β)
-    # L = 3
-    #
-    # # exogenous variable
-    # X = randn(nobs)
-    # psi = repeat(randn(num_i), inner=num_t)
-    #
-    # # choice utilities
-    # u = vcat(zeros(nobs)', β[1:2]*X' .+ β[3:4]*psi')
-    #
-    # # multinomial logit probabilities
-    # Pr0 = mapslices(softmax, u; dims=1)
-    # cum_Pr0 = cumsum(Pr0; dims=1)
-    #
-    # # random choice given multinomial probabilites
-    # e_quantile = rand(nobs)
-    # choices = [searchsortedfirst(view(cum_Pr0, :, i), e_quantile[i]) for i in 1:length(e_quantile) ]
-    #
-    # # -----------------------------------------------
-    # # form likelihood
-    # # -----------------------------------------------
-    #
-    # theta = rand(k)
-    # ubV = zeros(L, nobs)
-    # drng = 1:L
-    # M = 10*nthreads()
-    # psisim = randn(M,num_i)
-    #
-    # grad = similar(theta)
-    #
-    # println("run threaded once")
-    # llthrd = simloglik_drill!(grad, choices, X, psisim, theta, num_t, num_i)
-    # gradan = copy(grad)
-    # gradfd = Calculus.gradient( θ -> simloglik_drill!(Vector{Float64}(undef,0), choices, X, psisim, θ, num_t, num_i), theta )
-    # @test gradan ≈ gradfd
-    #
-    # # @code_warntype simloglik_drill!(grad, choices, X, psisim, theta, num_t, num_i)
-    #
-    # println("\n\n-------- Threaded using $(nthreads()) threads --------\n\n")
-    # # @show @btime simloglik_drill!($grad, $choices, $X, $psisim, $theta, $num_t, $num_i)
+    # check finite difference
+    fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, data, x, sim, dtv, false), theta)
+    fill!(grad, 0)
+    simloglik_drill_data!(grad, data, theta, sim, dtv, true)
+    @test grad ≈ fdgrad
+
+    @show @benchmark simloglik_drill_data!($grad, $data, $theta, $sim, $dtv, false)
+    @show @benchmark simloglik_drill_data!($grad, $data, $theta, $sim, $dtv, true)
+
 
 end # testset
 end # module
