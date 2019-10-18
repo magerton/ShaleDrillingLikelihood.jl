@@ -71,7 +71,8 @@ idx_drill_x(m::TestDrillModel) = 2
 idx_drill_z(m::TestDrillModel) = 3
 idx_drill_ρ(m::TestDrillModel) = 4
 
-full_payoff(d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
+full_payoff(             d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
+dfull_payoff(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = dflow(k,d,obs,theta,s)
 
 function flow(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
     check_model_dims(d,obs,theta)
@@ -84,8 +85,8 @@ function flow(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationD
 end
 
 function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
-    1 <= k <= length(theta) || throw(BoundsError(theta,k))
-    check_model_dims(d,obs,theta)
+    # 1 <= k <= length(theta) || throw(BoundsError(theta,k))
+    # check_model_dims(d,obs,theta)
     m, x, z = _model(obs), _x(obs), zchars(obs)
     k == idx_drill_ψ(m) && return T(d*_ψ(m,x,s))
     k == idx_drill_x(m) && return T(d*x)
@@ -94,7 +95,7 @@ function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s
 end
 
 function dflow!(grad::AbstractVector, d, obs, theta, s)
-    for k in OneTo(length(grad))
+    @fastmath @inbounds @simd for k in OneTo(length(grad))
         grad[k] = dflow(k, d, obs, theta, s)
     end
 end
