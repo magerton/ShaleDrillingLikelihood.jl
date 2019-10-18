@@ -30,7 +30,10 @@ using ShaleDrillingLikelihood: SimulationDraws,
     DevelopmentDrilling,
     theta_drill_ρ,
     _model,
-    update!
+    update!,
+    logL,
+    _y
+
 
 println("testing drilling likelihood")
 
@@ -45,20 +48,11 @@ println("testing drilling likelihood")
         num_i=100, nperinitial=1:20, nper_development=0:20
     )
 
-    sim = SimulationDraws(50, data)
+    sim = SimulationDraws(500, data)
+    println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
     dtv = DrillingTmpVars(data, theta)
-
-    function logL(data, sim, dtv, theta)
-        lik = 0.0
-        update!(sim, theta_drill_ρ(_model(data), theta))
-
-        for (i,unit) in enumerate(data)
-            lik += simloglik_drill!(unit, theta, view(sim, i), dtv)
-        end
-        return lik
-    end
 
     LL1 = logL(data,sim,dtv,theta)
     LL2 = logL(data,sim,dtv,theta)

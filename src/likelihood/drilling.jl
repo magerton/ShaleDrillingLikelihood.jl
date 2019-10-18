@@ -51,3 +51,15 @@ function simloglik_drill!(unit::DrillUnit, theta::AbstractVector{T}, sims::Simul
 
     return logsumexp(llm) - log(M)
 end
+
+
+
+function logL(data::DataDrill, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll, theta::AbstractVector)
+    lik = 0.0
+    update!(sim, theta_drill_ρ(_model(data), theta))
+
+    for (i,unit) in enumerate(data)
+        lik += simloglik_drill!(unit, theta, view(sim, i), dtv)
+    end
+    return lik
+end
