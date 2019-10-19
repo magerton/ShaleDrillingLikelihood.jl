@@ -96,31 +96,38 @@ Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
 Uses set of thread-specific `dtv::DrillingTmpVarsAll`
 """
 function simloglik_drill_unit!(
-    grad::AbstractVector, unit::DrillUnit,
+    unit::DrillUnit,
     theta::AbstractVector{T}, sims::SimulationDrawsVector,
-    dtv::DrillingTmpVarsAll, dograd::Bool
+    dtv::DrillingTmpVarsThread, dograd::Bool
 )::T where {T}
 
-    if dograd
-        length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
-    end
-
     M = _num_sim(sims)
-    llm = _llm(sims)
-    gradM = _drillgradm(sims)
+    llm   = _llm(dtv)
+    grad  = _grad(dtv)
+    gradM = _gradM(dtv)
+
     fill!(gradM, 0)
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM
-        @threads for m in OneTo(M)
+        # @threads
+        for m in OneTo(M)
+            # local dtvi = dtv[threadid()]  # thread-specific tmpvars
+            local dtvi = dtv
             local sims_m = sims[m]        # get 1 particular simulation
-            local dtvi = dtv[threadid()]  # thread-specific tmpvars
             local gradm_i = view(gradM, :, m)
             llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
         end
     end
 
     LL = logsumexp!(llm) - log(M)
-    dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+    if dograd
+        tmpgrad = similar(grad)
+        mul!(tmpgrad, gradM, llm)
+        _hess(dtv) .+= tmpgrad * tmpgrad'
+        grad .+= tmpgrad
+    end
+
+    # dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
 
     return LL
 end
@@ -141,19 +148,29 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
         checksquare(hess) == length(grad) || throw(DimensionMismatch("hess, grad not compatible"))
     end
 
-    # update_theta!(dtv, theta)
+    # gradtmp = dohess ? similar(grad) : grad
+    reset!(dtv, theta)
     update!(sim, theta_drill_ρ(_model(data), theta))
-    gradtmp = dohess ? similar(grad) : grad
 
-    LL = zero(T)
-    for (i,unit) in enumerate(data)
-        dohess && fill!(gradtmp, 0)
-        LL += simloglik_drill_unit!(gradtmp, unit, theta, view(sim, i), dtv, dograd)
-        if dohess
-            hess .+= gradtmp * gradtmp'
-            grad .+= gradtmp
+    # for (i,unit) in enumerate(data)
+    LL = Atomic{T}(zero(T))
+    n = length(data)
+    @threads for i in OneTo(n)
+        uniti = data[i]
+        dtvi = dtv[threadid()]
+        simi = view(sim,i)
+        LLi = simloglik_drill_unit!(uniti, theta, simi, dtvi, dograd)
+        atomic_add!(LL, LLi)
+    end
+
+    if dograd
+        fill!(hess, 0)
+        fill!(grad, 0)
+        for i in OneTo(nthreads())
+            hess .+= _hess(dtv,i)
+            grad .+= _grad(dtv,i)
         end
     end
 
-    return LL
+    return LL[]
 end

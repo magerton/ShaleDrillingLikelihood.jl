@@ -48,16 +48,16 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=5:20, nper_development=5:20,
-        num_zt=200, tstart=1:40
+        num_i=100, nperinitial=10:40, nper_development=10:40,
+        num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(500, data)
+    sim = SimulationDraws(100, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
     hess = zeros(length(theta),length(theta))
-    dtv = DrillingTmpVars(data, theta)
+    dtv = DrillingTmpVars(data, sim)
 
     LL1 = simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
     LL2 = simloglik_drill_data!(grad, hess, data, theta, sim, dtv, false)
@@ -127,7 +127,7 @@ println("testing drilling likelihood")
         println("getting ready to optmize")
         odfg  = OnceDifferentiable(f, fg!, fg!, theta)
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
-        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
+        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=false))
         @show res
         @show res.minimizer, theta
 
