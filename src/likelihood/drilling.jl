@@ -15,13 +15,13 @@ Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
 """
 function loglik_drill_lease!(
     grad::AbstractVector, lease::DrillLease,
-    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
+    thet::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
     dograd::Bool
 )::T where {T}
 
     LL = zero(T)
     ubv = _ubv(dtv)
-    # theta = _theta(dtv)
+    theta = _theta(dtv)
 
     for obs in lease
         actions = actionspace(obs)
@@ -101,9 +101,7 @@ function simloglik_drill_unit!(
     dtv::DrillingTmpVarsAll, dograd::Bool
 )::T where {T}
 
-    if dograd
-        length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
-    end
+    length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
 
     M = _num_sim(sims)
     llm = _llm(sims)
@@ -132,26 +130,20 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
     dograd::Bool=false, dohess::Bool=false
 ) where {T}
 
-    if dograd
-        length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
-    end
+    dohess == true && dograd == false && throw(error("can't dohess without dograd"))
+    checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
-    if dohess
-        !dograd && throw(error("cannot dohess without dograd"))
-        checksquare(hess) == length(grad) || throw(DimensionMismatch("hess, grad not compatible"))
-    end
-
-    # update_theta!(dtv, theta)
+    update_theta!(dtv, theta)
     update!(sim, theta_drill_ρ(_model(data), theta))
-    gradtmp = dohess ? similar(grad) : grad
+    g = dohess ? similar(grad) : grad
 
     LL = zero(T)
     for (i,unit) in enumerate(data)
-        dohess && fill!(gradtmp, 0)
-        LL += simloglik_drill_unit!(gradtmp, unit, theta, view(sim, i), dtv, dograd)
+        dohess && fill!(g, 0)
+        LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dtv, dograd)
         if dohess
-            hess .+= gradtmp * gradtmp'
-            grad .+= gradtmp
+            BLAS.ger!(1.0, g, g, hess)
+            grad .+= g
         end
     end
 

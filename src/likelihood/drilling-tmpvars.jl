@@ -89,7 +89,7 @@ end
 
 update_theta!(dtv::DrillingTmpVarsThread, theta) = (_theta(dtv) .= theta)
 function update_theta!(dtv::DrillingTmpVarsAll, theta)
-    for i in 1:length(dtv)
+    @threads for i in OneTo(nthreads())
         update_theta!(dtv[i], theta)
     end
 end

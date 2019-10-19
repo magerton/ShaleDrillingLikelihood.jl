@@ -92,15 +92,17 @@ println("testing drilling likelihood")
 
     @testset "drilling likelihood optimization" begin
 
+        k = length(theta)
+
         function f(x)
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(zeros(0), zeros(0,0), data, x, sim, dtv, false, false)
+            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, dtv, false, false)
             return -LL
         end
 
         function fg!(grad, x)
+            tmphess = zeros(k,k)
             fill!(grad, 0)
-            tmphess = zeros(length(grad), length(grad))
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, tmphess, data, x, sim, dtv, true, false)
             grad .*= -1
@@ -108,7 +110,7 @@ println("testing drilling likelihood")
         end
 
         function h!(hess, x)
-            grad = zeros(length(x))
+            grad = zeros(k)
             checksquare(hess) == length(x) || throw(DimensionMismatch())
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
@@ -117,9 +119,8 @@ println("testing drilling likelihood")
         end
 
         function invH0(x::AbstractVector)
-            n = length(x)
-            grad = zeros(n)
-            hess = zeros(n,n)
+            grad = zeros(k)
+            hess = zeros(k,k)
             simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
             return inv(hess)
         end
