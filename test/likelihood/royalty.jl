@@ -25,7 +25,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     SimulationDraws,
     update_ψ1!, update_dψ1dθρ!, _psi1, _u, _v, _dψ1dθρ,
     update_xbeta!, _am, _bm, _cm, _qm,
-    llthreads!, _i, _nparm
+    llthreads!, _i, _nparm,
+    logsumexp!
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -134,10 +135,8 @@ end
                 fill!(qm, 0)                    # b/c might do other stuff to LLm
                 simi = view(uv,_i(grp))
                 simloglik_royalty!(obs, θ, simi, dograd)    # update LLm
-                if !dograd
-                    LL += logsumexp(qm) - log(M)
-                else
-                    LL += logsumexp_and_softmax!(qm)
+                LL += logsumexp!(qm) - log(M)
+                if dograd
                     grad_simloglik_royalty!(grad, obs, θ, simi)
                 end
             end

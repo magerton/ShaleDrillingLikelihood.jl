@@ -120,10 +120,8 @@ function grad_simloglik_produce!(
             simloglik_produce!(obs, θ, simi)
         end
 
-        if !dograd
-            LL += logsumexp(qm) - logM
-        else
-            LL += logsumexp_and_softmax!(qm) - logM
+        LL += logsumexp!(qm) - logM
+        if dograd
             for obs in grp
                 grad_simloglik_produce!(grad, obs, θ, simi)
             end

@@ -15,12 +15,13 @@ Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
 """
 function loglik_drill_lease!(
     grad::AbstractVector, lease::DrillLease,
-    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread,
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
     dograd::Bool
 )::T where {T}
 
     LL = zero(T)
     ubv = _ubv(dtv)
+    # theta = _theta(dtv)
 
     for obs in lease
         actions = actionspace(obs)
@@ -31,20 +32,19 @@ function loglik_drill_lease!(
             ubv[d+1] = full_payoff(d, obs, theta, sim)
         end
 
-        if !dograd
-            LL += ubv[_y(obs)+1] - logsumexp(ubv_vw)
-        else
-            LL += ubv[_y(obs)+1] - logsumexp_and_softmax!(ubv_vw)
+        tmp = ubv[_y(obs)+1]
+        LL += tmp - logsumexp!(ubv_vw)
 
+        if dograd
             @inbounds for d in actions
                 wt = gradweight(d, _y(obs), ubv[d+1])
                 @simd for k in eachindex(grad)
                     grad[k] += wt * dfull_payoff(k, d, obs, theta, sim)
-                end
-            end
+                end # grad
+            end # actions
+        end # dograd
 
-        end
-    end
+    end # obs
 
     return LL
 end
@@ -76,12 +76,8 @@ function loglik_drill_unit!(
             gradj = view(gradJ, :, ji)
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
-        if dograd
-            LL += logsumexp_and_softmax!(LLj)
-            BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
-        else
-            LL += logsumexp(LLj)
-        end
+        LL += logsumexp!(LLj)
+        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
     end
 
     for lease in DevelopmentDrilling(unit)
@@ -123,13 +119,10 @@ function simloglik_drill_unit!(
         end
     end
 
-    if dograd
-        LL = logsumexp_and_softmax!(llm) - log(M)
-        BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
-        return LL
-    else
-        return logsumexp(llm) - log(M)
-    end
+    LL = logsumexp!(llm) - log(M)
+    dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+
+    return LL
 end
 
 
@@ -148,6 +141,7 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
         checksquare(hess) == length(grad) || throw(DimensionMismatch("hess, grad not compatible"))
     end
 
+    # update_theta!(dtv, theta)
     update!(sim, theta_drill_ρ(_model(data), theta))
     gradtmp = dohess ? similar(grad) : grad
 

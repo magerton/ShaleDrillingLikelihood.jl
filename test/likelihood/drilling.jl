@@ -47,12 +47,12 @@ println("testing drilling likelihood")
 
     data = DataDrill(
         TestDrillModel(), theta;
-        minmaxleases=2:2,
-        num_i=100, nperinitial=10:20, nper_development=10:20,
+        minmaxleases=1:1,
+        num_i=100, nperinitial=10:50, nper_development=10:50,
         num_zt=200, tstart=1:40
     )
 
-    sim = SimulationDraws(200, data)
+    sim = SimulationDraws(500, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
@@ -78,8 +78,12 @@ println("testing drilling likelihood")
     @test grad ≈ fdgrad
     @test !(grad ≈ zeros(length(grad)))
 
-    # @show @benchmark simloglik_drill_data!($grad, $data, $theta, $sim, $dtv, false)
-    # @show @benchmark simloglik_drill_data!($grad, $data, $theta, $sim, $dtv, true)
+    let k = length(theta), hess = zeros(k,k)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, false, false)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, true, false)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, true, true)
+    end
+
     println("initial tests done")
 
     @testset "drilling likelihood optimization" begin
