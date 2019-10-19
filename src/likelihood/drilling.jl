@@ -159,8 +159,8 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
         fill!(grad, 0)
         dohess && fill!(hess, 0)
         for i in OneTo(nthreads())
-            dohess && (hess .+= _hess(dtv,i))
             grad .+= _grad(dtv,i)
+            dohess && (hess .+= _hess(dtv,i))
         end
     end
 
