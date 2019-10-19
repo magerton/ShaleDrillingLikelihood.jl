@@ -48,11 +48,11 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=5:20, nper_development=5:20,
-        num_zt=200, tstart=1:40
+        num_i=1_000, nperinitial=10:40, nper_development=10:40,
+        num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(500, data)
+    sim = SimulationDraws(1_000, theta)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
