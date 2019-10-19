@@ -33,7 +33,8 @@ using ShaleDrillingLikelihood: SimulationDraws,
     loglik_drill_unit!,
     simloglik_drill_unit!,
     simloglik_drill_data!,
-    _y
+    _y,
+    update_theta!
 
 
 println("testing drilling likelihood")
@@ -48,11 +49,11 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=10:40, nper_development=10:40,
+        num_i=1_000, nperinitial=10:40, nper_development=10:40,
         num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(100, data)
+    sim = SimulationDraws(1_000, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
@@ -71,15 +72,15 @@ println("testing drilling likelihood")
     simloglik_drill_data!(grad, hess, data, theta.*2, sim, dtv, false)
     @test all(grad .== gradcopy)
 
-    @testset "warntypes for drilling" begin
-        unit = data[1]
-        lease = unit[InitialDrilling()][1]
-        simi = view(sim, 1)
-        update_theta!(dtv, theta)
-        @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[1], true)
-        @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[1], true)
-        @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, dtv, true)
-    end
+    # @testset "warntypes for drilling" begin
+    #     unit = data[1]
+    #     lease = unit[InitialDrilling()][1]
+    #     simi = view(sim, 1)
+    #     update_theta!(dtv, theta)
+    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[1], true)
+    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[1], true)
+    #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, dtv, true)
+    # end
 
 
     # check finite difference
@@ -139,7 +140,7 @@ println("testing drilling likelihood")
         println("getting ready to optmize")
         odfg  = OnceDifferentiable(f, fg!, fg!, theta)
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
-        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=false))
+        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
         @show res
         @show res.minimizer, theta
 
