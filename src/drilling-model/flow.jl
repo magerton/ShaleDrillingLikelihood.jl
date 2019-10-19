@@ -88,12 +88,15 @@ end
 function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
     # 1 <= k <= length(theta) || throw(BoundsError(theta,k))
     # check_model_dims(d,obs,theta)
+
     m, x, z = _model(obs), _x(obs), zchars(obs)
     k == idx_drill_ψ(m) && return T(d*_ψ(m,x,s))
     k == idx_drill_x(m) && return T(d*x)
     k == idx_drill_z(m) && return T(d*first(z))
     k == idx_drill_d(m) && return T(d)
     k == idx_drill_ρ(m) && return T(d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s))
+
+    throw(BoundsError(theta,k)) # prevents returning Union{Bool,T}
 end
 
 function dflow!(grad::AbstractVector, d, obs, theta, s)

@@ -15,13 +15,13 @@ Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
 """
 function loglik_drill_lease!(
     grad::AbstractVector, lease::DrillLease,
-    thet::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
     dograd::Bool
 )::T where {T}
 
     LL = zero(T)
     ubv = _ubv(dtv)
-    theta = _theta(dtv)
+    # theta = _theta(dtv)
 
     for obs in lease
         actions = actionspace(obs)
