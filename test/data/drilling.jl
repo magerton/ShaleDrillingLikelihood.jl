@@ -159,6 +159,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
             for (r,regimes) in enumerate(unit)
                 @test isa(regimes, AbstractDrillRegime)
                 @test r in 1:2
+                length(regimes) > 0 && (@test sum(j1chars(regimes)) ≈ 1)
                 if r == 1
                     @test isa(regimes, DrillInitial)
                 else

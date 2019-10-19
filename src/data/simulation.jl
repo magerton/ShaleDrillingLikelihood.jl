@@ -1,8 +1,8 @@
 # functions to define simulations
 
 # convert θρ ∈ R ↦ ρ ∈ (0,1)
-@inline _ρ(θρ) = θρ # logistic(θρ)
-@inline _dρdθρ(θρ) = one(eltype(θρ)) # = (z = logistic(θρ); z*(1-z) )
+@inline _ρ(θρ) = logistic(θρ)
+@inline _dρdθρ(θρ) = (z = logistic(θρ); z*(1-z) )
 @inline _ρsq(θρ) = _ρ(θρ)^2
 @deprecate _dρdσ(θρ) _dρdθρ(θρ)
 @deprecate _ρ2(θρ) _ρsq(θρ)
@@ -48,7 +48,7 @@ function SimulationDraw(u::Real, v::Real, θρ::T) where {T}
 end
 
 function SimulationDrawFD(s::SimulationDraw, x::Real)
-    SimulationDraw(_ψ1(s)+x, _u(s)+x, _dψ1dρ(s), _drillgradm(s))
+    SimulationDraw(_ψ1(s)+x, _u(s)+x, _dψ1dθρ(s), _drillgradm(s))
 end
 
 SimulationDraw(θρ) = SimulationDraw(randn(), randn(), θρ)
@@ -106,7 +106,7 @@ end
 _v(    s::SimulationDraws) = s.v
 _u(    s::SimulationDrawOrDraws) = s.u
 _ψ1(   s::SimulationDrawOrDraws) = s.psi1
-_dψ1dρ(s::SimulationDrawOrDraws) = s.dpsidrho
+_dψ1dθρ(s::SimulationDrawOrDraws) = s.dpsidrho
 _qm(   s::SimulationDrawOrDraws) = s.qm
 _drillgradm(s::SimulationDrawOrDraws) = s.drillgradm
 _am(   s::SimulationDraws) = s.am
@@ -119,11 +119,12 @@ _psi2( s::SimulationDrawOrDraws) = _ψ2(s)
 _llm(  s::SimulationDrawOrDraws) = _qm(s)
 
 @deprecate _LLm(s::SimulationDrawOrDraws) _llm(s)
+@deprecate _dψ1dρ(s::SimulationDrawOrDraws) _dψ1dθρ(s)
 
 _num_sim(s::SimulationDraws) = size(_u(s),1)
 
 # manipulate like array
-tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψ1dρ(s)
+tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψ1dθρ(s)
 size(s::SimulationDraws) = size(_u(s))
 
 function view(s::SimulationDrawsMatrix, i::Integer)
@@ -148,25 +149,29 @@ end
 
 
 # so we can pre-calculate shocks
-function update_ψ1!(ψ1::AA, u::AA, v::AA, ρ::Real) where {AA<:AbstractArray}
+function update_ψ1!(ψ1::AA, u::AA, v::AA, θρ::Real) where {AA<:AbstractArray}
     size(ψ1) == size(u) == size(v) || throw(DimensionMismatch())
+    ρ = _ρ(θρ)
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
     ψ1 .= _ψ1.(u, v, ρ)
     return nothing
 end
 
 
-function update_dψ1dρ!(dψ1dρ::A, u::A, v::A, ρ::Real) where {A<:AbstractArray}
-    size(dψ1dρ) == size(u) == size(v) || throw(DimensionMismatch())
+function update_dψ1dθρ!(dψ1dθρ::A, u::A, v::A, θρ::Real) where {A<:AbstractArray}
+    size(dψ1dθρ) == size(u) == size(v) || throw(DimensionMismatch())
+    ρ = _ρ(θρ)
     0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
-    dψ1dρ .= _dψ1dρ.(u,v,ρ)
+    dψ1dθρ .= _dψ1dθρ.(u,v,ρ,θρ)
     return nothing
 end
 
-update_ψ1!(s::SimulationDraws, ρ)    = update_ψ1!(   _ψ1(s),    _u(s), _v(s), ρ)
-update_dψ1dρ!(s::SimulationDraws, ρ) = update_dψ1dρ!(_dψ1dρ(s), _u(s), _v(s), ρ)
+@deprecate update_dψ1dρ!(dψ1dρ, u, v, θρ) update_dψ1dθρ!(dψ1dρ, u, v, θρ)
 
-function update!(sim::SimulationDraws,ρ)
-    update_ψ1!(sim, ρ)
-    update_dψ1dρ!(sim, ρ)
+update_ψ1!(    s::SimulationDraws, θρ)    = update_ψ1!(   _ψ1(s),    _u(s), _v(s), θρ)
+update_dψ1dθρ!(s::SimulationDraws, θρ) = update_dψ1dθρ!(_dψ1dθρ(s), _u(s), _v(s), θρ)
+
+function update!(sim::SimulationDraws,θρ::Real)
+    update_ψ1!(sim, θρ)
+    update_dψ1dθρ!(sim, θρ)
 end

@@ -12,7 +12,7 @@ Dgt0(m::AbstractDrillModel, state::Integer) = throw(error("Dgt0 not defined for 
 Dgt0(m::TestDrillModel,     state::Integer) = state > 1
 
 _ψ(    m::AbstractDrillModel, state::Integer, s::SimulationDraw) = Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
-_dψdθρ(m::AbstractDrillModel, state::Integer, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dρ(s)
+_dψdθρ(m::AbstractDrillModel, state::Integer, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dθρ(s)
 
 next_state(m::TestDrillModel, state::Integer, d::Integer) = state + d
 initial_state(m::TestDrillModel) = 1
@@ -91,7 +91,7 @@ function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s
     k == idx_drill_ψ(m) && return T(d*_ψ(m,x,s))
     k == idx_drill_x(m) && return T(d*x)
     k == idx_drill_z(m) && return T(d*first(z))
-    k == idx_drill_ρ(m) && return T(d*_dψdθρ(m,x,s))
+    k == idx_drill_ρ(m) && return T(d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s))
 end
 
 function dflow!(grad::AbstractVector, d, obs, theta, s)

@@ -23,7 +23,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     logsumexp_and_softmax!,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
     SimulationDraws,
-    update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
+    update_ψ1!, update_dψ1dθρ!, _psi1, _u, _v, _dψ1dθρ,
     update_xbeta!, _am, _bm, _cm, _qm,
     llthreads!, _i, _nparm
 
@@ -59,7 +59,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     @test_throws DomainError idx_royalty_κ(data, 0)
 
     M = 10
-    RT = SimulationDraws(M,nobs,1)
+    RT = SimulationDraws(M,nobs,0)
     am = _am(RT)
     bm = _bm(RT)
     cm = _cm(RT)
@@ -114,7 +114,7 @@ end
     @test all(theta_royalty_κ(data, theta) .== theta[end-L+2:end])
 
     # simulations
-    uv = SimulationDraws(M,nobs,1)
+    uv = SimulationDraws(M,nobs)
 
     # let obs = first(first(data)), simi = view(uv,1)
     #     @code_warntype simloglik_royalty!(obs, theta, simi, false)
@@ -123,7 +123,7 @@ end
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
         update_ψ1!(uv, theta_royalty_ρ(data,θ))
-        update_dψ1dρ!(uv, theta_royalty_ρ(data,θ))
+        update_dψ1dθρ!(uv, theta_royalty_ρ(data,θ))
 
         qm = _qm(uv)
 

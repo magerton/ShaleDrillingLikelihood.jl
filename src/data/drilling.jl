@@ -200,11 +200,13 @@ length(    g::DrillInitial) = j1length(_data(g))
 eachindex( g::DrillInitial) = j1_range(_data(g))
 firstindex(g::DrillInitial) = j1start( _data(g))
 lastindex( g::DrillInitial) = j1stop(  _data(g))
+j1chars(   g::DrillInitial) = j1chars( _data(g))
 
 length(    g::DrillDevelopment) = 1
 eachindex( g::DrillDevelopment) = j2ptr(_data(g))
 firstindex(g::DrillDevelopment) = j2ptr(_data(g))
 lastindex( g::DrillDevelopment) = j2ptr(_data(g))
+j1chars(   g::DrillDevelopment) = 1
 
 uniti(g::ObservationGroup) = uniti(_data(g))
 
@@ -225,6 +227,7 @@ jtstart(g::DrillLease) = jtstart(DataDrill(g), _i(g))
 ztrange(g::DrillLease) = (jtstart(g)-1) .+ OneTo(length(g))
 zchars( g::DrillLease) = view( zchars(DataDrill(g)), ztrange(g))
 ichars( g::DrillLease) = ichars(DataDrill(g), uniti(g))
+j1chars(g::DrillLease) = j1chars(DataDrill(g), _i(g))
 _j(g::DrillLease) = _i(g)
 _regime(g::DrillLease) = _i(_data(g))
 
@@ -245,7 +248,7 @@ function randsumtoone(n)
     return x
 end
 
-function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
+function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
     length(theta) == length(m) || throw(DimensionMismatch())
 
@@ -258,7 +261,6 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number})
         y = _y(lease)
 
         i = uniti(lease)
-        sim = SimulationDraw(theta_drill_ρ(m,theta))
         ubv = Vector{Float64}(undef, length(actionspace(m)))
 
         x[1] = initial_state(m) + is_development(lease) # FIXME
@@ -292,7 +294,8 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     num_i=100, num_zt=30,
     minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
-    tstart::Integer=10
+    tstart::UnitRange=5:15,
+    xrange::UnitRange=-5:5
 )
     _zchars = ExogTimeVarsSample(m, num_zt)
 
@@ -316,9 +319,9 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
 
     nobs = last(_tptr)-1
-    x = sample(1:2, nobs)
+    x = sample(xrange, nobs)
     y = zeros(Int, nobs)
-    _jtstart = fill(tstart, num_initial_leases + num_i)
+    _jtstart = sample(tstart, num_initial_leases + num_i)
 
     choice_set = actionspace(m)
 
@@ -326,9 +329,10 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
 
     # update leases
     for (i,unit) in enumerate(data)
+        sim = SimulationDraw(theta_drill_ρ(m,theta))
         for regimes in unit
             for lease in regimes
-                simulate_lease(lease, theta)
+                simulate_lease(lease, theta, sim)
             end
         end
     end

@@ -71,9 +71,10 @@ function loglik_drill_unit!(
 
     LL = zero(T)
     if nJ > 0
+        LLj .= log.(j1chars(InitialDrilling(unit)))
         for (ji,lease) in enumerate(InitialDrilling(unit))
             gradj = view(gradJ, :, ji)
-            LLj[ji] = loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
+            LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         if dograd
             LL += logsumexp_and_softmax!(LLj)
@@ -129,16 +130,23 @@ end
 
 
 
-function simloglik_drill_data!(grad::AbstractVector, data::DataDrill,
+function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
     theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,
     dograd::Bool=false
 ) where {T}
 
+    gradtmp = similar(grad)
     LL = zero(T)
     update!(sim, theta_drill_ρ(_model(data), theta))
+    dograd && fill!(hess, 0)
 
     for (i,unit) in enumerate(data)
-        LL += simloglik_drill_unit!(grad, unit, theta, view(sim, i), dtv, dograd)
+        dograd && fill!(gradtmp, 0)
+        LL += simloglik_drill_unit!(gradtmp, unit, theta, view(sim, i), dtv, dograd)
+        if dograd
+            hess .+= gradtmp*gradtmp'
+            grad .+= gradtmp
+        end
     end
 
     return LL

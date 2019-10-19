@@ -34,7 +34,7 @@ using ShaleDrillingLikelihood: TestDrillModel,
 @testset "Drilling Model Flow Payoffs" begin
 
     @testset "TestDrillModel" begin
-        theta = [1.0, 1.0, 1.0, 0.5]
+        theta = [1.5, 2.0, -3.0, 0.5]
         model = TestDrillModel()
         ichars = [tuple(x) for x in -1.0:0.5:1.0]
         zchars = [tuple(z) for z in -1.0:0.5:1.0]
