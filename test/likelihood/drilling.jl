@@ -40,6 +40,7 @@ println("testing drilling likelihood")
 
 @testset "Drilling Likelihood" begin
 
+    println("testing drilling likelihood")
     Random.seed!(911)
 
     theta = [-0.3, 2.0, -2.0, -0.75, 0.5]
@@ -48,11 +49,11 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=10:40, nper_development=10:40,
+        num_i=1_000, nperinitial=10:40, nper_development=10:40,
         num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(100, data)
+    sim = SimulationDraws(1_000, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
@@ -92,15 +93,16 @@ println("testing drilling likelihood")
 
     @testset "drilling likelihood optimization" begin
 
+        k = length(theta)
         function f(x)
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(zeros(0), zeros(0,0), data, x, sim, dtv, false, false)
+            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, dtv, false, false)
             return -LL
         end
 
         function fg!(grad, x)
             fill!(grad, 0)
-            tmphess = zeros(length(grad), length(grad))
+            tmphess = zeros(k,k)
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, tmphess, data, x, sim, dtv, true, false)
             grad .*= -1
@@ -108,8 +110,8 @@ println("testing drilling likelihood")
         end
 
         function h!(hess, x)
-            grad = zeros(length(x))
-            checksquare(hess) == length(x) || throw(DimensionMismatch())
+            grad = zeros(k)
+            checksquare(hess) == k || throw(DimensionMismatch())
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
             grad .*= -1
@@ -117,9 +119,9 @@ println("testing drilling likelihood")
         end
 
         function invH0(x::AbstractVector)
-            n = length(x)
-            grad = zeros(n)
-            hess = zeros(n,n)
+            k = length(x)
+            grad = zeros(k)
+            hess = zeros(k,k)
             simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
             return inv(hess)
         end
@@ -127,7 +129,7 @@ println("testing drilling likelihood")
         println("getting ready to optmize")
         odfg  = OnceDifferentiable(f, fg!, fg!, theta)
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
-        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=false))
+        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
         @show res
         @show res.minimizer, theta
 

@@ -29,9 +29,10 @@ struct DrillingTmpVars{V<:Vector, VM<:VecOrMat} <: AbstractTmpVars
     hess::VM
     gradM::VM
     llm::V
-    function DrillingTmpVars(ubv::V, llj::V, grad::V, theta::V, gradJ::VM, hess::VM, gradM::VM, llm::V) where {V,VM}
+    gradtmp::V
+    function DrillingTmpVars(ubv::V, llj::V, grad::V, theta::V, gradJ::VM, hess::VM, gradM::VM, llm::V, gradtmp::V) where {V,VM}
         # check_lengths(ubv, llj, grad, gradJ)
-        return new{V,VM}(ubv, llj, grad, theta, gradJ, hess, gradM, llm)
+        return new{V,VM}(ubv, llj, grad, theta, gradJ, hess, gradM, llm, gradtmp)
     end
 end
 
@@ -47,6 +48,7 @@ _theta(dtv::DrillingTmpVars) = dtv.theta
 _gradM(dtv::DrillingTmpVars) = dtv.gradM
 _hess( dtv::DrillingTmpVars) = dtv.hess
 _llm(  dtv::DrillingTmpVars) = dtv.llm
+_gradtmp(dtv::DrillingTmpVars) = dtv.gradtmp
 
 _ubv(  dtv::DrillingTmpVarsAll, id) = getindex( _ubv( dtv), id)
 _llj(  dtv::DrillingTmpVarsAll, id) = getindex( _llj( dtv), id)
@@ -56,13 +58,15 @@ _theta(dtv::DrillingTmpVarsAll, id) = getindex(_theta(dtv), id)
 _gradM(dtv::DrillingTmpVarsAll, id) = getindex(_gradM(dtv), id)
 _hess( dtv::DrillingTmpVarsAll, id) = getindex(_hess( dtv), id)
 _llm(  dtv::DrillingTmpVarsAll, id) = getindex(_llm(  dtv), id)
+_gradtmp(dtv::DrillingTmpVarsAll, id) = getindex(_gradtmp(dtv), id)
 
 length(dtv::DrillingTmpVarsAll) = length(_ubv(dtv))
 
 function getindex(x::DrillingTmpVars{<:Vector}, i)
     return DrillingTmpVars(
         _ubv(x,i), _llj(x,i), _grad(x,i), _theta(x,i),
-        _gradJ(x,i), _hess(x,i), _gradM(x,i), _llm(x,i)
+        _gradJ(x,i), _hess(x,i), _gradM(x,i), _llm(x,i),
+        _gradtmp(x,i)
     )
 end
 
@@ -81,6 +85,7 @@ end
     hess  = Vector{Matrix{T}}(undef, nth)
     gradM = Vector{Matrix{T}}(undef, nth)
     llm = Vector{Vector{T}}(undef, nth)
+    gradtmp = Vector{Vector{T}}(undef, nth)
 
     let J=J, maxchoices=maxchoices, k=k, nth=nth
         @threads for id in OneTo(nth)
@@ -93,6 +98,7 @@ end
             hess[id]  = fill(tid, k, k)
             gradM[id] = fill(tid, k, M)
             llm[id]   = fill(tid, M)
+            gradtmp[id] = fill(tid, k)
         end
     end
 
@@ -103,7 +109,7 @@ end
     #     @assert gradJs[i][1] == i
     # end
 
-    return DrillingTmpVars(ubvs, lljs, grads, thetas, gradJs, hess, gradM, llm)
+    return DrillingTmpVars(ubvs, lljs, grads, thetas, gradJs, hess, gradM, llm, gradtmp)
 end
 
 function reset!(dtv::DrillingTmpVarsThread, theta)

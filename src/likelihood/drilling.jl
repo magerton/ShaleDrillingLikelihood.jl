@@ -15,13 +15,14 @@ Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
 """
 function loglik_drill_lease!(
     grad::AbstractVector, lease::DrillLease,
-    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
+    thet::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
     dograd::Bool
 )::T where {T}
 
+
     LL = zero(T)
     ubv = _ubv(dtv)
-    # theta = _theta(dtv)
+    theta = _theta(dtv)
 
     for obs in lease
         actions = actionspace(obs)
@@ -98,12 +99,11 @@ Uses set of thread-specific `dtv::DrillingTmpVarsAll`
 function simloglik_drill_unit!(
     unit::DrillUnit,
     theta::AbstractVector{T}, sims::SimulationDrawsVector,
-    dtv::DrillingTmpVarsThread, dograd::Bool
+    dtv::DrillingTmpVarsThread, dograd::Bool, dohess::Bool
 )::T where {T}
 
     M = _num_sim(sims)
     llm   = _llm(dtv)
-    grad  = _grad(dtv)
     gradM = _gradM(dtv)
 
     fill!(gradM, 0)
@@ -120,14 +120,15 @@ function simloglik_drill_unit!(
     end
 
     LL = logsumexp!(llm) - log(M)
-    if dograd
-        tmpgrad = similar(grad)
-        mul!(tmpgrad, gradM, llm)
-        _hess(dtv) .+= tmpgrad * tmpgrad'
-        grad .+= tmpgrad
-    end
 
-    # dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+    if dohess
+        g = _gradtmp(dtv)
+        mul!(g, gradM, llm)
+        BLAS.ger!(1.0, g, g, _hess(dtv))
+        _grad(dtv) .+= g
+    elseif dograd
+        BLAS.gemv!('N', 1.0, gradM, llm, 1.0, _grad(dtv)) # grad .+= gradM * llm
+    end
 
     return LL
 end
@@ -139,35 +140,26 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
     dograd::Bool=false, dohess::Bool=false
 ) where {T}
 
-    if dograd
-        length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
-    end
+    dohess == true && dograd == false && throw(error("can't dohess without dograd"))
+    checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
-    if dohess
-        !dograd && throw(error("cannot dohess without dograd"))
-        checksquare(hess) == length(grad) || throw(DimensionMismatch("hess, grad not compatible"))
-    end
-
-    # gradtmp = dohess ? similar(grad) : grad
     reset!(dtv, theta)
     update!(sim, theta_drill_ρ(_model(data), theta))
 
-    # for (i,unit) in enumerate(data)
     LL = Atomic{T}(zero(T))
-    n = length(data)
-    @threads for i in OneTo(n)
+    @threads for i in OneTo(length(data))
         uniti = data[i]
         dtvi = dtv[threadid()]
         simi = view(sim,i)
-        LLi = simloglik_drill_unit!(uniti, theta, simi, dtvi, dograd)
+        LLi = simloglik_drill_unit!(uniti, theta, simi, dtvi, dograd, dohess)
         atomic_add!(LL, LLi)
     end
 
     if dograd
-        fill!(hess, 0)
         fill!(grad, 0)
+        dohess && fill!(hess, 0)
         for i in OneTo(nthreads())
-            hess .+= _hess(dtv,i)
+            dohess && (hess .+= _hess(dtv,i))
             grad .+= _grad(dtv,i)
         end
     end
