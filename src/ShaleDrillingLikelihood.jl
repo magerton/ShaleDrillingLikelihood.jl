@@ -7,6 +7,7 @@ using Base.Threads
 using Halton
 using Dates
 using Calculus
+using Distributions
 
 # extend these methods
 import Base: length, size, iterate,
@@ -14,7 +15,7 @@ import Base: length, size, iterate,
     view, ==, eltype, +, -, isless
 
 # specific functions
-using Distributions: _F1, Normal
+using Distributions: _F1
 using StatsBase: countmap, sample
 using Base: OneTo
 using Base.Iterators: flatten

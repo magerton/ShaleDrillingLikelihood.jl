@@ -27,6 +27,7 @@ using ShaleDrillingLikelihood: TestDrillModel,
     idx_drill_x, theta_drill_x,
     idx_drill_z, theta_drill_z,
     idx_drill_ρ, theta_drill_ρ,
+    idx_drill_d, theta_drill_d,
     TestObs,
     ObservationDrill,
     check_flow_grad
@@ -34,8 +35,14 @@ using ShaleDrillingLikelihood: TestDrillModel,
 @testset "Drilling Model Flow Payoffs" begin
 
     @testset "TestDrillModel" begin
-        theta = [1.5, 2.0, -3.0, 0.5]
         model = TestDrillModel()
+        theta = [1.5, 2.0, -3.0, -0.6, 0.5]
+        @test theta_drill_ψ(model, theta) == 1.5
+        @test theta_drill_x(model, theta) == 2.0
+        @test theta_drill_z(model, theta) == -3.0
+        @test theta_drill_d(model, theta) == -0.6
+        @test theta_drill_ρ(model, theta) == 0.5
+
         ichars = [tuple(x) for x in -1.0:0.5:1.0]
         zchars = [tuple(z) for z in -1.0:0.5:1.0]
         y = collect(0:2)

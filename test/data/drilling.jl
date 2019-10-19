@@ -147,7 +147,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
 
     @testset "Create random DataDrill" begin
 
-        theta = [1.0, 1.0, 1.0, 0.5]
+        theta = [1.0, 1.0, 1.0, -1.0, 0.5]
         data = DataDrill(TestDrillModel(), theta)
 
         # go through leases

@@ -30,7 +30,7 @@ export DataDrill
 
 abstract type AbstractDataDrill <: AbstractDataSet end
 
-struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
+struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -44,14 +44,14 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     # drilling histories
     ichars::Vector{ITup}
     y::Vector{Int}
-    x::Vector{Int}
+    x::Vector{XT}
 
     # time indices
     zchars::ETV
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
-        jchars, ichars::Vector{ITup}, y, x, zchars::ETV
-    ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple}
+        jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
+    ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT}
 
         # check i
         length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
@@ -79,7 +79,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
             jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
-        return new{M,ETV,ITup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
+        return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
     end
 end
 
@@ -89,12 +89,12 @@ DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 # What is an observation?
 #------------------------------------------
 
-struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
+struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number} <: AbstractObservation
     model::M
     ichars::ITup
     z::ZTup
     y::Int
-    x::Int
+    x::XT
 end
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
@@ -290,13 +290,16 @@ function ichars_sample(m::TestDrillModel, num_i)
     [(x,) for x in sample(0:1, num_i)]
 end
 
+xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
+xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
+
 function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     num_i=100, num_zt=30,
     minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
-    xrange::UnitRange=-5:5
-)
+    xdomain::D=Normal()
+) where {D}
     _zchars = ExogTimeVarsSample(m, num_zt)
 
     # ichars
@@ -319,7 +322,7 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
 
     nobs = last(_tptr)-1
-    x = sample(xrange, nobs)
+    x = xsample(xdomain, nobs)
     y = zeros(Int, nobs)
     _jtstart = sample(tstart, num_initial_leases + num_i)
 

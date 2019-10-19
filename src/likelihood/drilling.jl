@@ -105,6 +105,10 @@ function simloglik_drill_unit!(
     dtv::DrillingTmpVarsAll, dograd::Bool
 )::T where {T}
 
+    if dograd
+        length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
+    end
+
     M = _num_sim(sims)
     llm = _llm(sims)
     gradM = _drillgradm(sims)
@@ -132,19 +136,27 @@ end
 
 function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
     theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,
-    dograd::Bool=false
+    dograd::Bool=false, dohess::Bool=false
 ) where {T}
 
-    gradtmp = similar(grad)
-    LL = zero(T)
-    update!(sim, theta_drill_ρ(_model(data), theta))
-    dograd && fill!(hess, 0)
+    if dograd
+        length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
+    end
 
+    if dohess
+        !dograd && throw(error("cannot dohess without dograd"))
+        checksquare(hess) == length(grad) || throw(DimensionMismatch("hess, grad not compatible"))
+    end
+
+    update!(sim, theta_drill_ρ(_model(data), theta))
+    gradtmp = dohess ? similar(grad) : grad
+
+    LL = zero(T)
     for (i,unit) in enumerate(data)
-        dograd && fill!(gradtmp, 0)
+        dohess && fill!(gradtmp, 0)
         LL += simloglik_drill_unit!(gradtmp, unit, theta, view(sim, i), dtv, dograd)
-        if dograd
-            hess .+= gradtmp*gradtmp'
+        if dohess
+            hess .+= gradtmp * gradtmp'
             grad .+= gradtmp
         end
     end
