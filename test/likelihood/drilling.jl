@@ -40,7 +40,7 @@ println("testing drilling likelihood")
 
 @testset "Drilling Likelihood" begin
 
-    Random.seed!(1234)
+    Random.seed!(911)
 
     theta = [-0.3, 2.0, -2.0, -0.75, 0.5]
     @test 0.5 == theta_drill_ρ(TestDrillModel(), theta)
@@ -134,7 +134,6 @@ println("testing drilling likelihood")
         @show cdf(Chisq(length(theta)), waldtest)
         @show coef_and_se
         # Base.showarray(stdout, coef_and_se)
-
     end
 
 
