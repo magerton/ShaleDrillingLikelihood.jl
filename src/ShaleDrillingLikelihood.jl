@@ -9,6 +9,8 @@ using Dates
 using Calculus
 using Distributions
 
+using LoopVectorization
+
 # extend these methods
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
