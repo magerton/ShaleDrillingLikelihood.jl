@@ -52,7 +52,7 @@ println("testing drilling likelihood")
         num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(1_000, theta)
+    sim = SimulationDraws(1_000, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
