@@ -48,7 +48,7 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=10:50, nper_development=10:50,
+        num_i=100, nperinitial=5:20, nper_development=5:20,
         num_zt=200, tstart=1:40
     )
 
@@ -72,11 +72,15 @@ println("testing drilling likelihood")
     @test all(grad .== gradcopy)
 
     # check finite difference
-    fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, dtv, false), theta)
-    fill!(grad, 0)
-    simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
-    @test grad ≈ fdgrad
-    @test !(grad ≈ zeros(length(grad)))
+    @testset "check finite difference" begin
+        let theta = theta.*0.5
+            fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, dtv, false), theta)
+            fill!(grad, 0)
+            simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
+            @test grad ≈ fdgrad
+            @test !(grad ≈ zeros(length(grad)))
+        end
+    end
 
     let k = length(theta), hess = zeros(k,k)
         @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, false, false)
@@ -135,7 +139,7 @@ println("testing drilling likelihood")
 
         err = theta .- res.minimizer
         waldtest = err'*vcovinv*err
-        @show cdf(Chisq(length(theta)), waldtest)
+        @test ccdf(Chisq(length(theta)), waldtest) > 0.05
         @show coef_and_se
         # Base.showarray(stdout, coef_and_se)
     end

@@ -263,17 +263,19 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
         i = uniti(lease)
         ubv = Vector{Float64}(undef, length(actionspace(m)))
 
-        x[1] = initial_state(m) + is_development(lease) # FIXME
+        # x[1] = initial_state(m) + is_development(lease) # FIXME
+
+        x .= (2*is_development(lease)-1) .* abs.(x)
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
             f(d) = flow(d,obs,theta,sim)
             ubv .= f.(actionspace(obs))
-            softmax!(ubv)
+            logsumexp!(ubv)
             cumsum!(ubv, ubv)
             choice = searchsortedfirst(ubv, rand())-1
             y[t] = choice
-            t < nper && (x[t+1] = next_state(m,x[t],choice))
+            # t < nper && (x[t+1] = next_state(m,x[t],choice))
         end
     end
 end

@@ -9,7 +9,7 @@ num_choices(m::AbstractDrillModel) = throw(error("num_choices not defined for $m
 num_choices(obs::ObservationDrill) = num_choices(_model(obs))
 
 Dgt0(m::AbstractDrillModel, state) = throw(error("Dgt0 not defined for $(m)"))
-Dgt0(m::TestDrillModel,     state) = state > 1
+Dgt0(m::TestDrillModel,     state) = state >= 0
 
 _ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
 _dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dθρ(s)
