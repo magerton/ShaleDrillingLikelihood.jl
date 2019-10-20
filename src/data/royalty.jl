@@ -104,8 +104,8 @@ _nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) +
 _nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
 
 # parameter vector
-idx_royalty_ρ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = 1:0
-idx_royalty_ψ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = 1:0
+idx_royalty_ρ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
+idx_royalty_ψ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
 idx_royalty_β(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = (1:_num_x(d))
 idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:_num_choices(d)-1)
 
@@ -114,8 +114,8 @@ function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l::Integer)
     return _num_x(d) + l
 end
 
-idx_royalty_ρ(d::DataOrObsRoyalty{RoyaltyModel}) = 1
-idx_royalty_ψ(d::DataOrObsRoyalty{RoyaltyModel}) = 2
+idx_royalty_ρ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 1
+idx_royalty_ψ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 2
 idx_royalty_β(d::DataOrObsRoyalty{RoyaltyModel}) = 2 .+ (1:_num_x(d))
 idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
 function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
@@ -124,14 +124,15 @@ function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
 end
 
 # get coefs
-theta_roy(      d::DataOrObsRoyalty, theta) = theta
-theta_royalty_ρ(d::DataOrObsRoyalty, theta) = theta[idx_royalty_ρ(d)]
-theta_royalty_ψ(d::DataOrObsRoyalty, theta) = theta[idx_royalty_ψ(d)]
-theta_royalty_β(d::DataOrObsRoyalty, theta) = view(theta, idx_royalty_β(d))
-theta_royalty_κ(d::DataOrObsRoyalty, theta) = view(theta, idx_royalty_κ(d))
-theta_royalty_κ(d::DataOrObsRoyalty, theta, l) = theta[idx_royalty_κ(d,l)]
+theta_roy(      d, theta) = theta
+theta_royalty_ρ(d, theta) = theta[idx_royalty_ρ(d)]
+theta_royalty_ψ(d, theta) = theta[idx_royalty_ψ(d)]
+theta_royalty_β(d, theta) = view(theta, idx_royalty_β(d))
+theta_royalty_κ(d, theta) = view(theta, idx_royalty_κ(d))
+theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
+
 # check if theta is okay
-theta_royalty_check(d::DataOrObsRoyalty, theta) = issorted(theta_royalty_κ(d,theta))
+theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
 
 """

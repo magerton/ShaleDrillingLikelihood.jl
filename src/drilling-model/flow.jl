@@ -65,11 +65,11 @@ const TestObs = ObservationDrill{TestDrillModel}
 
 length(     m::TestDrillModel) = 5
 
-idx_drill_ψ(m::TestDrillModel) = 1
-idx_drill_x(m::TestDrillModel) = 2
-idx_drill_z(m::TestDrillModel) = 3
-idx_drill_d(m::TestDrillModel) = 4
-idx_drill_ρ(m::TestDrillModel) = 5
+idx_drill_ψ(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 1
+idx_drill_x(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 2
+idx_drill_z(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 3
+idx_drill_d(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 4
+idx_drill_ρ(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 5
 
 full_payoff(             d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
 dfull_payoff(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = dflow(k,d,obs,theta,s)

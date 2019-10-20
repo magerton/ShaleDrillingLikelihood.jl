@@ -130,6 +130,7 @@ j1chars( d::DataDrill) = d.j1chars
 hasj1ptr(   d::AbstractDataDrill) = length(j1ptr(d)) > 0
 length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = hasj1ptr(d) ? maximum( diff(j1ptr(d)) ) : 1
+_nparm(     d::AbstractDataDrill) = length(_model(d))
 
 # getindex in fields of AbstractDataDrill
 ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
@@ -297,7 +298,7 @@ xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
 function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractVector;
     num_zt=30,
-    minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
+    minmaxleases::UnitRange=0:3, nper_initial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
@@ -318,7 +319,7 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
     # observations per lease
     obs_per_lease = vcat(
         sample(nper_development, num_initial_leases),
-        sample(nperinitial, num_i)
+        sample(nper_initial, num_i)
     )
 
     # pointers to observations

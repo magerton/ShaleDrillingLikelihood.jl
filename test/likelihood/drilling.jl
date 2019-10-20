@@ -49,7 +49,7 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=10:40, nper_development=10:40,
+        num_i=100, nper_initial=10:40, nper_development=10:40,
         num_zt=200, tstart=1:50
     )
 

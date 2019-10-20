@@ -17,7 +17,8 @@ using BenchmarkTools
 
 using Base: OneTo
 
-using ShaleDrillingLikelihood: DataRoyalty, DataProduce,
+using ShaleDrillingLikelihood: AbstractDataSet,
+    DataRoyalty, DataProduce, DataDrill,
     simloglik_royalty!,
     grad_simloglik_royalty!,
     simloglik_produce!,
@@ -32,7 +33,17 @@ using ShaleDrillingLikelihood: DataRoyalty, DataProduce,
     ObservationGroup,
     ObservationGroupProduce,
     ObservationRoyalty,
-    idx_theta
+    idx_theta,
+    TestDrillModel,
+    theta_drill_ρ,
+    theta_drill_ψ,
+    theta_royalty_ρ,
+    theta_produce_ψ,
+    theta_drill,
+    idx_drill_ρ, idx_royalty_ρ,
+    idx_drill_ψ, idx_produce_ψ
+
+
 
 
 println("testing overall royalty")
@@ -48,36 +59,92 @@ println("testing overall royalty")
 
     sim = SimulationDraws(M, num_i)
 
-    theta_produce = vcat(0.5, rand(3), 0.3, 0.4)
-    theta_royalty = [0.1, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    # set up coefs
+    θρ = 0.5
+    αψ = 0.6
 
-    data_produce = DataProduce(psi2, 10, 10:20, theta_produce)
-    data_royalty = DataRoyalty(u,v,theta_royalty,L)
+    # set up drilling coefs
+    model_drill = TestDrillModel()
+    θ_drill   = [αψ, 2.0, -2.0, -0.75, θρ]
+    @test theta_drill_ρ(model_drill, θ_drill) == θρ
+    @test theta_drill_ψ(model_drill, θ_drill) == αψ
+
+    # set up royalty coefs
+    θ_royalty = [θρ, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
+
+    # set up pdxn coefs
+    θ_produce = vcat(αψ, rand(3), 0.3, 0.4)
+    @test theta_produce_ψ(ProductionModel(), θ_produce) == αψ
+
+    # big theta
+    θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
+    @test theta_drill(model_drill, θ) == θ_drill
+
+    # make data
+    data_drill_opt = (num_zt=200, minmaxleases=1:2, nper_initial=10:20, nper_development=0:10, tstart=1:50,)
+    data_drill   = DataDrill(u, v, TestDrillModel(), θ_drill; data_drill_opt...)
+    data_produce = DataProduce(u, 10, 10:20, θ_produce)
+    data_royalty = DataRoyalty(u,v,θ_royalty,L)
+
+    data = (data_drill, data_royalty, data_produce)
+    @test data isa NTuple{3,AbstractDataSet}
+    @test data isa Tuple{DataDrill,DataRoyalty,DataProduce}
+
+    @test length(data_drill) == num_i
     @test length(data_royalty) == num_i
+    @test length(data_produce) == num_i
+    @test all(length.(data) .== num_i)
 
-    data = (data_royalty, data_produce)
-    @test idx_theta(data) == (OneTo(length(theta_royalty)), length(theta_royalty) .+ OneTo(length(theta_produce)))
+    @test all(_nparm.(data) .== (_nparm(data_drill), _nparm(data_royalty), _nparm(data_produce)))
 
-    nparm = sum(_nparm.(data))
-    theta = vcat(theta_royalty, theta_produce)
-    grad = similar(theta)
-    hess = Matrix{eltype(theta)}(undef, nparm, nparm)
-    tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+    @test idx_produce_ψ isa Function
+    @test idx_drill_ψ isa Function
+    coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
+    @test coef_links isa Vector{<:NTuple{2,Function}}
 
-    simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-    simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+    function thetas(data::Tuple{DataDrill,DataRoyalty{RoyaltyModel},DataProduce}, theta::AbstractVector, coef_links::Vector{<:NTuple{2,Function}})
+        k_drill, k_roy, k_pdxn = _nparm.(data)
+        d_drill, d_roy, d_pdxn = data
+        idx_drill = OneTo(k_drill)
+        idx_roy   = (k_drill-1) .+ OneTo(k_roy)
+        idx_pdxn  = collect( last(idx_roy) .+ OneTo(k_pdxn) )
+        for (idxp, idxd) in coef_links
+            idx_pdxn[idxp(d_pdxn)] = idxd(d_drill)
+            idx_pdxn[idxp(d_pdxn)+1:end] .-= 1
+        end
+        thet_drill = view(theta, idx_drill)
+        thet_roy   = view(theta, idx_roy)
+        thet_pdxn  = theta[idx_pdxn]
+        return thet_drill, thet_roy, thet_pdxn
+    end
 
-    fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+    testthet = thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]), coef_links)
+    @test testthet[1] == θ_drill
+    @test testthet[2] == θ_royalty
+    @test testthet[3] == θ_produce
+    @show typeof(testthet)
 
-    fill!(grad,0)
-    fill!(hess,0)
-    simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-    @test !all(grad.==0)
-    @test isapprox(fd, grad; rtol=2e-5)
+    # nparm = sum(_nparm.(data))
+    # theta = vcat(θ_royalty, θ_produce)
+    # grad = similar(theta)
+    # hess = Matrix{eltype(theta)}(undef, nparm, nparm)
+    # tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+    #
+    # simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+    # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+    #
+    # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+    #
+    # fill!(grad,0)
+    # fill!(hess,0)
+    # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+    # @test !all(grad.==0)
+    # @test isapprox(fd, grad; rtol=2e-5)
 
 
-    @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-    @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+    # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+    # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
 
     # Profile.clear()
     # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)

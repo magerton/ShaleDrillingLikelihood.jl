@@ -142,16 +142,20 @@ end
 
 _nparm(d::AbstractDataStructureProduction) = _num_x(d)+3
 
-idx_produce_ψ(  d::AbstractDataStructureProduction) = 1
+idx_produce_ψ(  d::Union{AbstractDataStructureProduction,ProductionModel}) = 1
 idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))
 idx_produce_σ2η(d::AbstractDataStructureProduction) = 2 + _num_x(d)
 idx_produce_σ2u(d::AbstractDataStructureProduction) = 3 + _num_x(d)
 
-theta_produce(    d::AbstractDataStructureProduction, theta) = theta
-theta_produce_ψ(  d::AbstractDataStructureProduction, theta) = theta[idx_produce_ψ(d)]
-theta_produce_β(  d::AbstractDataStructureProduction, theta) = view(theta, idx_produce_β(d))
-theta_produce_σ2η(d::AbstractDataStructureProduction, theta) = theta[idx_produce_σ2η(d)]
-theta_produce_σ2u(d::AbstractDataStructureProduction, theta) = theta[idx_produce_σ2u(d)]
+theta_produce(    d, theta) = theta
+theta_produce_ψ(  d, theta) = theta[idx_produce_ψ(d)]
+theta_produce_β(  d, theta) = view(theta, idx_produce_β(d))
+theta_produce_σ2η(d, theta) = theta[idx_produce_σ2η(d)]
+theta_produce_σ2u(d, theta) = theta[idx_produce_σ2u(d)]
+
+theta_produce_β(  d::ProductionModel, theta) = view(theta, 2:length(theta)-2)
+theta_produce_σ2η(d::ProductionModel, theta) = theta[end-1]
+theta_produce_σ2u(d::ProductionModel, theta) = theta[end]
 
 # Dataset generator
 #---------------------------
