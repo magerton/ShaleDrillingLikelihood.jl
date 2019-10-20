@@ -1,7 +1,6 @@
-export AbstractProductionModel, ProductionModel, ObservationProduce, ObservationGroupProduce, DataProduce
+export ProductionModel, ObservationProduce, ObservationGroupProduce, DataProduce
 
 "Production"
-abstract type AbstractProductionModel <: AbstractModel end
 struct ProductionModel <: AbstractProductionModel end
 
 # Abstract data strucutres

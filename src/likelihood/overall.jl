@@ -17,10 +17,8 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, th
         @views simloglik!(grp, theta[idx], sim, dograd)
     end
 
-    if !dograd
-        LL = logsumexp(_llm(sim)) - logM
-    else
-        LL = logsumexp_and_softmax!(_llm(sim)) - logM
+    LL = logsumexp!(_llm(sim)) - logM
+    if dograd
         for (idx,grp) in zip(idxs, grptup)
             @views grad_simloglik!(grad[idx], grp, theta[idx], sim)
         end

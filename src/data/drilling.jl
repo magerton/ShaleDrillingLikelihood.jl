@@ -23,55 +23,14 @@ isless(::FinishedDrilling, ::Union{InitialDrilling,DevelopmentDrilling})  = fals
 isless(::DevelopmentDrilling, ::InitialDrilling)  = false
 isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 
-# drilling data
-#----------------------------
-
-"Drilling"
-abstract type AbstractDrillModel <: AbstractModel end
-struct DrillModel <: AbstractDrillModel end
-
-# Time Variable Structs
-#---------------------------
-
-struct ExogTimeVars{N, ZTup<:NTuple{N,Real}, OR<:OrdinalRange}
-    timevars::Vector{ZTup}
-    timestamp::OR
-    function ExogTimeVars(timevars::Vector{ZTup}, timestamp::OR) where {N, ZTup<:NTuple{N,Real}, OR<:OrdinalRange}
-        length(timevars) .== length(timestamp) || throw(DimensionMismatch())
-        new{N,ZTup,OR}(timevars,timestamp)
-    end
-end
-
-_timevars(tv::ExogTimeVars) = tv.timevars
-_timestamp(tv::ExogTimeVars) = tv.timestamp
-getindex(tv::ExogTimeVars, t) = getindex(_timevars(tv), t)
-function getindex(tv::ExogTimeVars, t::Date)
-    ts = _timestamp(tv)
-    t in ts || throw(DomainError(t))
-    return getindex(_timevars(tv), searchsortedfirst(ts,t))
-end
-date(tv::ExogTimeVars, t::Integer)     = getindex(_timestamp(tv),t)
-length(tv::ExogTimeVars) = length(_timestamp(tv))
-size(tv::ExogTimeVars{N}) where {N} = length(tv), N
-view(tv::ExogTimeVars, idx) = view(_timevars(tv), idx)
-
-function DateQuarter(y::Integer, q::Integer)
-    1 <= q <= 4 || throw(DomainError())
-    return Date(y, 3*(q-1)+1)
-end
-
-function Quarter(i::Integer)
-    i > 0 || throw(DomainError())
-    return Month(3*i)
-end
-
-
 # DataSet
 #---------------------------
 
+export DataDrill
+
 abstract type AbstractDataDrill <: AbstractDataSet end
 
-struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: AbstractDataDrill
+struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -85,14 +44,14 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
     # drilling histories
     ichars::Vector{ITup}
     y::Vector{Int}
-    x::Vector{Int}
+    x::Vector{XT}
 
     # time indices
     zchars::ETV
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
-        jchars, ichars::Vector{ITup}, y, x, zchars::ETV
-    ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple}
+        jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
+    ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT}
 
         # check i
         length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
@@ -120,7 +79,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple} <: Abstr
             jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
-        return new{M,ETV,ITup}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
+        return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
     end
 end
 
@@ -130,12 +89,12 @@ DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 # What is an observation?
 #------------------------------------------
 
-struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple} <: AbstractObservation
+struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number} <: AbstractObservation
     model::M
     ichars::ITup
     z::ZTup
     y::Int
-    x::Int
+    x::XT
 end
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
@@ -150,6 +109,7 @@ Observation(d::AbstractDataDrill, i, r::AbstractRegimeType, j, t) = Observation(
 
 ichars(obs::ObservationDrill) = obs.ichars
 zchars(obs::ObservationDrill) = obs.z
+
 @deprecate action(obs::ObservationDrill) _y(obs)
 @deprecate state(obs::ObservationDrill) _x(obs)
 
@@ -226,6 +186,8 @@ eachindex( grp::DrillUnit) = (InitialDrilling(), DevelopmentDrilling())
 InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
 DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
 
+num_initial_leases(d::DrillUnit) = j1length(d)
+
 # Regime (second layer of iteration)
 #------------------------------------------
 
@@ -238,11 +200,13 @@ length(    g::DrillInitial) = j1length(_data(g))
 eachindex( g::DrillInitial) = j1_range(_data(g))
 firstindex(g::DrillInitial) = j1start( _data(g))
 lastindex( g::DrillInitial) = j1stop(  _data(g))
+j1chars(   g::DrillInitial) = j1chars( _data(g))
 
 length(    g::DrillDevelopment) = 1
 eachindex( g::DrillDevelopment) = j2ptr(_data(g))
 firstindex(g::DrillDevelopment) = j2ptr(_data(g))
 lastindex( g::DrillDevelopment) = j2ptr(_data(g))
+j1chars(   g::DrillDevelopment) = 1
 
 uniti(g::ObservationGroup) = uniti(_data(g))
 
@@ -262,7 +226,121 @@ _x(g::DrillLease) = view(_x(DataDrill(g)), eachindex(g))
 jtstart(g::DrillLease) = jtstart(DataDrill(g), _i(g))
 ztrange(g::DrillLease) = (jtstart(g)-1) .+ OneTo(length(g))
 zchars( g::DrillLease) = view( zchars(DataDrill(g)), ztrange(g))
+ichars( g::DrillLease) = ichars(DataDrill(g), uniti(g))
+j1chars(g::DrillLease) = j1chars(DataDrill(g), _i(g))
+_j(g::DrillLease) = _i(g)
+_regime(g::DrillLease) = _i(_data(g))
+
 
 function getindex(g::DrillLease, t)
-    Observation(DataDrill(g), _i(_data(_data(g))), _i(_data(g)) ,_i(g), t)
+    Observation(DataDrill(g), uniti(g), _regime(g) ,_j(g), t)
+end
+
+# Simulation of data
+# -----------------------------------------------------
+
+is_development(lease::ObservationGroup{<:DrillInitial}) = false
+is_development(lease::ObservationGroup{<:DrillDevelopment}) = true
+
+function randsumtoone(n)
+    x = rand(n)
+    x ./= sum(x)
+    return x
+end
+
+function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
+    m = _model(DataDrill(lease))
+    length(theta) == length(m) || throw(DimensionMismatch())
+
+    nper = length(lease)
+    if nper > 0
+
+        zc = zchars(lease)
+        ic = ichars(lease)
+        x = _x(lease)
+        y = _y(lease)
+
+        i = uniti(lease)
+        ubv = Vector{Float64}(undef, length(actionspace(m)))
+
+        # x[1] = initial_state(m) + is_development(lease) # FIXME
+
+        x .= (2*is_development(lease)-1) .* abs.(x)
+
+        for t in 1:nper
+            obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
+            f(d) = flow(d,obs,theta,sim)
+            ubv .= f.(actionspace(obs))
+            logsumexp!(ubv)
+            cumsum!(ubv, ubv)
+            choice = searchsortedfirst(ubv, rand())-1
+            y[t] = choice
+            # t < nper && (x[t+1] = next_state(m,x[t],choice))
+        end
+    end
+end
+
+ExogTimeVarsSample(m::AbstractDrillModel, nt::Integer) = throw(error("not defined for $(m)"))
+function ExogTimeVarsSample(m::TestDrillModel, nt::Integer)
+    timespan = range(Date(2003,10); step=Quarter(1), length=nt)
+    timevars = [(x,) for x in randn(nt)]
+    return ExogTimeVars(timevars, timespan)
+end
+
+ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
+function ichars_sample(m::TestDrillModel, num_i)
+    [(x,) for x in sample(0:1, num_i)]
+end
+
+xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
+xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
+
+function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
+    num_i=100, num_zt=30,
+    minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
+    nper_development::UnitRange=0:10,
+    tstart::UnitRange=5:15,
+    xdomain::D=Normal()
+) where {D}
+    _zchars = ExogTimeVarsSample(m, num_zt)
+
+    # ichars
+    _ichars = ichars_sample(m,num_i)
+
+    # initial leases per unit
+    initial_leases_per_unit = sample(minmaxleases, num_i)
+    _jchars = vcat(collect(randsumtoone(lpu) for lpu in initial_leases_per_unit )...)
+    num_initial_leases = length(_jchars)
+
+    # observations per lease
+    obs_per_lease = vcat(
+        sample(nper_development, num_initial_leases),
+        sample(nperinitial, num_i)
+    )
+
+    # pointers to observations
+    _tptr  = 1 .+ cumsum(vcat(0, obs_per_lease))
+    _j1ptr = 1 .+ cumsum(vcat(0, initial_leases_per_unit))
+    _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
+
+    nobs = last(_tptr)-1
+    x = xsample(xdomain, nobs)
+    y = zeros(Int, nobs)
+    _jtstart = sample(tstart, num_initial_leases + num_i)
+
+    choice_set = actionspace(m)
+
+    data = DataDrill(m, _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
+
+    # update leases
+    for (i,unit) in enumerate(data)
+        sim = SimulationDraw(theta_drill_ρ(m,theta))
+        for regimes in unit
+            for lease in regimes
+                simulate_lease(lease, theta, sim)
+            end
+        end
+    end
+
+    return data
 end

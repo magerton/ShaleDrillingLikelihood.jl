@@ -1,103 +1,151 @@
-using Base: OneTo
-
-export flow, simloglik_drill!
-
-# drilling.jl
-irng(num_t::Int, i::Int) = (i-1)*num_t .+ (1:num_t)
-
-# look at https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
-# https://discourse.julialang.org/t/poor-performance-on-cluster-multithreading/12248/39
-# https://discourse.julialang.org/t/two-questions-about-multithreading/14564/2
-# https://discourse.julialang.org/t/question-about-multi-threading-performance/12075/3
-
-# check out this??
-# https://discourse.julialang.org/t/anyone-developing-multinomial-logistic-regression/23222
-
-@noinline function init_ubvs(ubvs::Vector{Vector{T}}, L::Integer) where {T}
-    # Allocate the tmpvars the thread's own heap lazily
-    # instead of the master thread heap to minimize memory conflict.
-    # https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
-    @threads for id in 1:nthreads()
-        tid = threadid()
-        ubvs[tid] = fill(T(tid), L)
+function gradweight(could_choose, did_choose, payoff)
+    if did_choose == could_choose
+        return 1-payoff
+    else
+        return -payoff
     end
 end
 
+"""
+    loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
 
-function simloglik_drill!(grad::AbstractVector{T}, y::AbstractVector, x::AbstractArray, psi::AbstractArray, thet::AbstractVector{T}, num_t::Integer, num_i::Integer) where {T}
-    length(y) == length(x) == num_i * num_t || throw(DimensionMismatch())
-    L = maximum(y)
-    M = size(psi,1)
-    K = length(thet)
-    minimum(y) == 1 || throw(DomainError(y))
-    size(psi,2) == num_i || throw(DimensionMismatch())
-    length(grad) ∈ (0,K) || throw(DimensionMismatch())
+Return log lik of `lease` history. Optionally *adds* to gradient vector `grad`.
 
-    dograd = length(grad) > 0
+Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
+"""
+function loglik_drill_lease!(
+    grad::AbstractVector, lease::DrillLease,
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
+    dograd::Bool
+)::T where {T}
 
-    # for out
     LL = zero(T)
-    fill!(grad, zero(T))
+    ubv = _ubv(dtv)
+    # theta = _theta(dtv)
 
-    # tmpvar for sims
-    llm = Vector{T}(undef, M)
-    gradm = Matrix{T}(undef, K, M)
+    for obs in lease
+        actions = actionspace(obs)
+        n = length(actions)
+        ubv_vw = view(ubv, OneTo(n))
 
-    # tmpvar for threads
-    ubvs = Vector{Vector{T}}(undef,nthreads())
-    gradtmps = Vector{Vector{T}}(undef,nthreads())
-    init_ubvs(ubvs, L)
-    init_ubvs(gradtmps, K)
-
-    for i in OneTo(num_i)
-        fill!(llm, zero(Float64))
-
-        rng = irng(num_t,i)
-        xi = view(x, rng)
-        yi = view(y, rng)
-        let M=M, num_t=num_t, L=L, K=K, dograd=dograd, ubvs=ubvs, gradtmps=gradtmps, thet=thet, xi=xi, psi=psi, llm=llm, gradm=gradm
-            @threads for m in OneTo(M)
-                local ubv = ubvs[threadid()]
-                local gradtmp = gradtmps[threadid()]
-                dograd && fill!(gradtmp, zero(T))
-
-                for t in OneTo(num_t)
-
-                    # loop over choices
-                    @fastmath @inbounds @simd for d in OneTo(L)
-                        ubv[d] = flow(d, thet, xi[t], psi[m,i], L)
-                    end
-
-                    # compute likliehood
-                    if !dograd
-                        llm[m] += ubv[yi[t]] - logsumexp(ubv)
-
-                    # compute liklihood + gradient
-                    else
-                        llm[m] += ubv[yi[t]] - logsumexp_and_softmax!(ubv)
-                        for d in OneTo(L)
-                            local wt = T(d == yi[t]) - ubv[d]
-                            @fastmath @inbounds @simd for k in OneTo(K)
-                                gradtmp[k] += wt * dflow(k, d, thet, xi[t], psi[m,i], L)
-                            end # k
-                        end # d
-                    end # if
-
-                end # t
-                dograd && (gradm[:,m] .= gradtmp)
-            end # m
-        end # let
-
-        if !dograd
-            LL += logsumexp(llm) - log(M)
-        else
-            LL += logsumexp_and_softmax!(llm) - log(M)
-            mul!(gradtmps[1], gradm, llm)
-            grad .+= gradtmps[1]
+        @inbounds @simd for d in actions
+            ubv[d+1] = full_payoff(d, obs, theta, sim)
         end
 
-    end # i
+        tmp = ubv[_y(obs)+1]
+        LL += tmp - logsumexp!(ubv_vw)
+
+        if dograd
+            @inbounds for d in actions
+                wt = gradweight(d, _y(obs), ubv[d+1])
+                @simd for k in eachindex(grad)
+                    grad[k] += wt * dfull_payoff(k, d, obs, theta, sim)
+                end # grad
+            end # actions
+        end # dograd
+
+    end # obs
 
     return LL
+end
 
+"""
+    loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+
+Return log lik of `unit` history, integrating over `J`. possible leases.
+
+If `dograd`, then `grad .+= ∇(log Lᵢ)` using thread-specific temp variables
+`dtv::DrillingTmpVarsThread`. This overwrites `_gradJ(dtv)`
+"""
+function loglik_drill_unit!(
+    grad::AbstractVector, unit::DrillUnit,
+    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread,
+    dograd::Bool
+)::T where {T}
+
+    nJ    = num_initial_leases(unit)
+    gradJ = view(_gradJ(dtv), :, OneTo(nJ))
+    LLj   = view(_llj(dtv),      OneTo(nJ))
+
+    fill!(gradJ, 0)
+
+    LL = zero(T)
+    if nJ > 0
+        LLj .= log.(j1chars(InitialDrilling(unit)))
+        for (ji,lease) in enumerate(InitialDrilling(unit))
+            gradj = view(gradJ, :, ji)
+            LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
+        end
+        LL += logsumexp!(LLj)
+        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
+    end
+
+    for lease in DevelopmentDrilling(unit)
+        LL += loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
+    end
+
+    return LL
+end
+
+"""
+    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+
+Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
+`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
+
+Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+"""
+function simloglik_drill_unit!(
+    grad::AbstractVector, unit::DrillUnit,
+    theta::AbstractVector{T}, sims::SimulationDrawsVector,
+    dtv::DrillingTmpVarsAll, dograd::Bool
+)::T where {T}
+
+    length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
+
+    M = _num_sim(sims)
+    llm = _llm(sims)
+    gradM = _drillgradm(sims)
+    fill!(gradM, 0)
+
+    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM
+        @threads for m in OneTo(M)
+            local sims_m = sims[m]        # get 1 particular simulation
+            local dtvi = dtv[threadid()]  # thread-specific tmpvars
+            local gradm_i = view(gradM, :, m)
+            llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
+        end
+    end
+
+    LL = logsumexp!(llm) - log(M)
+    dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+
+    return LL
+end
+
+
+
+function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
+    theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,
+    dograd::Bool=false, dohess::Bool=false
+) where {T}
+
+    dohess == true && dograd == false && throw(error("can't dohess without dograd"))
+    checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
+
+    update_theta!(dtv, theta)
+    update!(sim, theta_drill_ρ(_model(data), theta))
+    g = dohess ? similar(grad) : grad
+
+    LL = zero(T)
+    for (i,unit) in enumerate(data)
+        dohess && fill!(g, 0)
+        LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dtv, dograd)
+        if dohess
+            BLAS.ger!(1.0, g, g, hess)
+            grad .+= g
+        end
+    end
+
+    return LL
 end

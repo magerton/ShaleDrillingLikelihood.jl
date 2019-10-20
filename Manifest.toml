@@ -27,6 +27,12 @@ git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.6"
 
+[[CSTParser]]
+deps = ["Tokenize"]
+git-tree-sha1 = "c69698c3d4a7255bc1b4bc2afc09f59db910243b"
+uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
+version = "0.6.2"
+
 [[Calculus]]
 deps = ["Compat"]
 git-tree-sha1 = "bd8bbd105ba583a42385bd6dc4a20dad8ab3dc11"
@@ -50,6 +56,12 @@ deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", 
 git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "2.1.0"
+
+[[CpuId]]
+deps = ["Markdown", "Test"]
+git-tree-sha1 = "f0464e499ab9973b43c20f8216d088b61fda80c6"
+uuid = "adafc99b-e345-5852-983c-f28acb93d879"
+version = "0.2.2"
 
 [[DataAPI]]
 git-tree-sha1 = "8903f0219d3472543fc4b2f5ebaf675a07f817c0"
@@ -150,11 +162,25 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[LoopVectorization]]
+deps = ["MacroTools", "SIMDPirates", "SLEEFPirates", "VectorizationBase"]
+git-tree-sha1 = "b77fd88ed13205c9e76716d9ed2a9ccb342cc046"
+repo-rev = "master"
+repo-url = "https://github.com/chriselrod/LoopVectorization.jl"
+uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
+version = "0.1.0"
+
 [[LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
 git-tree-sha1 = "ea065f38cccb556b4eabe43b3b3b91e1c67cbffd"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
 version = "0.3.8"
+
+[[MacroTools]]
+deps = ["CSTParser", "Compat", "DataStructures", "Test", "Tokenize"]
+git-tree-sha1 = "d6e9dedb8c92c3465575442da456aec15a89ff76"
+uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+version = "0.5.1"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -259,6 +285,22 @@ version = "0.5.0"
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
+[[SIMDPirates]]
+deps = ["MacroTools", "VectorizationBase"]
+git-tree-sha1 = "a413555e282bc8a9ea365599f255d97dbbc80fc7"
+repo-rev = "master"
+repo-url = "https://github.com/chriselrod/SIMDPirates.jl"
+uuid = "21efa798-c60a-11e8-04d3-e1a92915a26a"
+version = "0.1.0"
+
+[[SLEEFPirates]]
+deps = ["SIMDPirates", "VectorizationBase"]
+git-tree-sha1 = "068cb2b20609372babc66c34c8600479095820cc"
+repo-rev = "master"
+repo-url = "https://github.com/chriselrod/SLEEFPirates.jl"
+uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
+version = "0.1.0"
+
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -315,6 +357,11 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[Tokenize]]
+git-tree-sha1 = "dfcdbbfb2d0370716c815cbd6f8a364efb6f42cf"
+uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
+version = "0.5.6"
+
 [[URIParser]]
 deps = ["Test", "Unicode"]
 git-tree-sha1 = "6ddf8244220dfda2f17539fa8c9de20d6c575b69"
@@ -327,3 +374,11 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[VectorizationBase]]
+deps = ["CpuId", "LinearAlgebra"]
+git-tree-sha1 = "14e3d096eb8f55eea8dd2aa8a6780e9741a7ca44"
+repo-rev = "master"
+repo-url = "https://github.com/chriselrod/VectorizationBase.jl"
+uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
+version = "0.1.0"

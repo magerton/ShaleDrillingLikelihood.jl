@@ -73,7 +73,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     am  = _am(sim)
     bm  = _bm(sim)
     cm  = _cm(sim)
-    LLm = _LLm(sim)
+    LLm = _llm(sim)
     M = _num_sim(sim)
 
     psi = _ψ1(sim)
@@ -113,7 +113,7 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     length(grad) == length(theta) == _nparm(obs) || throw(DimensionMismatch())
 
     ψ1 = _ψ1(sim)
-    dψ1dρ = _dψ1dρ(sim)
+    dψ1dρ = _dψ1dθρ(sim)
     qm = _qm(sim) # Pr(um,vm | data) already computed!!!
     am = _am(sim) # computed in likelihood
     bm = _bm(sim) # computed in likelihood

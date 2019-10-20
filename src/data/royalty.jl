@@ -1,13 +1,11 @@
-export AbstractRoyaltyModel, RoyaltyModelNoHet, RoyaltyModel,
-    ObservationRoyalty, DataRoyalty
+export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty
 
 # Model structure
 #---------------------------
 
 "Royalty rates"
-abstract type AbstractRoyaltyModel <: AbstractModel        end
-struct RoyaltyModelNoHet           <: AbstractRoyaltyModel end
-struct RoyaltyModel                <: AbstractRoyaltyModel end
+struct RoyaltyModelNoHet <: AbstractRoyaltyModel end
+struct RoyaltyModel      <: AbstractRoyaltyModel end
 
 # Abstract data strucutres
 #---------------------------
@@ -153,7 +151,7 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Int
     ψ1 = similar(u)
     dψ1dρ = similar(u)
     update_ψ1!(ψ1, u, v, first(theta))
-    update_dψ1dρ!(dψ1dρ, u, v, first(theta))
+    update_dψ1dθρ!(dψ1dρ, u, v, first(theta))
 
     X      = randn(k,nobs)
     eps    = randn(nobs)

@@ -23,9 +23,10 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     logsumexp_and_softmax!,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
     SimulationDraws,
-    update_ψ1!, update_dψ1dρ!, _psi1, _u, _v, _dψ1dρ,
+    update_ψ1!, update_dψ1dθρ!, _psi1, _u, _v, _dψ1dθρ,
     update_xbeta!, _am, _bm, _cm, _qm,
-    llthreads!, _i, _nparm
+    llthreads!, _i, _nparm,
+    logsumexp!
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -59,7 +60,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     @test_throws DomainError idx_royalty_κ(data, 0)
 
     M = 10
-    RT = SimulationDraws(M,nobs)
+    RT = SimulationDraws(M,nobs,0)
     am = _am(RT)
     bm = _bm(RT)
     cm = _cm(RT)
@@ -123,7 +124,7 @@ end
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)
         LL = zero(eltype(θ))
         update_ψ1!(uv, theta_royalty_ρ(data,θ))
-        update_dψ1dρ!(uv, theta_royalty_ρ(data,θ))
+        update_dψ1dθρ!(uv, theta_royalty_ρ(data,θ))
 
         qm = _qm(uv)
 
@@ -134,10 +135,8 @@ end
                 fill!(qm, 0)                    # b/c might do other stuff to LLm
                 simi = view(uv,_i(grp))
                 simloglik_royalty!(obs, θ, simi, dograd)    # update LLm
-                if !dograd
-                    LL += logsumexp(qm) - log(M)
-                else
-                    LL += logsumexp_and_softmax!(qm)
+                LL += logsumexp!(qm) - log(M)
+                if dograd
                     grad_simloglik_royalty!(grad, obs, θ, simi)
                 end
             end

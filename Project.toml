@@ -3,14 +3,19 @@ uuid = "86eebf76-2bd1-562c-98f0-956a09052695"
 version = "0.0.0"
 
 [deps]
+Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Halton = "05a64641-4d1a-5311-8c01-b9b6c96c7c05"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+SIMDPirates = "21efa798-c60a-11e8-04d3-e1a92915a26a"
+SLEEFPirates = "476501e8-09a2-5ece-8869-fb82de89a1fa"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
+VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
 julia = "≥ 1.1.0"

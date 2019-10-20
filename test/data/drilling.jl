@@ -10,7 +10,7 @@ using Dates
 using BenchmarkTools
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
-    AbstractDrillModel, DrillModel,
+    AbstractDrillModel, DrillModel, TestDrillModel,
     ExogTimeVars, _timestamp, _timevars, Quarter,
     j1ptr, j2ptr, tptr, zchars, jtstart, ichars, _y, _x, j1chars, hasj1ptr, maxj1length,
     j1start, j1stop, j1length, j1_range,
@@ -25,14 +25,12 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     _i, _data,
     ObservationGroup,
     action, state,
-    uniti
+    uniti,
+    simulate_lease,
+    randsumtoone,
+    num_initial_leases
 
 
-function randsumtoone(n)
-    x = rand(n)
-    x ./= sum(x)
-    return x
-end
 
 @testset "Drilling Data Structure" begin
 
@@ -120,6 +118,7 @@ end
             @test isa(unit, DrillUnit)
             @test DataDrill(unit) === data
             @test length(unit) == DevelopmentDrilling()
+            @test num_initial_leases(unit) == j1length(unit)
 
             for regime in unit
                 r += 1
@@ -148,80 +147,41 @@ end
 
     @testset "Create random DataDrill" begin
 
-        num_i = 10
-        rho = 0.5
-        nt = 30
-        minmaxleases = 0:3
-        nper = 0:10
-        _zchars = ExogTimeVars([(x,) for x in randn(nt)], range(Date(2003,10); step=Quarter(1), length=nt))
+        theta = [1.0, 1.0, 1.0, -1.0, 0.5]
+        data = DataDrill(TestDrillModel(), theta)
 
-        psi2 = rand(num_i)
-        psi1 = rho .* psi2 .+ (1-rho^2) .* rand(num_i)
-
-        leases_per_unit = [sample(minmaxleases) for i in 1:num_i]
-
-        _jchars = vcat(collect(randsumtoone(lpu) for lpu in leases_per_unit )...)
-        num_initial_leases = length(_jchars)
-        @test sum(leases_per_unit) == num_initial_leases
-        obs_per_lease = vcat(sample(1:10, num_initial_leases), sample(0:10, num_i))
-        @test length(obs_per_lease) == num_initial_leases + num_i
-
-        _tptr  = 1 .+ cumsum(vcat(0, obs_per_lease))
-        _j1ptr = 1 .+ cumsum(vcat(0, leases_per_unit))
-        _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
-        _ichars = [(sample(0:1),) for i in 1:num_i]
-
-        nobs = last(_tptr)-1
-        x = sample(1:2, nobs)
-        y = zeros(Int, nobs)
-        _jtstart = fill(10, num_initial_leases + num_i)
-
-        choice_set = 0:2
-        payoffs = zeros(length(choice_set))
-        theta = randn(3)
-
-        data = DataDrill(DrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
-
-        pickpsi(a, b, lease::ObservationGroup{<:DrillInitial}) = a
-        pickpsi(a, b, lease::ObservationGroup{<:DrillDevelopment}) = b
-
-        function payoff(d::Integer, psi::Real,x::Real,z::Tuple{Real},theta::AbstractVector)
-            0 <= d <= 2 || throw(DomainError())
-            length(theta)==3 || throw(DimensionMismatch())
-            out = d*(theta[1]*psi + theta[2]*x + theta[3]*first(z))
-            return Float64(out)
-        end
-
-        function simulate_lease(lease)
-            nper = length(lease)
-            zc = zchars(lease)
-            x = _x(lease)
-            y = _y(lease)
-            @test length(zc) == length(x) == length(y) == nper
-
-            i = uniti(lease)
-            psi = pickpsi(psi1[i], psi2[i], lease)
-
-            for t in 1:nper
-                f(d) = payoff(d,psi,x[t],zc[t],theta)
-                payoffs .=  f.(choice_set)
-                @views softmax!(payoffs)
-                cumsum!(payoffs, payoffs)
-                y[t] = searchsortedfirst(payoffs, rand())-1
-            end
-        end
-
-        # update leases
+        # go through leases
+        j = 0
+        t = 0
         for (i,unit) in enumerate(data)
-            for regimes in unit
+            @test isa(unit, DrillUnit)
+
+            for (r,regimes) in enumerate(unit)
+                @test isa(regimes, AbstractDrillRegime)
+                @test r in 1:2
+                length(regimes) > 0 && (@test sum(j1chars(regimes)) ≈ 1)
+                if r == 1
+                    @test isa(regimes, DrillInitial)
+                else
+                    @test isa(regimes, DrillDevelopment)
+                end
+
                 for lease in regimes
-                    simulate_lease(lease)
+                    j += 1
+                    @test uniti(lease) == i
+                    @test isa(lease, DrillLease)
+
+                    for obs in lease
+                        t += 1
+                    end
+
                 end
             end
         end
+        @test j == length(tptr(data))-1
+        @test t == length(_y(data))
 
-
-    end # testset: random drilling dta
+    end # testset: random drilling data
 
 end # overall testset
 

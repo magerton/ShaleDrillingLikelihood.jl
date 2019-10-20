@@ -6,13 +6,16 @@ using Test
 using Random
 using StatsBase
 using InteractiveUtils
+using StatsFuns
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
     DataProduce, _xsum, obs_ptr, group_ptr, _nu,
     groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
     ObservationProduce, ObservationGroup,
-    _i, _data, _num_obs, update_nu!, Observation, update!
+    _i, _data, _num_obs, update_nu!, Observation, update!,
+    SimulationDraw,
+    _ψ1, _ψ2, _ρ
 
 
 @testset "SimulationDraws" begin
@@ -25,7 +28,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     u = rand(M, nobs)
     v = rand(M, nobs)
     qm = zeros(M)
-    x = SimulationDraws(u,v, similar(u), similar(v), qm, similar(qm), similar(qm), similar(qm))
+    x = SimulationDraws(u,v, similar(u), similar(v), qm, similar(qm), similar(qm), similar(qm), reshape(qm,1,:))
 
     @test size(x) == (M,nobs)
     @test isa(x, SimulationDrawsMatrix)
@@ -33,8 +36,15 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     @test isa(vw, SimulationDrawsVector)
     @test size(vw) == (M,)
 
-    @test size(SimulationDraws(M, nobs)) == (M,nobs,)
+    @test size(SimulationDraws(M, nobs, 1)) == (M,nobs,)
 
+    prodsim(s::SimulationDraw) = _ψ1(s) * _ψ2(s)
+
+    N = 100_000
+    thetarho = 0.5
+    xbar = mean(prodsim(SimulationDraw(randn(), randn(), thetarho)) for i in 1:N)
+    xtrue = _ρ(thetarho)
+    @test abs(xbar-xtrue) < 0.01
 end
 
 
