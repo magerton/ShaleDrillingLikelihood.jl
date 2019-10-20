@@ -7,7 +7,7 @@ using StatsFuns
 using Random
 using BenchmarkTools
 using Base.Threads
-# using InteractiveUtils
+using InteractiveUtils
 using Distributions
 
 using Calculus
@@ -33,7 +33,8 @@ using ShaleDrillingLikelihood: SimulationDraws,
     loglik_drill_unit!,
     simloglik_drill_unit!,
     simloglik_drill_data!,
-    _y
+    _y,
+    update_theta!
 
 
 println("testing drilling likelihood")
@@ -48,11 +49,11 @@ println("testing drilling likelihood")
     data = DataDrill(
         TestDrillModel(), theta;
         minmaxleases=1:1,
-        num_i=100, nperinitial=10:50, nper_development=10:50,
-        num_zt=200, tstart=1:40
+        num_i=1_000, nperinitial=10:40, nper_development=10:40,
+        num_zt=200, tstart=1:50
     )
 
-    sim = SimulationDraws(500, data)
+    sim = SimulationDraws(1_000, data)
     println("number of periods is $(length(_y(data)))")
 
     grad = zeros(length(theta))
@@ -71,12 +72,27 @@ println("testing drilling likelihood")
     simloglik_drill_data!(grad, hess, data, theta.*2, sim, dtv, false)
     @test all(grad .== gradcopy)
 
+    # @testset "warntypes for drilling" begin
+    #     unit = data[1]
+    #     lease = unit[InitialDrilling()][1]
+    #     simi = view(sim, 1)
+    #     update_theta!(dtv, theta)
+    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[1], true)
+    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[1], true)
+    #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, dtv, true)
+    # end
+
+
     # check finite difference
-    fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, dtv, false), theta)
-    fill!(grad, 0)
-    simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
-    @test grad ≈ fdgrad
-    @test !(grad ≈ zeros(length(grad)))
+    @testset "check finite difference" begin
+        let theta = theta.*0.5
+            fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, dtv, false), theta)
+            fill!(grad, 0)
+            simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
+            @test grad ≈ fdgrad
+            @test !(grad ≈ zeros(length(grad)))
+        end
+    end
 
     let k = length(theta), hess = zeros(k,k)
         @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, false, false)
@@ -88,15 +104,17 @@ println("testing drilling likelihood")
 
     @testset "drilling likelihood optimization" begin
 
+        k = length(theta)
+
         function f(x)
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(zeros(0), zeros(0,0), data, x, sim, dtv, false, false)
+            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, dtv, false, false)
             return -LL
         end
 
         function fg!(grad, x)
+            tmphess = zeros(k,k)
             fill!(grad, 0)
-            tmphess = zeros(length(grad), length(grad))
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, tmphess, data, x, sim, dtv, true, false)
             grad .*= -1
@@ -104,7 +122,7 @@ println("testing drilling likelihood")
         end
 
         function h!(hess, x)
-            grad = zeros(length(x))
+            grad = zeros(k)
             checksquare(hess) == length(x) || throw(DimensionMismatch())
             update!(sim, theta_drill_ρ(_model(data), x))
             LL = simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
@@ -113,9 +131,8 @@ println("testing drilling likelihood")
         end
 
         function invH0(x::AbstractVector)
-            n = length(x)
-            grad = zeros(n)
-            hess = zeros(n,n)
+            grad = zeros(k)
+            hess = zeros(k,k)
             simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
             return inv(hess)
         end
@@ -135,7 +152,7 @@ println("testing drilling likelihood")
 
         err = theta .- res.minimizer
         waldtest = err'*vcovinv*err
-        @show cdf(Chisq(length(theta)), waldtest)
+        @test ccdf(Chisq(length(theta)), waldtest) > 0.05
         @show coef_and_se
         # Base.showarray(stdout, coef_and_se)
     end

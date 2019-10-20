@@ -9,7 +9,7 @@ num_choices(m::AbstractDrillModel) = throw(error("num_choices not defined for $m
 num_choices(obs::ObservationDrill) = num_choices(_model(obs))
 
 Dgt0(m::AbstractDrillModel, state) = throw(error("Dgt0 not defined for $(m)"))
-Dgt0(m::TestDrillModel,     state) = state > 1
+Dgt0(m::TestDrillModel,     state) = state >= 0
 
 _ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
 _dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dθρ(s)
@@ -88,12 +88,15 @@ end
 function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
     # 1 <= k <= length(theta) || throw(BoundsError(theta,k))
     # check_model_dims(d,obs,theta)
+
     m, x, z = _model(obs), _x(obs), zchars(obs)
     k == idx_drill_ψ(m) && return T(d*_ψ(m,x,s))
     k == idx_drill_x(m) && return T(d*x)
     k == idx_drill_z(m) && return T(d*first(z))
     k == idx_drill_d(m) && return T(d)
     k == idx_drill_ρ(m) && return T(d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s))
+
+    throw(BoundsError(theta,k)) # prevents returning Union{Bool,T}
 end
 
 function dflow!(grad::AbstractVector, d, obs, theta, s)
