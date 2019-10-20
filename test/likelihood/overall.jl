@@ -49,7 +49,7 @@ println("testing overall royalty")
     sim = SimulationDraws(M, num_i)
 
     theta_produce = vcat(0.5, rand(3), 0.3, 0.4)
-    theta_royalty = [0.1, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    theta_royalty = [0.1, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
 
     data_produce = DataProduce(psi2, 10, 10:20, theta_produce)
     data_royalty = DataRoyalty(u,v,theta_royalty,L)

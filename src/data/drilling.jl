@@ -295,13 +295,16 @@ end
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
 xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
-function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
-    num_i=100, num_zt=30,
+function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractVector;
+    num_zt=30,
     minmaxleases::UnitRange=0:3, nperinitial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
 ) where {D}
+
+    num_i = length(u)
+    num_i == length(v) || throw(DimensionMismatch())
     _zchars = ExogTimeVarsSample(m, num_zt)
 
     # ichars
@@ -334,7 +337,7 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
 
     # update leases
     for (i,unit) in enumerate(data)
-        sim = SimulationDraw(theta_drill_ρ(m,theta))
+        sim = SimulationDraw(u[i], v[i], theta_drill_ρ(m,theta))
         for regimes in unit
             for lease in regimes
                 simulate_lease(lease, theta, sim)
@@ -343,4 +346,11 @@ function DataDrill(m::AbstractDrillModel, theta::AbstractVector;
     end
 
     return data
+end
+
+
+function DataDrill(m, theta; num_i=100, kwargs...)
+    u = randn(num_i)
+    v = randn(num_i)
+    DataDrill(u,v,m,theta; kwargs...)
 end
