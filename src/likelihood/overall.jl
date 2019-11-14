@@ -1,9 +1,29 @@
-function idx_theta(tup::Tuple{AbstractDataStructureRoyalty,AbstractDataStructureProduction})
-    rng_roy = OneTo(_nparm(first(tup)))
-    rng_pdxn = _nparm(first(tup)) .+ OneTo(_nparm(last(tup)))
-    return rng_roy, rng_pdxn
+const DataFull = Tuple{DataDrill, DataRoyalty, DataProduce}
+
+DataDrill(  d::DataFull) = d[1]
+DataRoyalty(d::DataFull) = d[2]
+DataProduce(d::DataFull) = d[3]
+
+idx_drill(data::DataFull, coef_links) = idx_drill(DataDrill(data))
+
+function idx_royalty(data::DataFull, coef_links...)
+    kd = _nparm(DataDrill(data))
+    dr = DataRoyalty(data)
+    return (kd-1) .+ idx_royalty(dr, coef_links...)
 end
 
+function idx_produce(data::DataFull, coef_links::Vector{<:NTuple{2,Function}})
+    kd = _nparm(DataDrill(data))
+    kr = _nparm(DataRoyalty(data))
+    dd = DataDrill(data)
+    dp = DataProduce(data)
+    idx = collect((kd+kr-1) .+ idx_produce(dp))
+    for (idxp, idxd) in coef_links
+        idx[idxp(dp)] = idxd(dd)
+        idx[idxp(dp)+1:end] .-= 1
+    end
+    return idx
+end
 
 
 function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool) where {N}

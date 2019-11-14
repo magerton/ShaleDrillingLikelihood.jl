@@ -5,7 +5,9 @@ struct DrillModel <: AbstractDrillModel end
 struct TestDrillModel <: AbstractDrillModel end
 
 # generic functions to access coefs
-theta_drill(  d, theta) = view(theta, 1:length(d))
+_nparm(d::AbstractDrillModel) = length(d)
+idx_drill(  d, coef_links...) = OneTo(_nparm(d))
+theta_drill(d, theta, coef_links...) = view(theta, idx_drill(d, coef_links...))
 
 theta_drill_ψ(d, theta) = theta[idx_drill_ψ(d)]
 theta_drill_x(d, theta) = theta[idx_drill_x(d)]

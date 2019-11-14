@@ -33,17 +33,16 @@ using ShaleDrillingLikelihood: AbstractDataSet,
     ObservationGroup,
     ObservationGroupProduce,
     ObservationRoyalty,
-    idx_theta,
     TestDrillModel,
     theta_drill_ρ,
     theta_drill_ψ,
     theta_royalty_ρ,
     theta_produce_ψ,
-    theta_drill,
+    idx_drill, theta_drill,
+    idx_royalty, theta_royalty,
+    idx_produce, theta_produce,
     idx_drill_ρ, idx_royalty_ρ,
     idx_drill_ψ, idx_produce_ψ
-
-
 
 
 println("testing overall royalty")
@@ -123,6 +122,11 @@ println("testing overall royalty")
     @test testthet[1] == θ_drill
     @test testthet[2] == θ_royalty
     @test testthet[3] == θ_produce
+
+    @test theta_drill(  data, θ, coef_links) == θ_drill
+    @test theta_royalty(data, θ, coef_links) == θ_royalty
+    @test theta_produce(data, θ, coef_links) == θ_produce
+
     @show typeof(testthet)
 
     # nparm = sum(_nparm.(data))
@@ -141,15 +145,15 @@ println("testing overall royalty")
     # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
     # @test !all(grad.==0)
     # @test isapprox(fd, grad; rtol=2e-5)
-
-
+    #
+    #
     # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
     # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-
+    #
     # Profile.clear()
     # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
     # ProfileView.view()
-
+    #
     # Profile.clear()
     # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
     # ProfileView.view()
