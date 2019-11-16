@@ -31,23 +31,24 @@ royalty(d::DataSetofSets) = d.data[2] # royalty
 produce(d::DataSetofSets) = d.data[3] # produce
 length(d::DataSetofSets) = 3
 
-DataDrill(  d::DataSetofSets) = drill(d)
-DataRoyalty(d::DataSetofSets) = royalty(d)
-DataProduce(d::DataSetofSets) = produce(d)
+@deprecate DataDrill(  d::DataSetofSets) drill(d)
+@deprecate DataRoyalty(d::DataSetofSets) royalty(d)
+@deprecate DataProduce(d::DataSetofSets) produce(d)
 
-idx_drill(data::DataSetofSets, coef_links) = idx_drill(DataDrill(data))
+idx_drill(  data::DataSetofSets) = idx_drill(drill(data))
+idx_royalty(data::DataSetofSets) = last(idx_drill(data)) .+ idx_royalty(royalty(data))
+idx_produce(data::DataSetofSets, coef_links) = last(idx_royalty(data)) .+ idx_produce(produce(data))
 
-function idx_royalty(data::DataSetofSets, coef_links...)
-    kd = _nparm(DataDrill(data))
-    dr = DataRoyalty(data)
-    return (kd-1) .+ idx_royalty(dr, coef_links...)
+function idx_royalty(data::DataFull)
+    kd = _nparm(drill(data))
+    dr = royalty(data)
+    return (kd-1) .+ idx_royalty(dr)
 end
 
-function idx_produce(data::DataSetofSets, coef_links::Vector{<:NTuple{2,Function}})
-    kd = _nparm(DataDrill(data))
-    kr = _nparm(DataRoyalty(data))
-    dd = DataDrill(data)
-    dp = DataProduce(data)
+function idx_produce(data::DataFull, coef_links::Vector{<:Tuple})
+    dd, dr, dp = drill(data), royalty(data), produce(data)
+    kd = _nparm(dd)
+    kr = _nparm(dr)
     idx = collect((kd+kr-1) .+ idx_produce(dp))
     for (idxp, idxd) in coef_links
         idx[idxp(dp)] = idxd(dd)
@@ -56,9 +57,9 @@ function idx_produce(data::DataSetofSets, coef_links::Vector{<:NTuple{2,Function
     return idx
 end
 
-function thetas(data::DataSetofSets, theta::AbstractVector, coef_links...)
-    d = theta_drill(  data, theta, coef_links)
-    r = theta_royalty(data, theta, coef_links)
+function thetas(data::DataSetofSets, theta::AbstractVector, coef_links::Vector=[])
+    d = theta_drill(  data, theta)
+    r = theta_royalty(data, theta)
     p = theta_produce(data, theta, coef_links)
     return d, r, p
 end

@@ -93,7 +93,6 @@ println("testing overall royalty")
     @test length(data_drill) == num_i
     @test length(data_royalty) == num_i
     @test length(data_produce) == num_i
-    @show length.(data)
     @test all(length.(data) .== num_i)
     @test all(_nparm.(data) .== (_nparm(data_drill), _nparm(data_royalty), _nparm(data_produce)))
 
@@ -107,11 +106,20 @@ println("testing overall royalty")
     @test testthet[2] == θ_royalty
     @test testthet[3] == θ_produce
 
-    @test theta_drill(  data, θ, coef_links) == θ_drill
-    @test theta_royalty(data, θ, coef_links) == θ_royalty
-    @test theta_produce(data, θ, coef_links) == θ_produce
+    testthet = thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce))
+    @test testthet[1] == θ_drill
+    @test testthet[2] == θ_royalty
+    @test testthet[3] == θ_produce
 
-    # @show typeof(testthet)
+    testthet = thetas(DataSetofSets(EmptyDataSet(), data_royalty, data_produce), vcat(θ_royalty, θ_produce))
+    @test testthet[1] == []
+    @test testthet[2] == θ_royalty
+    @test testthet[3] == θ_produce
+
+
+    @test theta_drill(  data, θ) == θ_drill
+    @test theta_royalty(data, θ) == θ_royalty
+    @test theta_produce(data, θ, coef_links) == θ_produce
 
     nparm = sum(_nparm.(data))
     # theta = vcat(θ_royalty, θ_produce)

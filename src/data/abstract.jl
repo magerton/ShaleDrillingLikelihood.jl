@@ -10,6 +10,7 @@ abstract type AbstractDataSet <: AbstractDataStructure end
 struct EmptyDataSet <: AbstractDataSet end
 length(d::EmptyDataSet) = 0
 eachindex(d::EmptyDataSet) = 1:typemax(Int)
+_nparm(d::EmptyDataSet) = 0
 
 "What we feed into a likelihood"
 abstract type AbstractObservation <: AbstractDataStructure end

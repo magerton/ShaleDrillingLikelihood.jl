@@ -103,8 +103,8 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 _nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) + 1
 _nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
 
-idx_royalty(d::Union{DataOrObsRoyalty,AbstractRoyaltyModel}, coef_links...) = OneTo(_nparm(d))
-theta_royalty(d, theta, coef_links...) = view(theta, idx_royalty(d, coef_links...))
+idx_royalty(d::Union{DataOrObsRoyalty,AbstractRoyaltyModel}) = OneTo(_nparm(d))
+theta_royalty(d, theta) = view(theta, idx_royalty(d))
 
 # parameter vector
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0

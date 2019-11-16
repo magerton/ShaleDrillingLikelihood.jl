@@ -141,8 +141,9 @@ end
 #---------------------------
 
 _nparm(d::AbstractDataStructureProduction) = _num_x(d)+3
-idx_produce(d::AbstractDataStructureProduction, coef_links...) = OneTo(_nparm(d))
-theta_produce(d, theta, coef_links...) = view(theta, idx_produce(d, coef_links...))
+idx_produce(d::AbstractDataStructureProduction) = OneTo(_nparm(d))
+theta_produce(d, theta) = view(theta, idx_produce(d, coef_links...))
+theta_produce(d, theta, coef_links) = theta[idx_produce(d, coef_links)]
 
 idx_produce_ψ(  d::Union{AbstractDataStructureProduction,ProductionModel}) = 1
 idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))
