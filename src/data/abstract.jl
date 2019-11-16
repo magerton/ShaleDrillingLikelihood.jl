@@ -6,6 +6,11 @@ abstract type AbstractDataStructure end
 "Collection of data on a particular outcome for individuals `i`"
 abstract type AbstractDataSet <: AbstractDataStructure end
 
+"Empty Data Set"
+struct EmptyDataSet <: AbstractDataSet end
+length(d::EmptyDataSet) = 0
+eachindex(d::EmptyDataSet) = 1:typemax(Int)
+
 "What we feed into a likelihood"
 abstract type AbstractObservation <: AbstractDataStructure end
 

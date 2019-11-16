@@ -1,18 +1,48 @@
-const DataFull = Tuple{DataDrill, DataRoyalty, DataProduce}
+abstract type AbstractDataSetofSets <: AbstractDataStructure end
 
-DataDrill(  d::DataFull) = d[1]
-DataRoyalty(d::DataFull) = d[2]
-DataProduce(d::DataFull) = d[3]
+# import Base.Broadcast: broadcastable
+export AbstractDataSetofSets, DataSetofSets, DataFull, DataRoyaltyProduce, EmptyDataSet
 
-idx_drill(data::DataFull, coef_links) = idx_drill(DataDrill(data))
+struct DataSetofSets{
+    D<:Union{DataDrill,EmptyDataSet},
+    R<:Union{DataRoyalty,EmptyDataSet},
+    P<:Union{DataProduce,EmptyDataSet}
+}
+    data::Tuple{D,R,P}
+    # drill::D
+    # royalty::R
+    # produce::P
+    function DataSetofSets(d::D, r::R, p::P) where {D,R,P}
+        drp = (d, r, p)
+        lengths = length.(drp)
+        issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths"))
+        any(lengths .> 0 ) || throw(error("one dataset must have nonzero length"))
+        return new{D,R,P}( tuple(d, r, p) )
+    end
+end
 
-function idx_royalty(data::DataFull, coef_links...)
+broadcastable(d::DataSetofSets) = d.data
+
+const DataFull = DataSetofSets{<:DataDrill, <:DataRoyalty, <:DataProduce}
+const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
+
+drill(  d::DataSetofSets) = d.data[1] # drill
+royalty(d::DataSetofSets) = d.data[2] # royalty
+produce(d::DataSetofSets) = d.data[3] # produce
+
+DataDrill(  d::DataSetofSets) = drill(d)
+DataRoyalty(d::DataSetofSets) = royalty(d)
+DataProduce(d::DataSetofSets) = produce(d)
+
+idx_drill(data::DataSetofSets, coef_links) = idx_drill(DataDrill(data))
+
+function idx_royalty(data::DataSetofSets, coef_links...)
     kd = _nparm(DataDrill(data))
     dr = DataRoyalty(data)
     return (kd-1) .+ idx_royalty(dr, coef_links...)
 end
 
-function idx_produce(data::DataFull, coef_links::Vector{<:NTuple{2,Function}})
+function idx_produce(data::DataSetofSets, coef_links::Vector{<:NTuple{2,Function}})
     kd = _nparm(DataDrill(data))
     kr = _nparm(DataRoyalty(data))
     dd = DataDrill(data)
