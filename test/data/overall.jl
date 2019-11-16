@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_OverallLikelihood_Test
+module ShaleDrillingLikelihood_OverallData_Test
 
 # using Revise
 # using Juno
@@ -74,7 +74,14 @@ println("testing overall royalty")
     data_produce = DataProduce(u, 10, 10:20, θ_produce)
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
 
-    data = DataSetofSets(data_drill, data_royalty, data_produce)
+
+    @test idx_produce_ψ isa Function
+    @test idx_drill_ψ isa Function
+    coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
+    @test coef_links isa Vector{<:NTuple{2,Function}}
+
+    data = DataSetofSets(data_drill, data_royalty, data_produce, coef_links)
+    data_no_coeflinks = DataSetofSets(data_drill, data_royalty, data_produce)
     dataroypdxn = DataSetofSets(EmptyDataSet(), data_royalty, data_produce)
     datadrillonly = DataSetofSets(data_drill, EmptyDataSet(), EmptyDataSet() )
 
@@ -84,26 +91,18 @@ println("testing overall royalty")
     @test all(length.(data) .== num_i)
     @test all(_nparm.(data) .== (_nparm(data_drill), _nparm(data_royalty), _nparm(data_produce)))
 
-    @test idx_produce_ψ isa Function
-    @test idx_drill_ψ isa Function
-    coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
-    @test coef_links isa Vector{<:NTuple{2,Function}}
-
-    @test _nparm(data, coef_links) == length(vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
+    @test _nparm(data) == length(vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
     @test _nparm(dataroypdxn) == length(vcat(θ_royalty, θ_produce))
     @test _nparm(datadrillonly) == length(θ_drill)
 
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]), coef_links)
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce))
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce), ())
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce), [])
-    @test ([], θ_royalty, θ_produce,) == thetas(dataroypdxn, vcat(θ_royalty, θ_produce))
+    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
+    @test (θ_drill, θ_royalty, θ_produce) == thetas(data_no_coeflinks, vcat(θ_drill, θ_royalty[2:end], θ_produce))
+    @test ([], θ_royalty, θ_produce,)     == thetas(dataroypdxn, vcat(θ_royalty, θ_produce))
     @test (θ_drill, [], []) == thetas(datadrillonly, θ_drill)
-
 
     @test theta_drill(  data, θ) == θ_drill
     @test theta_royalty(data, θ) == θ_royalty
-    @test theta_produce(data, θ, coef_links) == θ_produce
+    @test theta_produce(data, θ) == θ_produce
 end
 
 end # module

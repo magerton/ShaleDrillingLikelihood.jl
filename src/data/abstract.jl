@@ -29,7 +29,6 @@ struct EmptyDataSet <: AbstractDataSet end
 length(d::EmptyDataSet) = 0
 eachindex(d::EmptyDataSet) = 1:typemax(Int)
 _nparm(d::EmptyDataSet) = 0
-update!(d::EmptyDataSet, theta) = nothing
 
 const ObservationGroupEmpty = ObservationGroup{EmptyDataSet}
 
@@ -111,3 +110,6 @@ function update_over_obs(f!::Function, data::AbstractDataSet)
     end
     return nothing
 end
+
+# default method
+update!(d::AbstractDataSet, theta) = nothing

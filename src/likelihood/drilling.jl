@@ -124,6 +124,15 @@ function simloglik_drill_unit!(
 end
 
 
+function simloglik!(grp::DrillUnit, theta, sim, dograd)
+    simloglik_royalty!(first(grp), theta, sim, dograd)
+end
+
+function grad_simloglik!(grad, grp::DrillUnit, theta, sim)
+    grad_simloglik_royalty!(grad, first(grp), theta, sim)
+end
+
+
 
 function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
     theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,

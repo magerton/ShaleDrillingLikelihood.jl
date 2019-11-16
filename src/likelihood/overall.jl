@@ -12,24 +12,26 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, th
     end
 
     LL = logsumexp!(_llm(sim)) - logM
+
     if dograd
         for (idx,theta,grp) in zip(idxs, thetas, grptup)
             @views grad_simloglik!(grad[idx], grp, theta, sim)
         end
     end
+
     return LL
 end
 
 
 function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetofSets,
-    theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool, coef_links=[]
+    theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
     nparm, num_i = size(tmpgrad)
     nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
 
     # parameters
-    thetasvw = thetas(data, theta, coef_links)
-    idxs = theta_indexes(data, coef_links)
+    thetasvw = thetas(data, theta)
+    idxs = theta_indexes(data)
 
     # do updates
     ρ = first(thetasvw[end-1])
@@ -41,6 +43,7 @@ function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetof
     LL = 0.0
     fill!(tmpgrad, 0)
 
+    # iterate over observations
     for i = OneTo(num_i)
         gradi = view(tmpgrad, :, i)
         grptup = getindex.(data, i)
