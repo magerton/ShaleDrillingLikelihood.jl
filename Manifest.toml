@@ -100,9 +100,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "838a37797ac24c1b4c3353d46ec87ea6598f2308"
+git-tree-sha1 = "ce189b71fac635d6ec9582dc0f208887db25e6d3"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.21.7"
+version = "0.21.8"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -121,9 +121,7 @@ version = "0.10.6"
 
 [[Halton]]
 deps = ["Distributions", "Primes"]
-git-tree-sha1 = "279f1c58e86bb4dd04eaa24c9c7874dabc49276a"
-repo-rev = "master"
-repo-url = "https://github.com/magerton/Halton.git"
+path = "D:\\software_libraries\\julia\\dev\\Halton"
 uuid = "05a64641-4d1a-5311-8c01-b9b6c96c7c05"
 version = "0.0.1"
 
@@ -267,9 +265,9 @@ version = "0.5.2"
 
 [[Revise]]
 deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "UUIDs", "Unicode"]
-git-tree-sha1 = "0d9092e63eb112b1ada52fc57abebf0c6cc83f42"
+git-tree-sha1 = "dd15b92fac79835f8d87d03522ad861ff40c7459"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "2.3.0"
+version = "2.3.1"
 
 [[Rmath]]
 deps = ["BinaryProvider", "Libdl", "Random", "Statistics"]
@@ -282,7 +280,7 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SIMDPirates]]
 deps = ["MacroTools", "VectorizationBase"]
-git-tree-sha1 = "1df32801ddb236374f34516c3112b42aa9dd6e10"
+git-tree-sha1 = "0a101c07595d6e602f3fd5cd82963b15ec98ac00"
 repo-rev = "master"
 repo-url = "https://github.com/chriselrod/SIMDPirates.jl"
 uuid = "21efa798-c60a-11e8-04d3-e1a92915a26a"
@@ -367,7 +365,7 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[VectorizationBase]]
 deps = ["CpuId", "LinearAlgebra"]
-git-tree-sha1 = "aacc7a955a9ebb6d59b8f27e23ebc81fe65d749f"
+git-tree-sha1 = "29d920a6bc2f382bd1adf6340770f8fb321cf462"
 repo-rev = "master"
 repo-url = "https://github.com/chriselrod/VectorizationBase.jl"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
