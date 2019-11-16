@@ -21,7 +21,7 @@ struct DataSetofSets{
     end
 end
 
-broadcastable(d::DataSetofSets) = d.data
+Broadcast.broadcastable(d::DataSetofSets) = d.data
 
 const DataFull = DataSetofSets{<:DataDrill, <:DataRoyalty, <:DataProduce}
 const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
@@ -29,6 +29,7 @@ const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProd
 drill(  d::DataSetofSets) = d.data[1] # drill
 royalty(d::DataSetofSets) = d.data[2] # royalty
 produce(d::DataSetofSets) = d.data[3] # produce
+length(d::DataSetofSets) = 3
 
 DataDrill(  d::DataSetofSets) = drill(d)
 DataRoyalty(d::DataSetofSets) = royalty(d)
@@ -53,6 +54,13 @@ function idx_produce(data::DataSetofSets, coef_links::Vector{<:NTuple{2,Function
         idx[idxp(dp)+1:end] .-= 1
     end
     return idx
+end
+
+function thetas(data::DataSetofSets, theta::AbstractVector, coef_links...)
+    d = theta_drill(  data, theta, coef_links)
+    r = theta_royalty(data, theta, coef_links)
+    p = theta_produce(data, theta, coef_links)
+    return d, r, p
 end
 
 

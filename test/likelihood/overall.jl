@@ -42,7 +42,8 @@ using ShaleDrillingLikelihood: AbstractDataSet,
     idx_royalty, theta_royalty,
     idx_produce, theta_produce,
     idx_drill_ρ, idx_royalty_ρ,
-    idx_drill_ψ, idx_produce_ψ
+    idx_drill_ψ, idx_produce_ψ,
+    thetas
 
 println("testing overall royalty")
 
@@ -101,22 +102,6 @@ println("testing overall royalty")
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
     @test coef_links isa Vector{<:NTuple{2,Function}}
 
-    function thetas(data::DataSetofSets, theta::AbstractVector, coef_links::Vector{<:NTuple{2,Function}})
-        k_drill, k_roy, k_pdxn = _nparm.(data)
-        d_drill, d_roy, d_pdxn = data.data
-        idx_drill = OneTo(k_drill)
-        idx_roy   = (k_drill-1) .+ OneTo(k_roy)
-        idx_pdxn  = collect( last(idx_roy) .+ OneTo(k_pdxn) )
-        for (idxp, idxd) in coef_links
-            idx_pdxn[idxp(d_pdxn)] = idxd(d_drill)
-            idx_pdxn[idxp(d_pdxn)+1:end] .-= 1
-        end
-        thet_drill = view(theta, idx_drill)
-        thet_roy   = view(theta, idx_roy)
-        thet_pdxn  = theta[idx_pdxn]
-        return thet_drill, thet_roy, thet_pdxn
-    end
-
     testthet = thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]), coef_links)
     @test testthet[1] == θ_drill
     @test testthet[2] == θ_royalty
@@ -126,7 +111,7 @@ println("testing overall royalty")
     @test theta_royalty(data, θ, coef_links) == θ_royalty
     @test theta_produce(data, θ, coef_links) == θ_produce
 
-    @show typeof(testthet)
+    # @show typeof(testthet)
 
     nparm = sum(_nparm.(data))
     # theta = vcat(θ_royalty, θ_produce)
