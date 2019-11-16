@@ -6,12 +6,6 @@ abstract type AbstractDataStructure end
 "Collection of data on a particular outcome for individuals `i`"
 abstract type AbstractDataSet <: AbstractDataStructure end
 
-"Empty Data Set"
-struct EmptyDataSet <: AbstractDataSet end
-length(d::EmptyDataSet) = 0
-eachindex(d::EmptyDataSet) = 1:typemax(Int)
-_nparm(d::EmptyDataSet) = 0
-
 "What we feed into a likelihood"
 abstract type AbstractObservation <: AbstractDataStructure end
 
@@ -28,6 +22,16 @@ struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
         return new{D,I}(data,i)
     end
 end
+
+
+"Empty Data Set"
+struct EmptyDataSet <: AbstractDataSet end
+length(d::EmptyDataSet) = 0
+eachindex(d::EmptyDataSet) = 1:typemax(Int)
+_nparm(d::EmptyDataSet) = 0
+update!(d::EmptyDataSet, theta) = nothing
+
+const ObservationGroupEmpty = ObservationGroup{EmptyDataSet}
 
 # Functions for these data structures
 #-----------------------

@@ -89,6 +89,10 @@ println("testing overall royalty")
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
     @test coef_links isa Vector{<:NTuple{2,Function}}
 
+    @test _nparm(data, coef_links) == length(vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
+    @test _nparm(dataroypdxn) == length(vcat(θ_royalty, θ_produce))
+    @test _nparm(datadrillonly) == length(θ_drill)
+
     @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]), coef_links)
     @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce))
     @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce), ())

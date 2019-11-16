@@ -17,7 +17,9 @@ struct DataSetofSets{D<:Union{DataDrill,EmptyDataSet},  R<:Union{DataRoyalty,Emp
     end
 end
 
-Broadcast.broadcastable(d::DataSetofSets) = d.data
+data(d::DataSetofSets) = d.data
+iterate(d::DataSetofSets, state...) = iterate(data(d), state...)
+Broadcast.broadcastable(d::DataSetofSets) = data(d)
 
 const DataFull = DataSetofSets{<:DataDrill, <:DataRoyalty, <:DataProduce}
 const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
@@ -45,6 +47,9 @@ idx_drill(  data::DataSetofSets) = idx_drill(drill(data))
 idx_royalty(data::DataSetofSets) = last(idx_drill(data)) .+ idx_royalty(royalty(data))
 idx_produce(data::DataSetofSets, coef_links) = last(idx_royalty(data)) .+ idx_produce(produce(data))
 
+_nparm(d::DataFull, coef_links=[]) = sum(_nparm.(d))-1-length(coef_links)
+_nparm(d::DataSetofSets, coef_links=[]) = sum(_nparm.(d) )
+
 # full datasets
 function idx_royalty(data::DataFull)
     kd = _nparm(drill(data))
@@ -62,6 +67,13 @@ function idx_produce(data::DataFull, coef_links::Vector{<:Tuple})
         idx[idxp(dp)+1:end] .-= 1
     end
     return idx
+end
+
+function theta_indexes(data::DataSetofSets, coef_links=[])
+    d = idx_drill(  data)
+    r = idx_royalty(data)
+    p = idx_produce(data, coef_links)
+    return d, r, p
 end
 
 function thetas(data::DataSetofSets, theta::AbstractVector, coef_links=[])

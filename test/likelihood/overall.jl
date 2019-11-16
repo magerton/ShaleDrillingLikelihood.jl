@@ -76,18 +76,19 @@ println("testing overall royalty")
     data_produce = DataProduce(u, 10, 10:20, θ_produce)
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
 
-    data = DataSetofSets(data_drill, data_royalty, data_produce)
+    data = DataSetofSets(EmptyDataSet(), data_royalty, data_produce)
 
-    # theta = vcat(θ_royalty, θ_produce)
-    # grad = similar(theta)
-    # hess = Matrix{eltype(theta)}(undef, nparm, nparm)
-    # tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
-    #
-    # simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-    # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-    #
-    # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
-    #
+    theta = vcat(θ_royalty, θ_produce)
+    grad = similar(theta)
+    nparm = _nparm(data)
+    hess = Matrix{eltype(theta)}(undef, nparm, nparm)
+    tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+
+    simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+    simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+
+    fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+
     # fill!(grad,0)
     # fill!(hess,0)
     # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
