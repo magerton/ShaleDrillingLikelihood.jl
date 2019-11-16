@@ -65,20 +65,10 @@ println("testing overall royalty")
     # set up drilling coefs
     model_drill = TestDrillModel()
     θ_drill   = [αψ, 2.0, -2.0, -0.75, θρ]
-    @test theta_drill_ρ(model_drill, θ_drill) == θρ
-    @test theta_drill_ψ(model_drill, θ_drill) == αψ
-
-    # set up royalty coefs
     θ_royalty = [θρ, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
-    @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
-
-    # set up pdxn coefs
     θ_produce = vcat(αψ, rand(3), 0.3, 0.4)
-    @test theta_produce_ψ(ProductionModel(), θ_produce) == αψ
 
-    # big theta
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
-    @test theta_drill(model_drill, θ) == θ_drill
 
     # make data
     data_drill_opt = (num_zt=200, minmaxleases=1:2, nper_initial=10:20, nper_development=0:10, tstart=1:50,)
@@ -87,41 +77,7 @@ println("testing overall royalty")
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
 
     data = DataSetofSets(data_drill, data_royalty, data_produce)
-    # @test data isa NTuple{3,AbstractDataSet}
-    # @test data isa Tuple{DataDrill,DataRoyalty,DataProduce}
 
-    @test length(data_drill) == num_i
-    @test length(data_royalty) == num_i
-    @test length(data_produce) == num_i
-    @test all(length.(data) .== num_i)
-    @test all(_nparm.(data) .== (_nparm(data_drill), _nparm(data_royalty), _nparm(data_produce)))
-
-    @test idx_produce_ψ isa Function
-    @test idx_drill_ψ isa Function
-    coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
-    @test coef_links isa Vector{<:NTuple{2,Function}}
-
-    testthet = thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]), coef_links)
-    @test testthet[1] == θ_drill
-    @test testthet[2] == θ_royalty
-    @test testthet[3] == θ_produce
-
-    testthet = thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce))
-    @test testthet[1] == θ_drill
-    @test testthet[2] == θ_royalty
-    @test testthet[3] == θ_produce
-
-    testthet = thetas(DataSetofSets(EmptyDataSet(), data_royalty, data_produce), vcat(θ_royalty, θ_produce))
-    @test testthet[1] == []
-    @test testthet[2] == θ_royalty
-    @test testthet[3] == θ_produce
-
-
-    @test theta_drill(  data, θ) == θ_drill
-    @test theta_royalty(data, θ) == θ_royalty
-    @test theta_produce(data, θ, coef_links) == θ_produce
-
-    nparm = sum(_nparm.(data))
     # theta = vcat(θ_royalty, θ_produce)
     # grad = similar(theta)
     # hess = Matrix{eltype(theta)}(undef, nparm, nparm)
