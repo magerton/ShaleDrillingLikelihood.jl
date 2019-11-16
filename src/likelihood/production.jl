@@ -99,6 +99,7 @@ function grad_simloglik!(grad, grp::ObservationGroupProduce, theta, sim)
 end
 
 
+# FOR TESTING ONLY
 function grad_simloglik_produce!(
     grad::AbstractVector, data::DataProduce,
     θ::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool

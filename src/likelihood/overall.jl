@@ -2,7 +2,9 @@ simloglik!(grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
 grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
 
 
-function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, thetas, idxs, sim::SimulationDrawsVector, dograd::Bool) where {N}
+function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
+    thetas, idxs, sim::SimulationDrawsVector, dograd::Bool
+) where {N}
 
     fill(_qm(sim), 0)
     logM = log(_num_sim(sim))

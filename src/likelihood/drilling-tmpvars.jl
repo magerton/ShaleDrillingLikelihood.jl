@@ -54,11 +54,11 @@ function getindex(x::DrillingTmpVars{<:Vector}, i)
     return DrillingTmpVars(_ubv(x,i), _llj(x,i), _grad(x,i), _theta(x,i), _gradJ(x,i))
 end
 
-@noinline function DrillingTmpVars(data::DataDrill, theta::AbstractVector{T}) where {T}
+@noinline function DrillingTmpVars(data::DataDrill, T::Type=Float64)
     nth = nthreads()
     J = maxj1length(data)
     maxchoices = num_choices(_model(data))
-    k = length(theta)
+    k = _nparm(data)
 
     ubvs  = Vector{Vector{T}}(undef, nth)
     lljs  = Vector{Vector{T}}(undef, nth)
@@ -77,15 +77,10 @@ end
         end
     end
 
-    # for i in OneTo(nth)
-    #     @assert ubvs[i][1] == i
-    #     @assert lljs[i][1] == i
-    #     @assert grads[i][1] == i
-    #     @assert gradJs[i][1] == i
-    # end
-
     return DrillingTmpVars(ubvs, lljs, grads, thetas, gradJs)
 end
+
+DrillingTmpVars(data::DataDrill, theta::AbstractVector) = DrillingTmpVars(data)
 
 update_theta!(dtv::DrillingTmpVarsThread, theta) = (_theta(dtv) .= theta)
 function update_theta!(dtv::DrillingTmpVarsAll, theta)

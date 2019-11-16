@@ -1,8 +1,8 @@
-function gradweight(could_choose, did_choose, payoff)
+function gradweight(could_choose, did_choose, payoff::T) where {T<:Real}
     if did_choose == could_choose
-        return 1-payoff
+        return one(T) - payoff
     else
-        return -payoff
+        return - payoff
     end
 end
 
@@ -88,18 +88,15 @@ function loglik_drill_unit!(
 end
 
 """
-    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+    simloglik!(grad, unit::DrillUnit, theta, sims, dtv, dograd)
 
-Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
-`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
-
-Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+Threaded computation of `_llm(sims)[m] += log lik(DrillUnit, sims[m])`
 """
-function simloglik_drill_unit!(
-    grad::AbstractVector, unit::DrillUnit,
-    theta::AbstractVector{T}, sims::SimulationDrawsVector,
-    dtv::DrillingTmpVarsAll, dograd::Bool
-)::T where {T}
+function simloglik!(
+    grad, unit::DrillUnit,
+    theta, sims::SimulationDrawsVector,
+    dtv::DrillingTmpVarsAll, dograd
+)
 
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
 
@@ -116,22 +113,39 @@ function simloglik_drill_unit!(
             llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
         end
     end
+end
 
-    LL = logsumexp!(llm) - log(M)
-    dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+function grad_simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dtv, dograd)
+    M = _num_sim(sims)
+    llm = _llm(sims)
+    gradM = _drillgradm(sims)
+
+    if dograd
+        # grad .+= gradM * llm
+        BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad)
+    end
+end
+
+
+
+"""
+    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+
+Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
+`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
+
+Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+"""
+function simloglik_drill_unit!(grad, unit, theta, sims, dtv, dograd)
+
+    simloglik!(grad, unit, theta, sims, dtv, dograd)
+
+    LL = logsumexp!(_llm(sims)) - log(_num_sim(sims))
+
+    grad_simloglik!(grad, unit, theta, sims, dtv, dograd)
 
     return LL
 end
-
-
-function simloglik!(grp::DrillUnit, theta, sim, dograd)
-    simloglik_royalty!(first(grp), theta, sim, dograd)
-end
-
-function grad_simloglik!(grad, grp::DrillUnit, theta, sim)
-    grad_simloglik_royalty!(grad, first(grp), theta, sim)
-end
-
 
 
 function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
