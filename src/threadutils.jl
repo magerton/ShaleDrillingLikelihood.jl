@@ -1,9 +1,8 @@
-"""
-    getrange(n)
+abstract type AbstractThreadMapper end
 
-Partition the range `1:n` into `Threads.nthreads()` subranges and return the one corresponding to `Threads.threadid()`.
-Useful for splitting a workload among multiple threads. See also the `TiledIteration` package for more advanced variants.
-"""
+default_batch_size(n) = default_step(n)
+default_step(n) =  min(n, round(Int, 10*sqrt(n)))
+
 function getrange(n)
     tid = Threads.threadid()
     nt = Threads.nthreads()
@@ -13,57 +12,49 @@ function getrange(n)
     from:to
 end
 
-# kissthreading
-function kissf(x)
-    s = Threads.Atomic{Float64}(0.0)
-    n = length(x)
-    @Threads.threads for k in 1:Threads.nthreads()
-        y = 0.0
-        @inbounds @simd for i in getrange(n)
-            y += x[i]
-        end
-        Threads.atomic_add!(s, y)
-    end
-    s[]
-end
-
-default_batch_size(n) = min(n, round(Int, 10*sqrt(n)))
-
-struct Mapper
-    atomic::Threads.Atomic{Int}
-    len::Int
-end
-
-struct Mapper2
-    atomic::Threads.Atomic{Int}
-    len::Int
-    batch_size::Int
-    function Mapper2(n::Int, batch_size::Int)
+struct Mapper <: AbstractThreadMapper
+    start::Threads.Atomic{Int}
+    stop::Int
+    step::Int
+    function Mapper(n::Int, step::Int=default_step(n))
         0 < n < typemax(Int) || throw(DomainError())
-        atomic = Threads.Atomic{Int}(1)
-        len = n
-        return new(atomic, n, batch_size)
+        start = Threads.Atomic{Int}(0)
+        stop = n
+        return new(start, stop, step)
     end
 end
 
-Mapper2(n) = Mapper2(n, default_batch_size(n))
-iter(m::Mapper2) = m.atomic
+struct Mapper2 <: AbstractThreadMapper
+    iter::Threads.Atomic{Int}
+    stop::Int
+    step::Int
+    function Mapper2(stop::Int, step::Int=default_step(stop))
+        iter = Threads.Atomic{Int}(1)
+        return new(iter, stop, step)
+    end
+end
+
+
+iter(m::Mapper2) = m.iter
+start(m::Mapper) = m.start
+stop(m::AbstractThreadMapper) = m.stop
+step(m::AbstractThreadMapper) = m.step
+
+@deprecate batch_size(m::AbstractThreadMapper) step(m)
+@deprecate atomic(m::AbstractThreadMapper) start(m)
+@deprecate len(m::AbstractThreadMapper) stop(m)
+
 add_iter!(m::Mapper2) = Threads.atomic_add!(iter(m),1)
 
-
-@inline function (mapper::Mapper)(batch_size, f, dst, src...)
-    ld = mapper.len
-    atomic = mapper.atomic
-    Threads.@threads for j in 1:Threads.nthreads()
-        while true
-            k = Threads.atomic_add!(atomic, 1)
-            batch_start = 1 + (k-1) * batch_size
-            batch_end = min(k * batch_size, ld)
-            batch_start > ld && break
-            batch_map!(batch_start:batch_end, f, dst, src...)
-        end
+function nextrange!(m::Mapper)
+    strt = Threads.atomic_add!(start(m), step(m))
+    if strt >= stop(m)
+        return nothing
+    else
+        a = strt+1
+        b = min(strt + step(m), stop(m))
+        return a:b
     end
-    dst
 end
 
 

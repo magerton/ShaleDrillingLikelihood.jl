@@ -11,21 +11,22 @@ using Base.Threads
 using ShaleDrillingLikelihood: getrange,
     Mapper,
     Mapper2,
+    AbstractThreadMapper,
     # add1batch!,
     getrange,
-    default_batch_size
+    default_batch_size,
+    nextrange!
     # batch,
     # batch_size,
     # len,
     # batchrange,
     # next!
 
-function hh(x)
+function h2(x)
     n = length(x)
     mapper = Mapper2(n)
-    ld = mapper.len
-    atomic = mapper.atomic
-    batch_size = mapper.batch_size # default_batch_size(n)
+    ld = ShaleDrillingLikelihood.stop(mapper)
+    batch_size = ShaleDrillingLikelihood.step(mapper) # default_batch_size(n)
 
     s = Threads.Atomic{Float64}(0.0)
     Threads.@threads for j in 1:Threads.nthreads()
@@ -36,7 +37,7 @@ function hh(x)
             batch_start > ld && break
             y = 0.0
             @inbounds @simd for i in batch_start:batch_end
-                y += x[i]
+                y += exp(x[i])
             end
             Threads.atomic_add!(s, y)
         end
@@ -45,43 +46,85 @@ function hh(x)
 end
 
 
+
+function h3(x)
+    mapper = Mapper(length(x))
+    s = Threads.Atomic{Float64}(0.0)
+
+    Threads.@threads for j in 1:Threads.nthreads()
+        while true
+            y = 0.0
+            irng = nextrange!(mapper)
+            isnothing(irng) && break
+            @inbounds @simd for i in irng
+                y += exp(x[i])
+            end
+            Threads.atomic_add!(s, y)
+        end
+    end
+
+    return s[]
+end
+
 function f(x)
     s = Threads.Atomic{Float64}(0.0)
     n = length(x)
     @Threads.threads for k in 1:Threads.nthreads()
         y = 0.0
         @inbounds @simd for i in getrange(n)
-            y += x[i]
+            y += exp(x[i])
         end
         Threads.atomic_add!(s, y)
     end
     s[]
 end
 
+function plainthread(x)
+    s = Threads.Atomic{Float64}(0.0)
+    @inbounds @Threads.threads for i in 1:length(x)
+        Threads.atomic_add!(s, exp(x[i]))
+    end
+    s[]
+end
+
+
 function g(x)
     n = length(x)
     s = 0.0
     @inbounds @simd for i in 1:n
-        s += x[i]
+        s += exp(x[i])
     end
     s
 end
 
-z = rand(10^8)
+z = rand(10^5)
 @testset "summation: getrange" begin
     println("--------")
-    println("mapper")
-    hh(z)
-    @time _h = hh(z)
-    println("threaded")
-    f(z)
-    @time _f = f(z)
+
+    println("Mapper")
+    _h3 = h3(z)
+    @btime h3($z)
+
+    println("Mapper2")
+    _h2 = h2(z)
+    @btime h2($z)
+
+    println("getrange")
+    _f = f(z)
+    @btime f($z)
+
+    # println("plainthreads")
+    # _dd = plainthread(z)
+    # @btime plainthread($z)
+
     println("unthreaded")
-    g(z)
-    @time _g = g(z)
+    @btime g($z)
+    _g = g(z)
+
+    # @test _dd ≈ _g
     @test _f ≈ _g
-    @test _g ≈ _h
-    @show _f, _g, _f - _g, _g - _h
+    @test _g ≈ _h2
+    @test _g ≈ _h3
 end
 
 
