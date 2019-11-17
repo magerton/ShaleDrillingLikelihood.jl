@@ -10,6 +10,7 @@ using Base.Threads
 
 using ShaleDrillingLikelihood: getrange,
     Mapper,
+    Mapper2,
     # add1batch!,
     getrange,
     default_batch_size
@@ -21,15 +22,15 @@ using ShaleDrillingLikelihood: getrange,
 
 function hh(x)
     n = length(x)
-    mapper = Mapper(Threads.Atomic{Int}(1),n)
+    mapper = Mapper2(n)
     ld = mapper.len
     atomic = mapper.atomic
-    batch_size = default_batch_size(n)
+    batch_size = mapper.batch_size # default_batch_size(n)
 
     s = Threads.Atomic{Float64}(0.0)
     Threads.@threads for j in 1:Threads.nthreads()
         while true
-            k = Threads.atomic_add!(atomic, 1)
+            k = ShaleDrillingLikelihood.add_iter!(mapper)
             batch_start = 1 + (k-1) * batch_size
             batch_end = min(k * batch_size, ld)
             batch_start > ld && break
@@ -66,7 +67,7 @@ function g(x)
     s
 end
 
-z = rand(10^9)
+z = rand(10^8)
 @testset "summation: getrange" begin
     println("--------")
     println("mapper")

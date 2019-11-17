@@ -34,6 +34,23 @@ struct Mapper
     len::Int
 end
 
+struct Mapper2
+    atomic::Threads.Atomic{Int}
+    len::Int
+    batch_size::Int
+    function Mapper2(n::Int, batch_size::Int)
+        0 < n < typemax(Int) || throw(DomainError())
+        atomic = Threads.Atomic{Int}(1)
+        len = n
+        return new(atomic, n, batch_size)
+    end
+end
+
+Mapper2(n) = Mapper2(n, default_batch_size(n))
+iter(m::Mapper2) = m.atomic
+add_iter!(m::Mapper2) = Threads.atomic_add!(iter(m),1)
+
+
 @inline function (mapper::Mapper)(batch_size, f, dst, src...)
     ld = mapper.len
     atomic = mapper.atomic
