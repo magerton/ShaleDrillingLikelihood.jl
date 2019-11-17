@@ -10,6 +10,7 @@ using Calculus
 using Optim
 using Random
 using InteractiveUtils
+using BenchmarkTools
 
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
@@ -28,76 +29,76 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     llthreads!, _i, _nparm,
     logsumexp!
 
-@testset "RoyaltyModelNoHet" begin
-    k = 3
-    nobs = 1_000
-    L = 3
-    RM = RoyaltyModelNoHet()
-    Random.seed!(1234)
-
-    X      = randn(k,nobs)
-    eps    = randn(nobs)
-
-    theta = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
-    @test length(theta) == k + L - 1
-
-    rstar = X'*theta[1:k] .+ eps
-    l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
-    data = DataRoyalty(RM, l, X)
-    update_xbeta!(data, theta[1:k])
-
-    @test length(theta) == _nparm(data) == _nparm(first(first(data)))
-
-    @test theta_royalty_ρ(    data, theta) == Float64[]
-    @test theta_royalty_ψ(    data, theta) == Float64[]
-    @test all(theta_royalty_β(data, theta) .== theta[1:3])
-    @test theta_royalty_κ(    data, theta, 1) == -0.5
-    @test theta_royalty_κ(    data, theta, 2) ==  0.5
-
-    @test idx_royalty_κ(data, 1) == 4
-    @test idx_royalty_κ(data, 2) == 5
-    @test_throws DomainError idx_royalty_κ(data, L+1)
-    @test_throws DomainError idx_royalty_κ(data, 0)
-
-    M = 10
-    RT = SimulationDraws(M,nobs,0)
-    am = _am(RT)
-    bm = _bm(RT)
-    cm = _cm(RT)
-
-    # test η12s
-    η12s = [η12(first(grp), theta, r) for (grp,r) in zip(data, rstar)]
-    @test all(x[1] < x[2] for x in η12s )
-
-
-    # form functions for stuff
-    grad = similar(theta)
-    # @code_warntype llthreads!(grad, theta, RM, data, true)
-
-    f(parm) = - llthreads!(grad, parm, data, false)
-
-    function fg!(g, parm)
-        LL = llthreads!(g, parm, data, true)
-        g .*= -1
-        return -LL
-    end
-
-    # check gradient
-    println("Print me to prevent error on v1.2")
-    fg!(grad, theta)
-    @test grad ≈ Calculus.gradient(f, theta)
-
-    # check that it solves
-    res = optimize(OnceDifferentiable(f, fg!, fg!, theta), theta*0.1, BFGS(), Optim.Options(time_limit = 1.0))
-    @test maximum(abs.(res.minimizer .- theta)) < 0.25
-end
+# @testset "RoyaltyModelNoHet" begin
+#     k = 3
+#     nobs = 1_000
+#     L = 3
+#     RM = RoyaltyModelNoHet()
+#     Random.seed!(1234)
+#
+#     X      = randn(k,nobs)
+#     eps    = randn(nobs)
+#
+#     theta = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
+#     @test length(theta) == k + L - 1
+#
+#     rstar = X'*theta[1:k] .+ eps
+#     l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
+#     data = DataRoyalty(RM, l, X)
+#     update_xbeta!(data, theta[1:k])
+#
+#     @test length(theta) == _nparm(data) == _nparm(first(first(data)))
+#
+#     @test theta_royalty_ρ(    data, theta) == Float64[]
+#     @test theta_royalty_ψ(    data, theta) == Float64[]
+#     @test all(theta_royalty_β(data, theta) .== theta[1:3])
+#     @test theta_royalty_κ(    data, theta, 1) == -0.5
+#     @test theta_royalty_κ(    data, theta, 2) ==  0.5
+#
+#     @test idx_royalty_κ(data, 1) == 4
+#     @test idx_royalty_κ(data, 2) == 5
+#     @test_throws DomainError idx_royalty_κ(data, L+1)
+#     @test_throws DomainError idx_royalty_κ(data, 0)
+#
+#     M = 10
+#     RT = SimulationDraws(M,nobs,0)
+#     am = _am(RT)
+#     bm = _bm(RT)
+#     cm = _cm(RT)
+#
+#     # test η12s
+#     η12s = [η12(first(grp), theta, r) for (grp,r) in zip(data, rstar)]
+#     @test all(x[1] < x[2] for x in η12s )
+#
+#
+#     # form functions for stuff
+#     grad = similar(theta)
+#     # @code_warntype llthreads!(grad, theta, RM, data, true)
+#
+#     f(parm) = - llthreads!(grad, parm, data, false)
+#
+#     function fg!(g, parm)
+#         LL = llthreads!(g, parm, data, true)
+#         g .*= -1
+#         return -LL
+#     end
+#
+#     # check gradient
+#     println("Print me to prevent error on v1.2")
+#     fg!(grad, theta)
+#     @test grad ≈ Calculus.gradient(f, theta)
+#
+#     # check that it solves
+#     res = optimize(OnceDifferentiable(f, fg!, fg!, theta), theta*0.1, BFGS(), Optim.Options(time_limit = 1.0))
+#     @test maximum(abs.(res.minimizer .- theta)) < 0.25
+# end
 
 @testset "RoyaltyModel" begin
 
     nobs = 500  # observations
     k = 3       # number of x
     L = 3       # ordered choices
-    M = 15      # simulations
+    M = 5_000     # simulations
 
     RM = RoyaltyModel()
 
@@ -119,6 +120,12 @@ end
 
     # let obs = first(first(data)), simi = view(uv,1)
     #     @code_warntype simloglik_royalty!(obs, theta, simi, false)
+    # end
+
+    # let obs = first(first(data)), simi = view(uv,1)
+    #     println("benchmarking")
+    #     @show @benchmark simloglik_royalty!($obs, $theta, $simi, true)
+    #     println("")
     # end
 
     function fg!(grad::AbstractVector, θ::AbstractVector, dograd::Bool=true)

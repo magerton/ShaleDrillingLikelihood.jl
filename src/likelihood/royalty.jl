@@ -83,20 +83,30 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
 
     βψ = theta_royalty_ψ(obs, theta)
 
-    let xbeta=xbeta, βψ=βψ, obs=obs, theta=theta, dograd=dograd
-        @inbounds @threads for m in OneTo(M)
-            zm  = xbeta + βψ * psi[m]
-            eta12 = η12(obs, theta, zm)
+    mapper = Mapper(M,10)
 
-            if dograd == false
-                LLm[m] += loglik_royalty(obs, eta12)
-            else
-                η1, η2 = eta12
-                F,LL  = lik_loglik_royalty(obs, eta12)
-                LLm[m] += LL
-                am[m] = normpdf(η1) / F
-                bm[m] = normpdf(η2) / F
-                cm[m] = dlogcdf_trunc(η1, η2)
+    let xbeta=xbeta, βψ=βψ, obs=obs, theta=theta, dograd=dograd, mapper=mapper
+        # @inbounds @threads for m in OneTo(M)
+        @threads for k in OneTo(nthreads())
+            # @inbounds @simd for m in getrange(M)
+            while true
+                mrng = next!(mapper)
+                length(mrng) < 1 && break
+                @inbounds for m in mrng
+                    zm  = xbeta + βψ * psi[m]
+                    eta12 = η12(obs, theta, zm)
+
+                    if dograd == false
+                        LLm[m] += loglik_royalty(obs, eta12)
+                    else
+                        η1, η2 = eta12
+                        F,LL  = lik_loglik_royalty(obs, eta12)
+                        LLm[m] += LL
+                        am[m] = normpdf(η1) / F
+                        bm[m] = normpdf(η2) / F
+                        cm[m] = dlogcdf_trunc(η1, η2)
+                    end
+                end
             end
         end
     end

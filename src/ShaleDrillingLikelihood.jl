@@ -50,6 +50,7 @@ abstract type AbstractRoyaltyModel    <: AbstractModel end
 # Overall structure
 #----------------------------
 
+include("threadutils.jl")
 include("sum-functions.jl")
 
 # drilling model
