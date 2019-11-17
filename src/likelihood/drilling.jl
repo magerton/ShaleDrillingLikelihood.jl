@@ -77,7 +77,13 @@ function loglik_drill_unit!(
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
-        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
+        if dograd
+            # BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
+            # No BLAS b/c maybe it conflicts w/ threads?
+            @inbounds for (j,llj) in enumerate(LLj)
+                grad .+= view(gradJ, :, j) .* llj
+            end
+        end
     end
 
     for lease in DevelopmentDrilling(unit)
