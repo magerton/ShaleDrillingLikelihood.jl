@@ -86,7 +86,7 @@ function grad_simloglik_produce!(grad::AbstractVector, obs::ObservationProduce, 
 end
 
 
-function simloglik!(grp::ObservationGroupProduce, theta, sim, dograd)
+function simloglik!(grad::AbstractVector, grp::ObservationGroupProduce, theta, sim, dograd)
     for obs in grp
         simloglik_produce!(obs, theta, sim)
     end

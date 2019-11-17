@@ -1,12 +1,18 @@
 export TestDrillModel
 
+# Number of parameters
+length(m::TestDrillModel) = 5
+length(m::AbstractDrillModel) = throw(error("Please define `length` for $m"))
+
+# Max number of choices
+num_choices(m::TestDrillModel) = 3
+num_choices(m::AbstractDrillModel) = throw(error("Please define `num_choices` for $m"))
+num_choices(obs::ObservationDrill) = num_choices(_model(obs))
+
+# action space
 actionspace(obs::ObservationDrill) = actionspace(_model(obs),_x(obs))
 actionspace(m::AbstractDrillModel, state) = actionspace(m)
 actionspace(m::TestDrillModel) = 0:2
-
-num_choices(m::TestDrillModel) = 3
-num_choices(m::AbstractDrillModel) = throw(error("num_choices not defined for $m"))
-num_choices(obs::ObservationDrill) = num_choices(_model(obs))
 
 Dgt0(m::AbstractDrillModel, state) = throw(error("Dgt0 not defined for $(m)"))
 Dgt0(m::TestDrillModel,     state) = state >= 0
@@ -62,8 +68,6 @@ end
 # FOR TESTING ONLY
 #---------------------------------------------------------------
 const TestObs = ObservationDrill{TestDrillModel}
-
-length(     m::TestDrillModel) = 5
 
 idx_drill_ψ(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 1
 idx_drill_x(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 2

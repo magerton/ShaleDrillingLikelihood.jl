@@ -1,4 +1,4 @@
-simloglik!(grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
+simloglik!(grad, grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
 grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
 
 
@@ -8,15 +8,16 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
 
     fill(_qm(sim), 0)
     logM = log(_num_sim(sim))
+    zips = zip(idxs, thetas, grptup)
 
-    for (grp, theta) in zip(grptup, thetas)
-        @views simloglik!(grp, theta, sim, dograd)
+    for (idx,theta,grp) in zips
+        @views simloglik!(grad[idx], grp, theta, sim, dograd)
     end
 
     LL = logsumexp!(_llm(sim)) - logM
 
     if dograd
-        for (idx,theta,grp) in zip(idxs, thetas, grptup)
+        for (idx,theta,grp) in zips
             @views grad_simloglik!(grad[idx], grp, theta, sim)
         end
     end

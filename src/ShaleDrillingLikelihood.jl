@@ -61,6 +61,7 @@ include("data/simulation.jl")
 include("data/royalty.jl")
 include("data/production.jl")
 include("data/time-variable-type.jl")
+include("likelihood/drilling-tmpvars.jl")
 include("data/drilling.jl")
 include("data/overall.jl")
 
@@ -70,7 +71,6 @@ include("drilling-model/flow.jl")
 # likelihoods
 include("likelihood/royalty.jl")
 include("likelihood/production.jl")
-include("likelihood/drilling-tmpvars.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
 

@@ -27,7 +27,7 @@ using ShaleDrillingLikelihood: AbstractDataSet,
     _nparm,
     thetas
 
-println("testing overall royalty")
+println("testing overall likelihood")
 
 @testset "Testing Joint Likelihoods" begin
     num_i = 500
@@ -36,8 +36,6 @@ println("testing overall royalty")
     u = randn(num_i)
     v = randn(num_i)
     psi2 = u
-
-    sim = SimulationDraws(M, num_i)
 
     # set up coefs
     θρ = 0.5
@@ -58,9 +56,11 @@ println("testing overall royalty")
     data_produce = DataProduce(u, 10, 10:20, θ_produce)
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
     data_full = DataSetofSets(data_drill, data_royalty, data_produce, coef_links)
+    sim = SimulationDraws(M, data_drill)
 
     @testset "Joint likelihood of Royalty + Pdxn" begin
 
+        println("testing joint likelihood of royalty + pdxn")
         data = DataSetofSets(EmptyDataSet(), data_royalty, data_produce)
         theta = vcat(θ_royalty, θ_produce)
         grad = similar(theta)
@@ -101,6 +101,7 @@ println("testing overall royalty")
 
     @testset "Joint likelihood of Drill + Roy + Pdxn" begin
 
+        println("testing joint likelihood of FULL data!")
         data = data_full
         theta = θ
         grad = similar(theta)

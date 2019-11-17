@@ -67,9 +67,9 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         _zchars  = ExogTimeVars([(x,) for x in randn(nt)], range(Date(2003,10); step=Quarter(1), length=nt))
         _zchars_short  = ExogTimeVars([(x,) for x in randn(2)], range(Date(2003,10); step=Quarter(1), length=2))
 
-        DataDrill(DrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
-        @test_throws DimensionMismatch DataDrill(DrillModel(), [1,], _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
-        @test_throws ErrorException    DataDrill(DrillModel(),       _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars_short)
+        DataDrill(TestDrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
+        @test_throws DimensionMismatch DataDrill(TestDrillModel(), [1,], _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
+        @test_throws ErrorException    DataDrill(TestDrillModel(),       _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars_short)
     end
 
 
@@ -86,7 +86,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         x = copy(y)
         _zchars  = ExogTimeVars([(x,) for x in randn(nt)], range(Date(2003,10); step=Quarter(1), length=nt))
 
-        data = DataDrill(DrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
+        data = DataDrill(TestDrillModel(), _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
 
         @test length(data) == 1
         @test maxj1length(data) == 1

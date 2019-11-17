@@ -13,7 +13,14 @@ const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
 abstract type AbstractObservationGroup <: AbstractDataStructure end
 
-"Observation Groups are associated with an individual and shock (ψ₁,ψ₂)"
+"""
+Observation Groups are associated with an individual and shock (ψ₁,ψ₂)
+
+Examples:
+- A vector of production from a well
+- The full set of leases before or after 1st well drilled
+- The set of actions associated w/ 1 lease
+"""
 struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
     data::D
     i::I
@@ -58,7 +65,7 @@ end
 # AbstractDataSet iteration utilties
 #------------------------------------------
 
-_data(    d::AbstractDataSet) = d
+_data(d::AbstractDataSet) = d
 
 group_ptr(d::AbstractDataSet) = throw(error("group_ptr not defined for $(typeof(d))"))
 obs_ptr(  d::AbstractDataSet) = throw(error("obs_ptr not defined for $(typeof(d))"))
