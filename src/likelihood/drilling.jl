@@ -1,8 +1,8 @@
-function gradweight(could_choose, did_choose, payoff)
+function gradweight(could_choose, did_choose, payoff::T) where {T<:Real}
     if did_choose == could_choose
-        return 1-payoff
+        return one(T) - payoff
     else
-        return -payoff
+        return - payoff
     end
 end
 
@@ -77,7 +77,13 @@ function loglik_drill_unit!(
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
-        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
+        if dograd
+            # BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
+            # No BLAS b/c maybe it conflicts w/ threads?
+            @inbounds for (j,llj) in enumerate(LLj)
+                grad .+= view(gradJ, :, j) .* llj
+            end
+        end
     end
 
     for lease in DevelopmentDrilling(unit)
@@ -88,25 +94,20 @@ function loglik_drill_unit!(
 end
 
 """
-    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+    simloglik!(grad, unit::DrillUnit, theta, sims, dtv, dograd)
 
-Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
-`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
-
-Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+Threaded computation of `_llm(sims)[m] += log lik(DrillUnit, sims[m])`
 """
-function simloglik_drill_unit!(
-    grad::AbstractVector, unit::DrillUnit,
-    theta::AbstractVector{T}, sims::SimulationDrawsVector,
-    dtv::DrillingTmpVarsAll, dograd::Bool
-)::T where {T}
+function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dograd)
 
-    length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
-
+    dtv = DrillingTmpVars(unit)
     M = _num_sim(sims)
     llm = _llm(sims)
     gradM = _drillgradm(sims)
     fill!(gradM, 0)
+
+    length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
+    size(gradM, 1) == length(grad) || throw(DimensionMismatch("gradM not OK"))
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM
         @threads for m in OneTo(M)
@@ -116,31 +117,50 @@ function simloglik_drill_unit!(
             llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
         end
     end
+end
 
-    LL = logsumexp!(llm) - log(M)
-    dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad) # grad .+= gradM * llm
+function grad_simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector)
+    M = _num_sim(sims)
+    llm = _llm(sims)
+    gradM = _drillgradm(sims)
 
-    return LL
+    BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad)
 end
 
 
 
+"""
+    simloglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
+
+Compute *simulated* log Lᵢ of `unit` using `sims::SimulationDrawsVector`. If
+`dograd`, update cols of `_drillgradm(sims) .+= ∇(log Lᵢₘ)`.
+
+Uses set of thread-specific `dtv::DrillingTmpVarsAll`
+"""
+function simloglik_drill_unit!(grad, unit, theta, sims, dograd)
+    simloglik!(grad, unit, theta, sims, dograd)
+    LL = logsumexp!(_llm(sims)) - log(_num_sim(sims))
+    dograd && grad_simloglik!(grad, unit, theta, sims)
+    return LL
+end
+
+
 function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
-    theta::AbstractVector{T}, sim::SimulationDrawsMatrix, dtv::DrillingTmpVarsAll,
+    theta::AbstractVector{T}, sim::SimulationDrawsMatrix,
     dograd::Bool=false, dohess::Bool=false
 ) where {T}
 
     dohess == true && dograd == false && throw(error("can't dohess without dograd"))
     checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
-    update_theta!(dtv, theta)
+    update_theta!(DrillingTmpVars(data), theta)
     update!(sim, theta_drill_ρ(_model(data), theta))
     g = dohess ? similar(grad) : grad
 
     LL = zero(T)
     for (i,unit) in enumerate(data)
         dohess && fill!(g, 0)
-        LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dtv, dograd)
+        LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dograd)
         if dohess
             BLAS.ger!(1.0, g, g, hess)
             grad .+= g

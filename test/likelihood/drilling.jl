@@ -58,18 +58,18 @@ println("testing drilling likelihood")
 
     grad = zeros(length(theta))
     hess = zeros(length(theta),length(theta))
-    dtv = DrillingTmpVars(data, theta)
+    dtv = DrillingTmpVars(data)
 
-    LL1 = simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
-    LL2 = simloglik_drill_data!(grad, hess, data, theta, sim, dtv, false)
+    LL1 = simloglik_drill_data!(grad, hess, data, theta, sim, true)
+    LL2 = simloglik_drill_data!(grad, hess, data, theta, sim, false)
     @test isfinite(LL1)
     @test isfinite(LL2)
     @test LL1 ≈ LL2
 
     # check that we don't update gradient here
-    simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
+    simloglik_drill_data!(grad, hess, data, theta, sim, true)
     gradcopy = copy(grad)
-    simloglik_drill_data!(grad, hess, data, theta.*2, sim, dtv, false)
+    simloglik_drill_data!(grad, hess, data, theta.*2, sim, false)
     @test all(grad .== gradcopy)
 
     # @testset "warntypes for drilling" begin
@@ -77,27 +77,27 @@ println("testing drilling likelihood")
     #     lease = unit[InitialDrilling()][1]
     #     simi = view(sim, 1)
     #     update_theta!(dtv, theta)
-    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[1], true)
-    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[1], true)
-    #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, dtv, true)
+    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], true)
+    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], true)
+    #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, true)
     # end
 
 
     # check finite difference
     @testset "check finite difference" begin
         let theta = theta.*0.5
-            fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, dtv, false), theta)
+            fdgrad = Calculus.gradient(x -> simloglik_drill_data!(grad, hess, data, x, sim, false), theta)
             fill!(grad, 0)
-            simloglik_drill_data!(grad, hess, data, theta, sim, dtv, true)
+            simloglik_drill_data!(grad, hess, data, theta, sim, true)
             @test grad ≈ fdgrad
             @test !(grad ≈ zeros(length(grad)))
         end
     end
 
     let k = length(theta), hess = zeros(k,k)
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, false, false)
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, true, false)
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, $dtv, true, true)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false, false)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, false)
+        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, true)
     end
 
     println("initial tests done")
@@ -108,7 +108,7 @@ println("testing drilling likelihood")
 
         function f(x)
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, dtv, false, false)
+            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, false, false)
             return -LL
         end
 
@@ -116,7 +116,7 @@ println("testing drilling likelihood")
             tmphess = zeros(k,k)
             fill!(grad, 0)
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(grad, tmphess, data, x, sim, dtv, true, false)
+            LL = simloglik_drill_data!(grad, tmphess, data, x, sim, true, false)
             grad .*= -1
             return -LL
         end
@@ -125,7 +125,7 @@ println("testing drilling likelihood")
             grad = zeros(k)
             checksquare(hess) == length(x) || throw(DimensionMismatch())
             update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
+            LL = simloglik_drill_data!(grad, hess, data, x, sim, true, true)
             grad .*= -1
             return -LL
         end
@@ -133,7 +133,7 @@ println("testing drilling likelihood")
         function invH0(x::AbstractVector)
             grad = zeros(k)
             hess = zeros(k,k)
-            simloglik_drill_data!(grad, hess, data, x, sim, dtv, true, true)
+            simloglik_drill_data!(grad, hess, data, x, sim, true, true)
             return inv(hess)
         end
 

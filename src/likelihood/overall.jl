@@ -1,52 +1,58 @@
-function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup}, theta::AbstractVector, sim::SimulationDrawsVector, dograd::Bool) where {N}
+simloglik!(grad, grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
+grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
+
+
+function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
+    thetas, idxs, sim::SimulationDrawsVector, dograd::Bool
+) where {N}
 
     fill(_qm(sim), 0)
     logM = log(_num_sim(sim))
+    zips = zip(idxs, thetas, grptup)
 
-    idxs = idx_theta(grptup)
-
-    for (idx,grp) in zip(idxs, grptup)
-        @views simloglik!(grp, theta[idx], sim, dograd)
+    for (idx,theta,grp) in zips
+        @views simloglik!(grad[idx], grp, theta, sim, dograd)
     end
 
     LL = logsumexp!(_llm(sim)) - logM
+
     if dograd
-        for (idx,grp) in zip(idxs, grptup)
-            @views grad_simloglik!(grad[idx], grp, theta[idx], sim)
+        for (idx,theta,grp) in zips
+            @views grad_simloglik!(grad[idx], grp, theta, sim)
         end
     end
+
     return LL
 end
 
 
-function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix,
-    dattup::Union{Tuple{DataRoyalty,DataProduce},Tuple{DataDrill,DataRoyalty,DataProduce}},
+function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetofSets,
     theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
 )
     nparm, num_i = size(tmpgrad)
-    all(length.(dattup) .== num_i) || throw(DimensionMismatch())
     nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
 
-    # indexes for theta
-    idxs = idx_theta(dattup)
-    thetavws = map(idx -> view(theta, idx), idxs)
+    # parameters
+    thetasvw = thetas(data, theta)
+    idxs = theta_indexes(data)
 
     # do updates
-    ρ = first(thetavws[end-1])
+    ρ = first(thetasvw[end-1])
     update!(sim, ρ)
-    for (dat,thetavw) in zip(dattup,thetavws)
-        @views update!(dat, thetavw)
+    for (dat,theta) in zip(data,thetasvw)
+        update!(dat, theta)
     end
 
     LL = 0.0
     fill!(tmpgrad, 0)
 
+    # iterate over observations
     for i = OneTo(num_i)
         gradi = view(tmpgrad, :, i)
-        grptup = getindex.(dattup, i)
+        grptup = getindex.(data, i)
         simi = view(sim, i)
         fill!(_qm(sim), 0)
-        LL += simloglik!(gradi, grptup, theta, simi, dograd)
+        LL += simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd)
     end
 
     if dograd

@@ -4,6 +4,7 @@ module ShaleDrillingLikelihood_OverallLikelihood_Test
 # using Juno
 # using Profile
 # using ProfileView
+# using PProf
 
 using ShaleDrillingLikelihood
 using Test
@@ -19,44 +20,22 @@ using Base: OneTo
 
 using ShaleDrillingLikelihood: AbstractDataSet,
     DataRoyalty, DataProduce, DataDrill,
-    simloglik_royalty!,
-    grad_simloglik_royalty!,
-    simloglik_produce!,
-    grad_simloglik_produce!,
     simloglik!,
-    update_ψ1!,
-    update_dψ1dρ!,
-    update_xpnu!,
-    update_nu!,
     SimulationDraws,
-    _nparm,
-    ObservationGroup,
-    ObservationGroupProduce,
-    ObservationRoyalty,
-    TestDrillModel,
-    theta_drill_ρ,
-    theta_drill_ψ,
-    theta_royalty_ρ,
-    theta_produce_ψ,
-    idx_drill, theta_drill,
-    idx_royalty, theta_royalty,
-    idx_produce, theta_produce,
     idx_drill_ρ, idx_royalty_ρ,
     idx_drill_ψ, idx_produce_ψ,
+    _nparm,
     thetas
 
-println("testing overall royalty")
+println("testing overall likelihood")
 
-@testset "Joint likelihood of Royalty + Pdxn" begin
-
+@testset "Testing Joint Likelihoods" begin
     num_i = 500
     L = 3
     M = 500
     u = randn(num_i)
     v = randn(num_i)
     psi2 = u
-
-    sim = SimulationDraws(M, num_i)
 
     # set up coefs
     θρ = 0.5
@@ -69,42 +48,97 @@ println("testing overall royalty")
     θ_produce = vcat(αψ, rand(3), 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
+    coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
 
     # make data
     data_drill_opt = (num_zt=200, minmaxleases=1:2, nper_initial=10:20, nper_development=0:10, tstart=1:50,)
     data_drill   = DataDrill(u, v, TestDrillModel(), θ_drill; data_drill_opt...)
     data_produce = DataProduce(u, 10, 10:20, θ_produce)
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
+    data_full = DataSetofSets(data_drill, data_royalty, data_produce, coef_links)
+    sim = SimulationDraws(M, data_drill)
 
-    data = DataSetofSets(data_drill, data_royalty, data_produce)
+    @testset "Joint likelihood of Royalty + Pdxn" begin
 
-    # theta = vcat(θ_royalty, θ_produce)
-    # grad = similar(theta)
-    # hess = Matrix{eltype(theta)}(undef, nparm, nparm)
-    # tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
-    #
-    # simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-    # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-    #
-    # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
-    #
-    # fill!(grad,0)
-    # fill!(hess,0)
-    # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-    # @test !all(grad.==0)
-    # @test isapprox(fd, grad; rtol=2e-5)
-    #
-    #
-    # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-    # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-    #
-    # Profile.clear()
-    # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
-    # ProfileView.view()
-    #
-    # Profile.clear()
-    # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-    # ProfileView.view()
+        println("testing joint likelihood of royalty + pdxn")
+        data = DataSetofSets(EmptyDataSet(), data_royalty, data_produce)
+        theta = vcat(θ_royalty, θ_produce)
+        grad = similar(theta)
+        nparm = _nparm(data)
+        hess = Matrix{eltype(theta)}(undef, nparm, nparm)
+        tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+
+        fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+
+        fill!(grad,0)
+        fill!(hess,0)
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+        @test !all(grad.==0)
+        @test isapprox(fd, grad; rtol=2e-5)
+
+        # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+        # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+
+        # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        # println("\n\n\n----------------------------\n\n\n")
+        # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+
+        # Profile.clear()
+        # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        # # Juno.profiletree()
+        # # Juno.profiler()
+        # Profile.print(format=:flat)
+        # # ProfileView.view()
+        # pprof()
+
+        # Profile.clear()
+        # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+        # ProfileView.view()
+    end
+
+    @testset "Joint likelihood of Drill + Roy + Pdxn" begin
+
+        println("testing joint likelihood of FULL data!")
+        data = data_full
+        theta = θ
+        grad = similar(theta)
+        nparm = _nparm(data)
+        hess = Matrix{eltype(theta)}(undef, nparm, nparm)
+        tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+
+        fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+
+        fill!(grad,0)
+        fill!(hess,0)
+        simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+        @test !all(grad.==0)
+        @test isapprox(fd, grad; rtol=2e-5)
+
+        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+
+        # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        # println("\n\n\n----------------------------\n\n\n")
+        # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+
+        # Profile.clear()
+        # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        # # Juno.profiletree()
+        # # Juno.profiler()
+        # Profile.print(format=:flat)
+        # # ProfileView.view()
+        # pprof()
+
+        # Profile.clear()
+        # @profile simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+        # ProfileView.view()
+    end
 
 end
 

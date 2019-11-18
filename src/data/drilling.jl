@@ -30,7 +30,7 @@ export DataDrill
 
 abstract type AbstractDataDrill <: AbstractDataSet end
 
-struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
+struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<:DrillingTmpVarsAll} <: AbstractDataDrill
     model::M
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -48,6 +48,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
 
     # time indices
     zchars::ETV
+    dtv::DTV
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
         jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
@@ -79,7 +80,12 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
             jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
-        return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars)
+
+        # construct tmpvars
+        dtv = DrillingTmpVars(maxj1length(j1ptr), model, Float64)
+        DTV = typeof(dtv)
+
+        return new{M,ETV,ITup,XT,DTV}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
     end
 end
 
@@ -116,6 +122,10 @@ zchars(obs::ObservationDrill) = obs.z
 # API for DataDrill
 #------------------------------------------
 
+# functions in case we want to work w/out DataDrill
+hasj1ptr(   j1ptr::Vector{Int}) = length(j1ptr) > 0
+maxj1length(j1ptr::Vector{Int}) = hasj1ptr(j1ptr) ? maximum( diff(j1ptr) ) : 1
+
 # access DataDrill fields
 _model(  d::DataDrill) = d.model
 j1ptr(   d::DataDrill) = d.j1ptr
@@ -125,11 +135,13 @@ zchars(  d::DataDrill) = d.zchars
 jtstart( d::DataDrill) = d.jtstart
 ichars(  d::DataDrill) = d.ichars
 j1chars( d::DataDrill) = d.j1chars
+DrillingTmpVars(d::DataDrill) = d.dtv
+DrillingTmpVars(data) = DrillingTmpVars(_data(data))
 
-# length
-hasj1ptr(   d::AbstractDataDrill) = length(j1ptr(d)) > 0
+# length of things
+hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
-maxj1length(d::AbstractDataDrill) = hasj1ptr(d) ? maximum( diff(j1ptr(d)) ) : 1
+maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = length(_model(d))
 
 # getindex in fields of AbstractDataDrill

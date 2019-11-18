@@ -6,12 +6,6 @@ abstract type AbstractDataStructure end
 "Collection of data on a particular outcome for individuals `i`"
 abstract type AbstractDataSet <: AbstractDataStructure end
 
-"Empty Data Set"
-struct EmptyDataSet <: AbstractDataSet end
-length(d::EmptyDataSet) = 0
-eachindex(d::EmptyDataSet) = 1:typemax(Int)
-_nparm(d::EmptyDataSet) = 0
-
 "What we feed into a likelihood"
 abstract type AbstractObservation <: AbstractDataStructure end
 
@@ -19,7 +13,14 @@ const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
 abstract type AbstractObservationGroup <: AbstractDataStructure end
 
-"Observation Groups are associated with an individual and shock (ψ₁,ψ₂)"
+"""
+Observation Groups are associated with an individual and shock (ψ₁,ψ₂)
+
+Examples:
+- A vector of production from a well
+- The full set of leases before or after 1st well drilled
+- The set of actions associated w/ 1 lease
+"""
 struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
     data::D
     i::I
@@ -28,6 +29,15 @@ struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
         return new{D,I}(data,i)
     end
 end
+
+
+"Empty Data Set"
+struct EmptyDataSet <: AbstractDataSet end
+length(d::EmptyDataSet) = 0
+eachindex(d::EmptyDataSet) = 1:typemax(Int)
+_nparm(d::EmptyDataSet) = 0
+
+const ObservationGroupEmpty = ObservationGroup{EmptyDataSet}
 
 # Functions for these data structures
 #-----------------------
@@ -55,7 +65,7 @@ end
 # AbstractDataSet iteration utilties
 #------------------------------------------
 
-_data(    d::AbstractDataSet) = d
+_data(d::AbstractDataSet) = d
 
 group_ptr(d::AbstractDataSet) = throw(error("group_ptr not defined for $(typeof(d))"))
 obs_ptr(  d::AbstractDataSet) = throw(error("obs_ptr not defined for $(typeof(d))"))
@@ -107,3 +117,6 @@ function update_over_obs(f!::Function, data::AbstractDataSet)
     end
     return nothing
 end
+
+# default method
+update!(d::AbstractDataSet, theta) = nothing
