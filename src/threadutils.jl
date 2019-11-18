@@ -1,3 +1,6 @@
+# https://stackoverflow.com/questions/58580436/how-to-make-use-of-threads-optional-in-a-julia-function
+# https://slides.com/valentinchuravy/julia-parallelism#/
+
 default_step(n) =  min(n, round(Int, 10*sqrt(n)))
 
 abstract type AbstractThreadMapper end
