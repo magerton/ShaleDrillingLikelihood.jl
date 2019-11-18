@@ -79,8 +79,8 @@ println("testing overall likelihood")
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
 
-        # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
         print("")
+        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
         @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
         print("")
 
@@ -122,8 +122,8 @@ println("testing overall likelihood")
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
 
-        # @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
         print("")
+        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
         @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
         print("")
 
