@@ -109,12 +109,20 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
     size(gradM, 1) == length(grad) || throw(DimensionMismatch("gradM not OK"))
 
-    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM
-        @threads for m in OneTo(M)
-            local sims_m = sims[m]        # get 1 particular simulation
+    mapper = Mapper(M, 5)
+
+    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
+        @threads for j in OneTo(nthreads())
             local dtvi = dtv[threadid()]  # thread-specific tmpvars
-            local gradm_i = view(gradM, :, m)
-            llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
+            while true
+                mrng = nextrange!(mapper)
+                isnothing(mrng) && break
+                @inbounds for m in mrng
+                    local sims_m = sims[m]        # get 1 particular simulation
+                    local gradm_i = view(gradM, :, m)
+                    llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
+                end
+            end
         end
     end
 end

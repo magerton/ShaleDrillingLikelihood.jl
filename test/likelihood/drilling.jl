@@ -95,67 +95,69 @@ println("testing drilling likelihood")
     end
 
     let k = length(theta), hess = zeros(k,k)
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false, false)
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, false)
+        # @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false, false)
+        # @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, false)
+        print("")
         @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, true)
+        print("")
     end
 
     println("initial tests done")
 
-    @testset "drilling likelihood optimization" begin
-
-        k = length(theta)
-
-        function f(x)
-            update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, false, false)
-            return -LL
-        end
-
-        function fg!(grad, x)
-            tmphess = zeros(k,k)
-            fill!(grad, 0)
-            update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(grad, tmphess, data, x, sim, true, false)
-            grad .*= -1
-            return -LL
-        end
-
-        function h!(hess, x)
-            grad = zeros(k)
-            checksquare(hess) == length(x) || throw(DimensionMismatch())
-            update!(sim, theta_drill_ρ(_model(data), x))
-            LL = simloglik_drill_data!(grad, hess, data, x, sim, true, true)
-            grad .*= -1
-            return -LL
-        end
-
-        function invH0(x::AbstractVector)
-            grad = zeros(k)
-            hess = zeros(k,k)
-            simloglik_drill_data!(grad, hess, data, x, sim, true, true)
-            return inv(hess)
-        end
-
-        println("getting ready to optmize")
-        odfg  = OnceDifferentiable(f, fg!, fg!, theta)
-        tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
-        res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
-        @show res
-        @show res.minimizer, theta
-
-        vcovinv = invH0(res.minimizer)
-        se = sqrt.(diag(vcovinv))
-        tstats = res.minimizer ./ se
-        pvals = cdf.(Normal(), -2*abs.(tstats))
-        coef_and_se = hcat(theta, res.minimizer, se, tstats, pvals)
-
-        err = theta .- res.minimizer
-        waldtest = err'*vcovinv*err
-        @test ccdf(Chisq(length(theta)), waldtest) > 0.05
-        @show coef_and_se
-        # Base.showarray(stdout, coef_and_se)
-    end
+    # @testset "drilling likelihood optimization" begin
+    #
+    #     k = length(theta)
+    #
+    #     function f(x)
+    #         update!(sim, theta_drill_ρ(_model(data), x))
+    #         LL = simloglik_drill_data!(zeros(k), zeros(k,k), data, x, sim, false, false)
+    #         return -LL
+    #     end
+    #
+    #     function fg!(grad, x)
+    #         tmphess = zeros(k,k)
+    #         fill!(grad, 0)
+    #         update!(sim, theta_drill_ρ(_model(data), x))
+    #         LL = simloglik_drill_data!(grad, tmphess, data, x, sim, true, false)
+    #         grad .*= -1
+    #         return -LL
+    #     end
+    #
+    #     function h!(hess, x)
+    #         grad = zeros(k)
+    #         checksquare(hess) == length(x) || throw(DimensionMismatch())
+    #         update!(sim, theta_drill_ρ(_model(data), x))
+    #         LL = simloglik_drill_data!(grad, hess, data, x, sim, true, true)
+    #         grad .*= -1
+    #         return -LL
+    #     end
+    #
+    #     function invH0(x::AbstractVector)
+    #         grad = zeros(k)
+    #         hess = zeros(k,k)
+    #         simloglik_drill_data!(grad, hess, data, x, sim, true, true)
+    #         return inv(hess)
+    #     end
+    #
+    #     println("getting ready to optmize")
+    #     odfg  = OnceDifferentiable(f, fg!, fg!, theta)
+    #     tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
+    #     res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
+    #     @show res
+    #     @show res.minimizer, theta
+    #
+    #     vcovinv = invH0(res.minimizer)
+    #     se = sqrt.(diag(vcovinv))
+    #     tstats = res.minimizer ./ se
+    #     pvals = cdf.(Normal(), -2*abs.(tstats))
+    #     coef_and_se = hcat(theta, res.minimizer, se, tstats, pvals)
+    #
+    #     err = theta .- res.minimizer
+    #     waldtest = err'*vcovinv*err
+    #     @test ccdf(Chisq(length(theta)), waldtest) > 0.05
+    #     @show coef_and_se
+    #     # Base.showarray(stdout, coef_and_se)
+    # end
 
 
 
