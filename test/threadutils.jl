@@ -79,14 +79,6 @@ function f(x)
     s[]
 end
 
-function plainthread(x)
-    s = Threads.Atomic{Float64}(0.0)
-    @inbounds @Threads.threads for i in 1:length(x)
-        Threads.atomic_add!(s, exp(x[i]))
-    end
-    s[]
-end
-
 
 function g(x)
     n = length(x)
@@ -97,7 +89,9 @@ function g(x)
     s
 end
 
-z = rand(10^5)
+gg(x) = mapreduce(exp, +, x)
+
+z = rand(10^3)
 @testset "summation: getrange" begin
     println("--------")
 
@@ -113,15 +107,13 @@ z = rand(10^5)
     _f = f(z)
     @btime f($z)
 
-    # println("plainthreads")
-    # _dd = plainthread(z)
-    # @btime plainthread($z)
-
     println("unthreaded")
     @btime g($z)
     _g = g(z)
 
-    # @test _dd ≈ _g
+    println("mapreduce")
+    @btime gg($z)
+
     @test _f ≈ _g
     @test _g ≈ _h2
     @test _g ≈ _h3

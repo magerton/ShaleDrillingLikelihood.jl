@@ -1,7 +1,6 @@
-abstract type AbstractThreadMapper end
-
-default_batch_size(n) = default_step(n)
 default_step(n) =  min(n, round(Int, 10*sqrt(n)))
+
+abstract type AbstractThreadMapper end
 
 function getrange(n)
     tid = Threads.threadid()
@@ -34,16 +33,12 @@ struct Mapper2 <: AbstractThreadMapper
     end
 end
 
-
-iter(m::Mapper2) = m.iter
-start(m::Mapper) = m.start
 stop(m::AbstractThreadMapper) = m.stop
 step(m::AbstractThreadMapper) = m.step
 
-@deprecate batch_size(m::AbstractThreadMapper) step(m)
-@deprecate atomic(m::AbstractThreadMapper) start(m)
-@deprecate len(m::AbstractThreadMapper) stop(m)
+start(m::Mapper) = m.start
 
+iter(m::Mapper2) = m.iter
 add_iter!(m::Mapper2) = Threads.atomic_add!(iter(m),1)
 
 function nextrange!(m::Mapper)
@@ -56,36 +51,3 @@ function nextrange!(m::Mapper)
         return a:b
     end
 end
-
-
-# struct Mapper
-#     batch::Atomic{Int}
-#     len::Int
-#     batch_size::Int
-#     function Mapper(len, batch_size=1)
-#         batch = Atomic{Int}(1)
-#         batch_size < len || throw(DomainError())
-#         return new(batch, len, batch_size)
-#     end
-# end
-#
-# batch(m::Mapper) = m.batch
-# batch_size(m::Mapper) = m.batch_size
-# len(m::Mapper) = m.len
-#
-# add1batch!(m::Mapper) = atomic_add!(batch(m), 1)
-# function batchrange(m::Mapper)
-#     k = batch(m)[]
-#     batch_start = 1 + (k-1) * batch_size(m)
-#     batch_end = min(k * batch_size(m), len(m))
-#     if batch_start > len(m)
-#         return 1:0
-#     else
-#         return batch_start:batch_end
-#     end
-# end
-#
-# function next!(m::Mapper)
-#     add1batch!(m)
-#     return batchrange(m)
-# end
