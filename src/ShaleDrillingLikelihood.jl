@@ -47,6 +47,17 @@ abstract type AbstractProductionModel <: AbstractModel end
 abstract type AbstractRoyaltyModel    <: AbstractModel end
 
 
+
+
+
+function showtypetree(T, level=0)
+    println("\t" ^ level, T)
+    for t in subtypes(T)
+        showtypetree(t, level+1)
+   end
+end
+
+
 # Overall structure
 #----------------------------
 
