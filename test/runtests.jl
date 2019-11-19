@@ -1,29 +1,14 @@
 using Revise
 using Base.Threads
 
-
-println("using $(nthreads()) threads")
-
-# include("sum-functions.jl")
-# include("threadutils.jl")
-#
-# include("data/data-structure.jl")
-# include("data/drilling.jl")
-# include("data/overall.jl")
-#
-# include("drilling-model/flow.jl")
-
-# include("likelihood/royalty.jl")
-# include("likelihood/production.jl")
-# include("likelihood/drilling.jl")
-# include("likelihood/overall.jl")
-
-
 module ShaleDrillingLikelihood_NEWFlow_Test
 
 using ShaleDrillingLikelihood
 using Test
 using Calculus
+
+using ShaleDrillingLikelihood: check_coef_length,
+    showtypetree
 
 @testset "Flow gradients" begin
     problem = StaticDrillingPayoff(
@@ -34,13 +19,12 @@ using Calculus
 
     let θ = fill(0.25, length(problem)),
         σ = 0.75
-        ShaleDrillingLikelihood.check_coef_length(problem, θ)
+        check_coef_length(problem, θ)
     end
 
-    ShaleDrillingLikelihood.showtypetree(AbstractPayoffFunction)
+    showtypetree(AbstractPayoffFunction)
     @test true == true
 
-end
     println("")
 
     types_to_test = (
@@ -66,35 +50,54 @@ end
         StaticDrillingPayoff(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant()),
     )
 
-    for f in types_to_test
-        println("Testing fct $f")
-        let z = (2.5,2010), ψ = 1.0, geoid = 4.5, roy = 0.25, σ = 0.75
-
-            n = length(f)
-            θ0 = rand(n)
-            fd = zeros(Float64, n)
-            g = zeros(Float64, n)
-
-            for (d,i) in Iterators.product(0:2, 1:3)
-
-                # test ∂f/∂θ
-                Calculus.finite_difference!((thet) -> flow(f, thet, σ, wp, i, d, z, ψ, geoid, roy), θ0, fd, :central)
-                ShaleDrillingLikelihood.gradient!(f, θ0, g, σ, wp, i, d, z, ψ, geoid, roy)
-                @test g ≈ fd
-
-                # test ∂f/∂ψ
-                fdpsi = Calculus.derivative((psi) -> flow(f, θ0, σ, wp, i, d, z, psi, geoid, roy), ψ)
-                gpsi = flowdψ(f, θ0, σ, wp, i, d, z, ψ, geoid, roy)
-                @test isapprox(fdpsi, gpsi, atol=1e-4)
-
-                # test ∂f/∂σ
-                fdsig = Calculus.derivative((sig) -> flow(f, θ0, sig, wp, i, d, z, ψ, geoid, roy), σ)
-                gsig = flowdσ(f, θ0, σ, wp, i, d, z, ψ, geoid, roy)
-                @test isapprox(fdsig, gsig, atol=1e-4)
-            end
-        end
-    end
 end
+
+    # for f in types_to_test
+    #     println("Testing fct $f")
+    #     let z = (2.5,2010), ψ = 1.0, geoid = 4.5, roy = 0.25, σ = 0.75
+    #
+    #         n = length(f)
+    #         θ0 = rand(n)
+    #         fd = zeros(Float64, n)
+    #         g = zeros(Float64, n)
+    #
+    #         for (d,i) in Iterators.product(0:2, 1:3)
+    #
+    #             # test ∂f/∂θ
+    #             Calculus.finite_difference!((thet) -> flow(f, thet, σ, wp, i, d, z, ψ, geoid, roy), θ0, fd, :central)
+    #             ShaleDrillingLikelihood.gradient!(f, θ0, g, σ, wp, i, d, z, ψ, geoid, roy)
+    #             @test g ≈ fd
+    #
+    #             # test ∂f/∂ψ
+    #             fdpsi = Calculus.derivative((psi) -> flow(f, θ0, σ, wp, i, d, z, psi, geoid, roy), ψ)
+    #             gpsi = flowdψ(f, θ0, σ, wp, i, d, z, ψ, geoid, roy)
+    #             @test isapprox(fdpsi, gpsi, atol=1e-4)
+    #
+    #             # test ∂f/∂σ
+    #             fdsig = Calculus.derivative((sig) -> flow(f, θ0, sig, wp, i, d, z, ψ, geoid, roy), σ)
+    #             gsig = flowdσ(f, θ0, σ, wp, i, d, z, ψ, geoid, roy)
+    #             @test isapprox(fdsig, gsig, atol=1e-4)
+    #         end
+    #     end
+    # end
+# end
 
 
 end # Drilling Model Flow Payoffs
+
+
+println("using $(nthreads()) threads")
+
+# include("sum-functions.jl")
+# include("threadutils.jl")
+#
+# include("data/data-structure.jl")
+# include("data/drilling.jl")
+# include("data/overall.jl")
+#
+# include("drilling-model/flow.jl")
+
+# include("likelihood/royalty.jl")
+# include("likelihood/production.jl")
+# include("likelihood/drilling.jl")
+# include("likelihood/overall.jl")

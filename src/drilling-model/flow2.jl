@@ -81,13 +81,12 @@ extend( x::DrillModel) = x.extend
 @inline idx_revenue(x::DrillModel) = OneTo(length(revenue(x)))
 @inline idx_cost(   x::DrillModel) = OneTo(length(drill(x)))  .+  length(revenue(x))
 @inline idx_extend( x::DrillModel) = OneTo(length(extend(x))) .+ (length(revenue(x)) + length(drill(x)))
-
-@deprecate idx_revenue(x::DrillModel) idx_revenue(x)
-@deprecate idx_cost(   x::DrillModel) idx_cost(x)
-@deprecate idx_extend( x::DrillModel) idx_extend(x)
-
 @inline theta_drill_indexes(x::DrillModel) = (idx_revenue(x), idx_cost(x), idx_extend(x),)
-@deprecate coef_ranges(x::DrillModel) theta_drill_indexes(x)
+
+@deprecate coef_range_revenue(x)       idx_revenue(x)
+@deprecate coef_range_drillingcost(x)  idx_cost(x)
+@deprecate coef_range_extensioncost(x) idx_extend(x)
+@deprecate coef_ranges(x)              theta_drill_indexes(x)
 
 @inline check_coef_length(x::DrillModel, θ) = (length(x) == length(θ) || throw(DimensionMismatch()))
 
@@ -365,14 +364,12 @@ end
 
 DrillingRevenue(Cn, Tech, Tax) = DrillingRevenue(Cn, Tech, Tax, Learn(), WithRoyalty())
 
-learn(  x::DrillingRevenue) = x.learn
 constr( x::DrillingRevenue) = x.constr
 tech(   x::DrillingRevenue) = x.tech
 tax(    x::DrillingRevenue) = x.tax
 learn(  x::DrillingRevenue) = x.learn
 royalty(x::DrillingRevenue) = x.royalty
 
-learn(  x::DrillModel) = learn(revenue(x))
 constr( x::DrillModel) = constr(revenue(x))
 tech(   x::DrillModel) = tech(revenue(x))
 tax(    x::DrillModel) = tax(revenue(x))
