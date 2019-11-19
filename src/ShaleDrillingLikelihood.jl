@@ -24,6 +24,7 @@ using Base.Iterators: flatten
 using Dates: Month
 using LinearAlgebra: checksquare
 
+using InteractiveUtils: subtypes
 
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
@@ -79,6 +80,8 @@ include("data/overall.jl")
 
 # flow for drilling
 include("drilling-model/flow.jl")
+include("drilling-model/constants.jl")
+include("drilling-model/flow2.jl")
 
 # likelihoods
 include("likelihood/royalty.jl")

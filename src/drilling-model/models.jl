@@ -20,12 +20,14 @@ theta_drill_d(d, theta) = theta[idx_drill_d(d)]
 
 _sgnext(wp,i) = true
 _sgnext(wp, i, d) = true
-_y(obs)
-_d(obs)
+_sgnext(obs) = true
+
+_y(obs) = 1
+_d(obs) = _y(obs)
 _Dgt0(obs) = true
-z = _z(obs)
-ψ(obs)
-_ψ2(obs)
-last(z)
-z, d, roy, Dgt0 = _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
-ψ = _ψ(obs)
+_z(obs) = (1.0, 2.0,)
+ψ(obs) = 0.0
+_ψ2(obs) = 0.0
+_ichars(obs) = (2.0, 0.25)
+_roy(obs) = last(_ichars(obs))
+_geoid(obs) = first(_ichars(obs))

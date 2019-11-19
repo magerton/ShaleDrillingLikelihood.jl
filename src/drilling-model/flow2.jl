@@ -1,3 +1,38 @@
+export flow, flowdθ, flowdσ, flowdψ,
+    STARTING_α_ψ, STARTING_log_ogip, STARTING_α_t,
+    AbstractPayoffFunction,
+    AbstractPayoffComponent,
+    AbstractDrillingCost,
+    AbstractDrillingCost_TimeFE,
+    DrillingCost_TimeFE,
+    DrillingCost_TimeFE_rigrate,
+    DrillingCost_constant,
+    DrillingCost_dgt1,
+    AbstractExtensionCost,
+    ExtensionCost_Constant,
+    ExtensionCost_Zero,
+    ExtensionCost_ψ,
+    AbstractStaticPayoffs,
+    StaticDrillingPayoff,
+    ConstrainedProblem,
+    UnconstrainedProblem,
+    AbstractModelVariations,
+    AbstractTaxType,
+    NoTaxes,
+    WithTaxes,
+    GathProcess,
+    AbstractTechChange,
+    NoTrend,
+    TimeTrend,
+    AbstractConstrainedType,
+    Unconstrained,
+    Constrained,
+    DrillingRevenue,
+    Learn,
+    NoLearn,
+    NoLearningProblem
+
+
 "Abstract type for payoff components"
 abstract type AbstractPayoffComponent end
 
@@ -13,7 +48,7 @@ struct DrillModel{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstract
     extend::E
 end
 
-const AbstractPayoffFunction = Union{AbstractPayoffComponent,DrillModel}
+const AbstractPayoffFunction = Union{AbstractPayoffComponent, DrillModel}
 
 # deprecate these....
 const StaticDrillingPayoff = DrillModel
@@ -24,9 +59,9 @@ const AbstractStaticPayoffs = AbstractDrillModel
 # -----------------------------------------
 
 # access components
-revenue(x::DrillModel) = revenue(x)
-drill(  x::DrillModel) = drill(x)
-extend( x::DrillModel) = extend(x)
+revenue(x::DrillModel) = x.revenue
+drill(  x::DrillModel) = x.drill
+extend( x::DrillModel) = x.extend
 @deprecate extensioncost(x::DrillModel) extend(x)
 @deprecate drillingcost( x::DrillModel) drill(x)
 
@@ -43,22 +78,22 @@ extend( x::DrillModel) = extend(x)
 # lengths
 # -----------------------------------------
 # coeficient ranges
-@inline idx_revenue(x::DrillModel) =                                            1:length(revenue(x))
-@inline idx_cost(   x::DrillModel) =  length(revenue(x))                    .+ (1:length(drill(x)))
-@inline idx_extend( x::DrillModel) = (length(revenue(x)) + length(drill(x)) .+ (1:length(extend(x)))
+@inline idx_revenue(x::DrillModel) = OneTo(length(revenue(x)))
+@inline idx_cost(   x::DrillModel) = OneTo(length(drill(x)))  .+  length(revenue(x))
+@inline idx_extend( x::DrillModel) = OneTo(length(extend(x))) .+ (length(revenue(x)) + length(drill(x)))
 
-@deprecate idx_revenue(x)(x::DrillModel) idx_revenue(x)
-@deprecate idx_cost(x)(   x::DrillModel) idx_cost(  x)
-@deprecate idx_extend(x)( x::DrillModel) idx_extend( x)
+@deprecate idx_revenue(x::DrillModel) idx_revenue(x)
+@deprecate idx_cost(   x::DrillModel) idx_cost(x)
+@deprecate idx_extend( x::DrillModel) idx_extend(x)
 
-@inline theta_drill_indexes(x::DrillModel) = idx_revenue(x), idx_cost(x), idx_extend(x)
-@deprecate coef_ranges(     x::DrillModel) theta_drill_indexes(x)
+@inline theta_drill_indexes(x::DrillModel) = (idx_revenue(x), idx_cost(x), idx_extend(x),)
+@deprecate coef_ranges(x::DrillModel) theta_drill_indexes(x)
 
-@inline check_coef_length(x::DrillModel, θ) = length(x) == length(θ) || throw(DimensionMismatch())
+@inline check_coef_length(x::DrillModel, θ) = (length(x) == length(θ) || throw(DimensionMismatch()))
 
-theta_revenue(x::DrillModel, theta) = view(theta, idx_revenue(x)), theta_sigma(x, theta)
-theta_cost(   x::DrillModel, theta) = view(theta, idx_cost(x)),    theta_sigma(x, theta)
-theta_extend( x::DrillModel, theta) = view(theta, idx_extend( x)), theta_sigma(x, theta)
+theta_revenue(x::DrillModel, theta) = view(theta, idx_revenue(x))
+theta_cost(   x::DrillModel, theta) = view(theta, idx_cost(x))
+theta_extend( x::DrillModel, theta) = view(theta, idx_extend(x))
 theta_sigma(  x::DrillModel, theta) = last(theta)
 
 # flow???(
