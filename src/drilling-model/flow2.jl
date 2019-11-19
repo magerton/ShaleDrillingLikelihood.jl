@@ -469,14 +469,12 @@ WithRoyaltyProblem(x::DrillModel, args...) = DrillModel(WithRoyaltyProblem(reven
 # base functions
 # -------------------------------------------
 
-@inline Eexpψ(x::DrillingRevenue, θ, σ, obs) = Eexpψ(learn(x), θ4, σ, obs)
-
 @inline function Eexpψ(x::AbstractLearningType, θ4, σ, ψ, Dgt0)
     if Dgt0
         return θ4*ψ
     else
         ρ = _ρ(σ, x)
-        return θ4*(ψ*ρ + θ4*0.5*(one(θ4)-ρ^2))
+        return θ4*(ψ*ρ + θ4*0.5*(1-ρ^2))
     end
 end
 
@@ -487,6 +485,8 @@ end
 
 @inline Eexpψ(::PerfectInfo, θ4, σ, ψ, Dgt0) = θ4*ψ
 @inline Eexpψ(::MaxLearning, θ4, σ, ψ, Dgt0) = Dgt0 ? θ4*ψ : 0.5*θ4^2
+
+@inline Eexpψ(x::DrillingRevenue, θ, σ, obs) = Eexpψ(learn(x), θ4, σ, obs)
 
 # ----------------------------------------------------------------
 # regular drilling revenue
@@ -505,25 +505,32 @@ end
 @inline d_tax_royalty(x::DrillingRevenue{Cnstr,Trnd,WithTaxes, Lrn, WithRoyalty}, d, roy) where {Cnstr,Trnd,Lrn    } = d*(1-roy)*one_minus_mgl_tax_rate(x)
 @inline d_tax_royalty(x::DrillingRevenue{Cnstr,Trnd,WithTaxes, Lrn, NoRoyalty},   d, roy) where {Cnstr,Trnd,Lrn    } = d*        one_minus_mgl_tax_rate(x)
 
-# quantity
+# quantity (for post-estimation SIMULATIONS)
 # -----------
 @inline function eur_kernel(x::DrillingRevenue{<:AbstractConstrainedType,NoTrend}, θ, σ, obs)
-    return exp( log_ogip(x,θ)*geoid + α_ψ(x,θ)*_ψ2(obs) )
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    return exp(
+        log_ogip(x,θ)*geoid +
+        α_ψ(x,θ)*_ψ2(obs)
+    )
 end
 
 @inline function eur_kernel(x::DrillingRevenue{<:AbstractConstrainedType,TimeTrend}, θ, σ, obs)
-    z = _z(obs)
-    return exp(log_ogip(x,θ)*geoid + α_ψ(x,θ)*_ψ2(obs) + α_t(x,θ)*(last(z) - baseyear(tech(x))))
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    return exp(
+        log_ogip(x,θ)*geoid +
+        α_ψ(x,θ)*_ψ2(obs) +
+        α_t(x,θ)*(
+            last(z) - baseyear(tech(x))
+        )
+    )
 end
-
-@inline eur_kernel(x::DrillModel, θ, σ, obs) = eur_kernel(revenue(x), θ, σ, obs)
-
 
 # revenue
 # -----------
 
 @inline function flow(x::DrillingRevenue{Cn,NoTrend,NoTaxes}, θ, σ::T, obs)::T where {T,Cn}
-    z, d, roy, Dgt0 = _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
 
     u = d_tax_royalty(x, d, roy) * exp(
         θ[1] + z[1] + log_ogip(x,θ)*geoid + Eexpψ(x, α_ψ(x,θ), σ, ψ, _Dgt0(obs))
@@ -532,7 +539,7 @@ end
 end
 
 @inline function flow(x::DrillingRevenue{Cn,TimeTrend,NoTaxes}, θ, σ::T, obs)::T where {T,Cn}
-    z, d, roy, Dgt0 = _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
 
     u = d_tax_royalty(x, d, roy) * exp(
         θ[1] + z[1] + log_ogip(x,θ)*geoid +
@@ -543,7 +550,7 @@ end
 end
 
 @inline function flow(x::DrillingRevenue{Cn,NoTrend}, θ, σ::T, obs)::T where {T,Cn}
-    z, d, roy, Dgt0 = _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
 
     u = d_tax_royalty(x, d, roy) * exp(
         θ[1] + log_ogip(x,θ)*geoid + Eexpψ(x, α_ψ(x,θ), σ, ψ, Dgt0)
@@ -554,7 +561,7 @@ end
 end
 
 @inline function flow(x::DrillingRevenue{Cn,TimeTrend}, θ, σ::T, obs)::T where {T,Cn}
-    z, d, roy, Dgt0 = _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
+    geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
 
     u = d_tax_royalty(x, d, roy) * exp(
         θ[1] + log_ogip(x,θ)*geoid +  Eexpψ(x, α_ψ(x,θ), σ, ψ, Dgt0) +
@@ -571,6 +578,7 @@ end
 # ----------------------------------------------------------------
 
 @inline function flowdσ(x::DrillingRevenue, θ, σ, obs)
+geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), _z(obs), _y(obs), _roy(obs), _Dgt0(obs)
     if !_Dgt0(obs) && _d(obs) > 0
         return flow(x, θ, σ, obs) * (ψ*α_ψ(x,θ) - α_ψ(x,θ)^2*_ρ(σ)) * _dρdσ(σ)
     end
