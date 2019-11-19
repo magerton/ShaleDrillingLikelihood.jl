@@ -8,30 +8,29 @@ using Random
 using BenchmarkTools
 using Base.Threads
 
+using Base.Threads: nthreads, @threads, Atomic, atomic_add!
+
 using ShaleDrillingLikelihood: getrange,
     Mapper,
     Mapper2,
     AbstractThreadMapper,
-    # add1batch!,
     getrange,
-    default_batch_size,
-    nextrange!
-    # batch,
-    # batch_size,
-    # len,
-    # batchrange,
-    # next!
+    nextrange!,
+    stop,
+    step,
+    add_iter!
+
 
 function h2(x)
     n = length(x)
     mapper = Mapper2(n)
-    ld = ShaleDrillingLikelihood.stop(mapper)
-    batch_size = ShaleDrillingLikelihood.step(mapper) # default_batch_size(n)
+    ld = stop(mapper)
+    batch_size = step(mapper)
 
-    s = Threads.Atomic{Float64}(0.0)
-    Threads.@threads for j in 1:Threads.nthreads()
+    s = Atomic{Float64}(0.0)
+    @threads for j in 1:nthreads()
         while true
-            k = ShaleDrillingLikelihood.add_iter!(mapper)
+            k = add_iter!(mapper)
             batch_start = 1 + (k-1) * batch_size
             batch_end = min(k * batch_size, ld)
             batch_start > ld && break
@@ -39,7 +38,7 @@ function h2(x)
             @inbounds @simd for i in batch_start:batch_end
                 y += exp(x[i])
             end
-            Threads.atomic_add!(s, y)
+            atomic_add!(s, y)
         end
     end
     return s[]
@@ -49,9 +48,9 @@ end
 
 function h3(x)
     mapper = Mapper(length(x))
-    s = Threads.Atomic{Float64}(0.0)
+    s = Atomic{Float64}(0.0)
 
-    Threads.@threads for j in 1:Threads.nthreads()
+    @threads for j in 1:nthreads()
         while true
             y = 0.0
             irng = nextrange!(mapper)
@@ -59,7 +58,7 @@ function h3(x)
             @inbounds @simd for i in irng
                 y += exp(x[i])
             end
-            Threads.atomic_add!(s, y)
+            atomic_add!(s, y)
         end
     end
 
@@ -67,14 +66,14 @@ function h3(x)
 end
 
 function f(x)
-    s = Threads.Atomic{Float64}(0.0)
+    s = Atomic{Float64}(0.0)
     n = length(x)
-    @Threads.threads for k in 1:Threads.nthreads()
+    @threads for k in 1:nthreads()
         y = 0.0
         @inbounds @simd for i in getrange(n)
             y += exp(x[i])
         end
-        Threads.atomic_add!(s, y)
+        atomic_add!(s, y)
     end
     s[]
 end
