@@ -1,6 +1,8 @@
 "Static DrillModel for testing only"
 struct TestDrillModel <: AbstractDrillModel end
 
+abstract type AbstractModelVariations end
+
 # -------------------------------------------
 # Drilling payoff has 3 parts
 # -------------------------------------------
@@ -20,14 +22,12 @@ theta_drill_d(d, theta) = theta[idx_drill_d(d)]
 
 _sgnext(wp,i) = true
 _sgnext(wp, i, d) = true
-_sgnext(obs) = true
+_sgnext(obs) = _y(obs) == 0
 
-_y(obs) = 1
 _d(obs) = _y(obs)
 _Dgt0(obs) = true
-_z(obs) = (1.0, 2.0,)
-ψ(obs) = 0.0
+_z(obs) = (1.0, 2010,)
+_ψ(obs) = 0.0
 _ψ2(obs) = 0.0
-_ichars(obs) = (2.0, 0.25)
 _roy(obs) = last(_ichars(obs))
 _geoid(obs) = first(_ichars(obs))

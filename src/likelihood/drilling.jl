@@ -1,17 +1,19 @@
-function gradweight(could_choose, did_choose, payoff::T) where {T<:Real}
+function gradweight(could_choose, did_choose, payoff)
     if did_choose == could_choose
-        return one(T) - payoff
+        return one(payoff) - payoff
     else
         return - payoff
     end
 end
 
-function dloglik_drill_obs!(grad, obs, theta, sim, ubv)
+function dloglik_drill_obs!(grad, obs, theta, sim, dtv)
+    ubv = _ubv(dtv)
+    tmpgrad = _grad(dtv)
     @inbounds for d in actionspace(obs)
         wt = gradweight(d, _y(obs), ubv[d+1])
-        @simd for k in eachindex(grad)
-            grad[k] += wt * dfull_payoff(k, d, obs, theta, sim)
-        end
+        fill!(tmpgrad, 0)
+        dfull_payoff!(tmpgrad, d, obs, theta, sim)
+        grad .+= wt .* tmpgrad
     end
 end
 
@@ -44,7 +46,7 @@ function loglik_drill_lease!(
         tmp = ubv[_y(obs)+1]
         LL += tmp - logsumexp!(ubv_vw)
 
-        dograd && dloglik_drill_obs!(grad, obs, theta, sim, ubv)
+        dograd && dloglik_drill_obs!(grad, obs, theta, sim, dtv)
 
     end
 

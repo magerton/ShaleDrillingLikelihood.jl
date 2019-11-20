@@ -1,3 +1,5 @@
+export STARTING_α_ψ, STARTING_log_ogip, STARTING_α_t
+
 # some constants
 # ----------------------------------------------------------------
 

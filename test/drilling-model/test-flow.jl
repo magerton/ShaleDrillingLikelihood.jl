@@ -21,7 +21,6 @@ using ShaleDrillingLikelihood: TestDrillModel,
     full_payoff,
     dflow!,
     dflowdψ,
-    dflowdθρ,
     SimulationDraw,
     idx_drill_ψ, theta_drill_ψ,
     idx_drill_x, theta_drill_x,
@@ -52,7 +51,7 @@ using ShaleDrillingLikelihood: TestDrillModel,
 
         for (d, obstype) in obstypes
             obs = ObservationDrill(model, obstype...)
-            @test check_flow_grad(model, d, obs, theta)
+            check_flow_grad(model, d, obs, theta)
         end
     end
 
