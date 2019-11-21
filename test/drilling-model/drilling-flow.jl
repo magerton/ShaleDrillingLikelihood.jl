@@ -17,7 +17,7 @@ using ShaleDrillingLikelihood: check_coef_length,
 using Calculus: finite_difference!
 
 @testset "Flow gradients" begin
-    problem = StaticDrillingPayoff(
+    problem = DrillReward(
         DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()),
         DrillingCost_constant(),
         ExtensionCost_Constant()
@@ -49,9 +49,9 @@ using Calculus: finite_difference!
         DrillingRevenue(Unconstrained(),TimeTrend(),WithTaxes()),
         ExtensionCost_Zero(),
         ExtensionCost_Constant(),
-        StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
-        ConstrainedProblem(   StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
-        StaticDrillingPayoff(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant()),
+        DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
+        ConstrainedProblem(   DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
+        DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant()),
     )
 
     for f in types_to_test

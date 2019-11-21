@@ -1,11 +1,6 @@
-import Base: ==, string, length, show, convert
-
-export AbstractUnitProblem,
-    LeasedProblem,
+export LeasedProblem,
     LeasedProblemContsDrill,
     PerpetualProblem
-
-abstract type AbstractUnitProblem end
 
 struct LeasedProblem <: AbstractUnitProblem
     dmax::Int   # max number of wells per quarter

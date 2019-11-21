@@ -3,6 +3,7 @@ export TestDrillModel
 # Number of parameters
 length(m::TestDrillModelOrReward) = 5
 length(m::AbstractDrillModel) = throw(error("Please define `length` for $m"))
+_nparm(m::TestDrillModelOrReward) = length(m)
 
 # Max number of choices
 num_choices(m::TestDrillModelOrReward) = 3
@@ -63,11 +64,11 @@ end
 # FOR TESTING ONLY
 #---------------------------------------------------------------
 
-idx_drill_ψ(m::TestDrillModelOrReward) = 1
-idx_drill_x(m::TestDrillModelOrReward) = 2
-idx_drill_z(m::TestDrillModelOrReward) = 3
-idx_drill_d(m::TestDrillModelOrReward) = 4
-idx_drill_ρ(m::TestDrillModelOrReward) = 5
+idx_drill_ψ(m::TestDrill) = 1
+idx_drill_x(m::TestDrill) = 2
+idx_drill_z(m::TestDrill) = 3
+idx_drill_d(m::TestDrill) = 4
+idx_drill_ρ(m::TestDrill) = 5
 
 full_payoff(             d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
 dfull_payoff(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = dflow(k,d,obs,theta,s)

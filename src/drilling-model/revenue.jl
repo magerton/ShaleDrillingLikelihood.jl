@@ -360,8 +360,8 @@ UnconstrainedProblem(x::AbstractPayoffComponent; kwargs...) = x
 UnconstrainedProblem(x::DrillingRevenue; kwargs...) = DrillingRevenue(Unconstrained(;kwargs...), tech(x), tax(x), learn(x), royalty(x))
 ConstrainedProblem(  x::DrillingRevenue; kwargs...) = DrillingRevenue(Constrained(;kwargs...),   tech(x), tax(x), learn(x), royalty(x))
 
-ConstrainedProblem(  x::DrillModel; kwargs...) = DrillModel(ConstrainedProblem(revenue(x); kwargs...), ConstrainedProblem(drill(x)), ConstrainedProblem(extend(x)))
-UnconstrainedProblem(x::DrillModel; kwargs...) = DrillModel(UnconstrainedProblem(revenue(x); kwargs...), UnconstrainedProblem(drill(x)), UnconstrainedProblem(extend(x)))
+ConstrainedProblem(  x::DrillReward; kwargs...) = DrillReward(ConstrainedProblem(revenue(x); kwargs...), ConstrainedProblem(drill(x)), ConstrainedProblem(extend(x)))
+UnconstrainedProblem(x::DrillReward; kwargs...) = DrillReward(UnconstrainedProblem(revenue(x); kwargs...), UnconstrainedProblem(drill(x)), UnconstrainedProblem(extend(x)))
 
 
 # Learning models
@@ -372,8 +372,8 @@ NoLearningProblem(x::DrillingRevenue, args...) = DrillingRevenue(constr(x), tech
 LearningProblem(  x::DrillingRevenue, args...) = DrillingRevenue(constr(x), tech(x), tax(x), Learn(),       royalty(x))
 PerfectInfo(      x::DrillingRevenue, args...) = DrillingRevenue(constr(x), tech(x), tax(x), PerfectInfo(), royalty(x))
 
-NoLearningProblem(x::DrillModel, args...) = DrillModel(NoLearningProblem(revenue(x), args...), drill(x), extend(x))
-LearningProblem(  x::DrillModel, args...) = DrillModel(  LearningProblem(revenue(x), args...), drill(x), extend(x))
+NoLearningProblem(x::DrillReward, args...) = DrillReward(NoLearningProblem(revenue(x), args...), drill(x), extend(x))
+LearningProblem(  x::DrillReward, args...) = DrillReward(  LearningProblem(revenue(x), args...), drill(x), extend(x))
 
 
 # Royalty
@@ -383,5 +383,5 @@ WithRoyaltyProblem(x::AbstractPayoffComponent, args...) = x
 NoRoyaltyProblem(  x::DrillingRevenue, args...)      = DrillingRevenue(constr(x), tech(x), tax(x), learn(x), NoRoyalty())
 WithRoyaltyProblem(x::DrillingRevenue, args...)      = DrillingRevenue(constr(x), tech(x), tax(x), learn(x), WithRoyalty())
 
-NoRoyaltyProblem(  x::DrillModel, args...) = DrillModel(  NoRoyaltyProblem(revenue(x), args...), drill(x), extend(x))
-WithRoyaltyProblem(x::DrillModel, args...) = DrillModel(WithRoyaltyProblem(revenue(x), args...), drill(x), extend(x))
+NoRoyaltyProblem(  x::DrillReward, args...) = DrillReward(  NoRoyaltyProblem(revenue(x), args...), drill(x), extend(x))
+WithRoyaltyProblem(x::DrillReward, args...) = DrillReward(WithRoyaltyProblem(revenue(x), args...), drill(x), extend(x))

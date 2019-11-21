@@ -13,7 +13,7 @@ dEV(x::DCDPEmax) = x.dEV
 
 size(x::DCDPEmax) = size(dEV(x))
 
-function fill!(x, y)
+function fill!(x::DCDPEmax, y)
     fill!(EV(x), y)
     fill!(dEV(x), y)
 end
@@ -55,17 +55,18 @@ struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA4<:AbstractArray4{T}, SM<:
     Πψtmp::Matrix{T}
     IminusTEVp::SM
 
-    function DCDPTmpVars(ubVfull::AA3{T}, dubVfull::AA4, q::AA3, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM) where {T,AA3, AA4, SM}
+    function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, q::AA3, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM) where {AA3, AA4, SM}
         (nθt, nz, nψ, nd) = size(dubVfull)
         (nz, nψ, nd) == size(ubVfull) == size(q) || throw(DimensionMismatch())
         (nz,nψ) == size(lse) == size(tmp) == size(tmp_cart) || throw(DimensionMismatch())
         nψ == checksquare(Πψtmp) || throw(DimensionMismatch())
         nz == checksquare(IminusTEVp) || throw(DimensionMismatch())
+        T = eltype(ubVfull)
         return new{T,AA3,AA4,SM}(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
     end
 end
 
-const dcdp_tmpvars = DCDPTmpVars
+# const dcdp_tmpvars{T,AA3,AA4,SM} = DCDPTmpVars{T,AA3,AA4,SM}
 
 _ubVfull(   x::DCDPTmpVars) = x.ubVfull
 _dubVfull(  x::DCDPTmpVars) = x.dubVfull

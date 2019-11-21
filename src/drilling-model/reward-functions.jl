@@ -1,4 +1,4 @@
-export flow, dflow!, flowdσ, flowdψ,
+export flow, dflow!, flowdσ, flowdψ
 
 # -----------------------------------------
 # components of stuff

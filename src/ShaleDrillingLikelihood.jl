@@ -15,7 +15,8 @@ using LoopVectorization
 # extend these methods
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
-    view, ==, eltype, +, -, isless
+    view, ==, eltype, +, -, isless,
+    fill!,string, show, convert
 
 # specific functions
 using Distributions: _F1
@@ -87,18 +88,18 @@ include("data/drilling.jl")
 include("data/overall.jl")
 
 # drilling model
-include("drilling-model/TestDrill.jl")
-include("drilling-model/state-space.jl")
 include("drilling-model/models.jl")
+include("drilling-model/state-space.jl")
 include("drilling-model/constants.jl")
+
 include("drilling-model/flow.jl")
 
-# include("drilling-model/flow2.jl")
-# include("drilling-model/extend.jl")
-# include("drilling-model/cost.jl")
-# include("drilling-model/revenue.jl")
-#
-# include("drilling-model/tempvars.jl")
+include("drilling-model/reward-functions.jl")
+include("drilling-model/extend.jl")
+include("drilling-model/cost.jl")
+include("drilling-model/revenue.jl")
+
+include("drilling-model/tempvars.jl")
 
 # likelihoods
 include("likelihood/royalty.jl")
