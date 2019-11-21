@@ -120,8 +120,8 @@ Observation(d::AbstractDataDrill, i, r::AbstractRegimeType, j, t) = Observation(
 ichars(obs::ObservationDrill) = obs.ichars
 zchars(obs::ObservationDrill) = obs.z
 
-@deprecate action(obs::ObservationDrill) _y(obs)
-@deprecate state(obs::ObservationDrill) _x(obs)
+# @deprecate action(obs::ObservationDrill) _y(obs)
+# @deprecate state(obs::ObservationDrill) _x(obs)
 
 # API for DataDrill
 #------------------------------------------
@@ -297,15 +297,15 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
     end
 end
 
-ExogTimeVarsSample(m::AbstractDrillModel, nt::Integer) = throw(error("not defined for $(m)"))
-function ExogTimeVarsSample(m::TestDrillModel, nt::Integer)
+# ExogTimeVarsSample(m::AbstractDrillModel, nt::Integer) = throw(error("not defined for $(m)"))
+function ExogTimeVarsSample(m::AbstractDrillModel, nt::Integer)
     timespan = range(Date(2003,10); step=Quarter(1), length=nt)
     timevars = [(x,) for x in randn(nt)]
     return ExogTimeVars(timevars, timespan)
 end
 
-ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
-function ichars_sample(m::TestDrillModel, num_i)
+# ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
+function ichars_sample(m::AbstractDrillModel, num_i)
     [(x,) for x in sample(0:1, num_i)]
 end
 

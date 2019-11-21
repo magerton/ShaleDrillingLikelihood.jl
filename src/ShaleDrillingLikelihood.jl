@@ -52,6 +52,8 @@ abstract type AbstractDrillModel      <: AbstractModel end
 abstract type AbstractProductionModel <: AbstractModel end
 abstract type AbstractRoyaltyModel    <: AbstractModel end
 
+abstract type AbstractModelVariations end
+
 
 # to get a scalar one or zero
 aone(x) = one(eltype(x))
@@ -73,8 +75,6 @@ end
 include("threadutils.jl")
 include("sum-functions.jl")
 
-# drilling model
-include("drilling-model/models.jl")
 
 # data structures
 include("data/abstract.jl")
@@ -86,14 +86,19 @@ include("likelihood/drilling-tmpvars.jl")
 include("data/drilling.jl")
 include("data/overall.jl")
 
-# flow for drilling
-include("drilling-model/flow.jl")
+# drilling model
+include("drilling-model/TestDrill.jl")
+include("drilling-model/state-space.jl")
+include("drilling-model/models.jl")
 include("drilling-model/constants.jl")
+include("drilling-model/flow.jl")
 
-include("drilling-model/flow2.jl")
-include("drilling-model/extend.jl")
-include("drilling-model/cost.jl")
-include("drilling-model/revenue.jl")
+# include("drilling-model/flow2.jl")
+# include("drilling-model/extend.jl")
+# include("drilling-model/cost.jl")
+# include("drilling-model/revenue.jl")
+#
+# include("drilling-model/tempvars.jl")
 
 # likelihoods
 include("likelihood/royalty.jl")

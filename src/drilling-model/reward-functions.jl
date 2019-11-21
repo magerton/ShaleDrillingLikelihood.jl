@@ -1,37 +1,4 @@
 export flow, dflow!, flowdσ, flowdψ,
-    STARTING_α_ψ, STARTING_log_ogip, STARTING_α_t,
-    AbstractPayoffFunction,
-    AbstractPayoffComponent,
-    AbstractDrillingCost,
-    AbstractExtensionCost,
-    AbstractStaticPayoffs,
-
-    StaticDrillingPayoff
-
-
-"Abstract type for payoff components"
-abstract type AbstractPayoffComponent end
-
-# payoff components
-abstract type AbstractDrillingRevenue <: AbstractPayoffComponent end
-abstract type AbstractDrillingCost    <: AbstractPayoffComponent end
-abstract type AbstractExtensionCost   <: AbstractPayoffComponent end
-
-"Basic Drilling model"
-struct DrillModel{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost} <: AbstractDrillModel
-    revenue::R
-    drill::C
-    extend::E
-end
-
-const AbstractPayoffFunction = Union{AbstractPayoffComponent, DrillModel}
-
-# deprecate these....
-const StaticDrillingPayoff = DrillModel
-const AbstractStaticPayoffs = AbstractDrillModel
-
-const DrillObs = ObservationDrill{<:StaticDrillingPayoff}
-
 
 # -----------------------------------------
 # components of stuff
