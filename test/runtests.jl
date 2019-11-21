@@ -10,8 +10,8 @@ println("using $(nthreads()) threads")
 # include("data/drilling.jl")
 # include("data/overall.jl")
 
-include("drilling-model/test-flow.jl")
-include("drilling-model/drilling-flow.jl")
+# include("drilling-model/test-flow.jl")
+# include("drilling-model/drilling-flow.jl")
 
-# include("likelihood/drilling.jl")
+include("likelihood/drilling.jl")
 # include("likelihood/overall.jl")
