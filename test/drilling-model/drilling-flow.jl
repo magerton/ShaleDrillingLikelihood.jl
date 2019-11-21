@@ -4,6 +4,8 @@ using ShaleDrillingLikelihood
 using Test
 using Calculus
 
+using InteractiveUtils
+
 using Base.Iterators: product
 using ShaleDrillingLikelihood: check_coef_length,
     showtypetree,
@@ -36,7 +38,7 @@ using Calculus: finite_difference!
         DrillingCost_dgt1(),
         DrillingCost_TimeFE(2008,2012),
         DrillingCost_TimeFE(2009,2011),
-        # DrillingCost_TimeFE_rigrate(2008,2012),  # requires a different-sized state-space
+        DrillingCost_TimeFE_rigrate(2008,2012),
         DrillingRevenue(Constrained(),NoTrend(),NoTaxes()),
         DrillingRevenue(Constrained(),NoTrend(),WithTaxes()),
         DrillingRevenue(Constrained(),TimeTrend(),NoTaxes()),
@@ -56,7 +58,7 @@ using Calculus: finite_difference!
         strout = "Testing $f"
         strout = replace(strout, "ShaleDrillingLikelihood." => "")
         println(strout)
-        let z = (2.5, 2010), ichars = (4.5, 0.25)
+        let z = (2.5, 2.0, 2010), ichars = (4.5, 0.25)
 
             n = length(f)
             θ0 = rand(n)
@@ -68,14 +70,23 @@ using Calculus: finite_difference!
                 sim = SimulationDraw(u, v, 0.0)
             end
 
+            # m = TestDrillModel()
+            # (d,i) = (1,1)
+            # theta = θ0
+            # s = sim
+            # obs = ObservationDrill(m, ichars, z, d, i)
+            # g = zero(theta)
+            # @code_warntype flow(f, d, obs, theta, s)
+            # @code_warntype dflow!(f, g, d, obs, theta, s)
+
             for (d,i) in product(0:2, 1:3)
 
                 m = TestDrillModel()
                 obs = ObservationDrill(m, ichars, z, d, i)
 
                 check_flow_grad(f, d, obs, θ0, sim)
-
             end
+
         end
     end
 end

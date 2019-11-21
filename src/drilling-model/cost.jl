@@ -47,7 +47,7 @@ end
     d < 1 && return azero(θ)
     z = _z(obs)
     d == 1 && return    θ[time_idx(u,last(z))]
-    d  > 1 && return d*(θ[time_idx(u,last(z))] + last(θ) )
+    return d*(θ[time_idx(u,last(z))] + last(θ) )
 end
 @inline function dflow!(u::DrillingCost_TimeFE, grad, d, obs, θ, sim)
     z = _z(obs)
@@ -108,7 +108,7 @@ end
     tidx = time_idx(u,last(z))
     r = θ[tidx] + θ[end]*exp(z[2])
     d == 1 && return r
-    d  > 1 && return d*( r + θ[end-1])
+    return d*( r + θ[end-1])
 end
 @inline function dflow!(u::DrillingCost_TimeFE_rigrate, grad, d, obs, θ, sim)
     d == 0 && return nothing
