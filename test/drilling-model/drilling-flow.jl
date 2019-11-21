@@ -12,7 +12,9 @@ using ShaleDrillingLikelihood: check_coef_length,
     ObservationDrill,
     Observation,
     SimulationDraw,
-    check_flow_grad
+    check_flow_grad,
+    TestDrillModel,
+    _nparm
 
 using Calculus: finite_difference!
 
@@ -23,7 +25,7 @@ using Calculus: finite_difference!
         ExtensionCost_Constant()
     )
 
-    let θ = fill(0.25, length(problem)),
+    let θ = fill(0.25, _nparm(problem)),
         σ = 0.75
         check_coef_length(problem, θ)
     end
@@ -33,7 +35,7 @@ using Calculus: finite_difference!
 
     println("")
 
-    types_to_test = (
+    payoff_functions_to_test = (
         DrillingCost_constant(),
         DrillingCost_dgt1(),
         DrillingCost_TimeFE(2008,2012),
@@ -54,13 +56,13 @@ using Calculus: finite_difference!
         DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant()),
     )
 
-    for f in types_to_test
+    for f in payoff_functions_to_test
         strout = "Testing $f"
         strout = replace(strout, "ShaleDrillingLikelihood." => "")
         println(strout)
         let z = (2.5, 2.0, 2010), ichars = (4.5, 0.25)
 
-            n = length(f)
+            n = _nparm(f)
             θ0 = rand(n)
             u, v = randn(2)
 

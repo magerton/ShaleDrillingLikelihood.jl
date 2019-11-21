@@ -30,6 +30,8 @@ abstract type AbstractUnitProblem <: AbstractStateSpace end
 idx_drill(d) = OneTo(_nparm(d))
 theta_drill(d, theta) = view(theta, idx_drill(d))
 
+@deprecate length(f::AbstractPayoffFunction) _nparm(f)
+
 # -------------------------------------------
 # Generic functions
 # -------------------------------------------

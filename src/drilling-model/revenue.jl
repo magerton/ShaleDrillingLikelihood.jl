@@ -158,9 +158,9 @@ log_ogip(x::Constrained) = x.log_ogip
 # Access parameters
 # ----------------------------------------------------------------
 
-@inline length(x::DrillingRevenue{Constrained}) = 2
-@inline length(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
-@inline length(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
+@inline _nparm(x::DrillingRevenue{Constrained}) = 2
+@inline _nparm(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
+@inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
 
 @inline α_0(x::DrillingRevenue, θ) = θ[1]
 @inline _σ( x::DrillingRevenue, θ) = θ[end]

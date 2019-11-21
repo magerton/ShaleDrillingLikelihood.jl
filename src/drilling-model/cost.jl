@@ -13,7 +13,7 @@ export     AbstractDrillingCost,
 
 "Single drilling cost"
 struct DrillingCost_constant <: AbstractDrillingCost end
-@inline length(x::DrillingCost_constant) = 1
+@inline _nparm(x::DrillingCost_constant) = 1
 @inline flow(::DrillingCost_constant, d, obs, θ, sim) = d*θ[1]
 @inline function dflow!(::DrillingCost_constant, grad, d, obs, θ, sim)
     grad[1] += d
@@ -22,7 +22,7 @@ end
 
 "Drilling cost changes if `d>1`"
 struct DrillingCost_dgt1 <: AbstractDrillingCost end
-@inline length(x::DrillingCost_dgt1) = 2
+@inline _nparm(x::DrillingCost_dgt1) = 2
 @inline flow(::DrillingCost_dgt1, d, obs, θ, sim) = d*(d<=1 ? θ[1] : θ[2])
 @inline function dflow!(::DrillingCost_dgt1, grad, d, obs, θ, sim)
     grad[1+(d>1)] += d
@@ -42,7 +42,7 @@ struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE
     start::Int16
     stop::Int16
 end
-@inline length(x::DrillingCost_TimeFE) = 2 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE) = 2 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE, d, obs, θ, sim)
     d < 1 && return azero(θ)
     z = _z(obs)
@@ -66,7 +66,7 @@ struct DrillingCost_TimeFE_costdiffs <: AbstractDrillingCost_TimeFE
     start::Int16
     stop::Int16
 end
-@inline length(x::DrillingCost_TimeFE_costdiffs) = 4 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_costdiffs) = 4 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_costdiffs, d, obs, θ, sim)
     d < 1 && return azero(θ)
     z = _z(obs)
@@ -101,7 +101,7 @@ struct DrillingCost_TimeFE_rigrate <: AbstractDrillingCost_TimeFE
     start::Int16
     stop::Int16
 end
-@inline length(x::DrillingCost_TimeFE_rigrate) = 3 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_rigrate) = 3 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_rigrate, d, obs, θ, sim)
     d  < 1 && return azero(θ)
     z = _z(obs)
@@ -128,7 +128,7 @@ struct DrillingCost_TimeFE_rig_costdiffs <: AbstractDrillingCost_TimeFE
     start::Int16
     stop::Int16
 end
-@inline length(x::DrillingCost_TimeFE_rig_costdiffs) = 5 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_rig_costdiffs) = 5 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_rig_costdiffs, d, obs, θ, sim)
     d < 1 && return azero(θ)
     z = _z(obs)

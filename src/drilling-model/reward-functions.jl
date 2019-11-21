@@ -4,13 +4,13 @@ export flow, dflow!, flowdσ, flowdψ
 # components of stuff
 # -----------------------------------------
 
-const DrillModel = DynamicDrillingModel
+const DrillModel = Union{DynamicDrillingModel,DrillReward}
 
 # access components
-revenue(x::DrillModel) = x.revenue
-drill(  x::DrillModel) = x.drill
-extend( x::DrillModel) = x.extend
-cost(   x::DrillModel) = drill(x)
+revenue(x::DrillReward) = x.revenue
+drill(  x::DrillReward) = x.drill
+extend( x::DrillReward) = x.extend
+cost(   x::DrillReward) = drill(x)
 
 revenue(x::ObservationDrill) = revenue(_model(x))
 drill(  x::ObservationDrill) = drill(  _model(x))
@@ -24,18 +24,18 @@ extend( x::ObservationDrill) = extend( _model(x))
 # lengths
 # -----------------------------------------
 
-@inline lengths(x::DrillModel) = (length(revenue(x)), length(drill(x)), length(extend(x)),)
-@inline length( x::DrillModel) = sum(lengths(x))
-@inline _nparm(x::DrillModel) = length(x)
+@inline _nparms(x::DrillReward) = (_nparm(revenue(x)), _nparm(drill(x)), _nparm(extend(x)),)
+@inline _nparm( x::DrillReward) = sum(_nparms(x))
+
 @deprecate number_of_model_parms(x::DrillModel) _nparm(x)
 
 # -----------------------------------------
 # lengths
 # -----------------------------------------
 # coeficient ranges
-@inline idx_revenue(x::DrillModel) = OneTo(length(revenue(x)))
-@inline idx_cost(   x::DrillModel) = OneTo(length(drill(x)))  .+  length(revenue(x))
-@inline idx_extend( x::DrillModel) = OneTo(length(extend(x))) .+ (length(revenue(x)) + length(drill(x)))
+@inline idx_revenue(x::DrillModel) = OneTo(_nparm(revenue(x)))
+@inline idx_cost(   x::DrillModel) = OneTo(_nparm(drill(x)))  .+  _nparm(revenue(x))
+@inline idx_extend( x::DrillModel) = OneTo(_nparm(extend(x))) .+ (_nparm(revenue(x)) + _nparm(drill(x)))
 @inline theta_drill_indexes(x::DrillModel) = (idx_revenue(x), idx_cost(x), idx_extend(x),)
 
 @deprecate coef_range_revenue(x)       idx_revenue(x)
@@ -45,7 +45,7 @@ extend( x::ObservationDrill) = extend( _model(x))
 
 @deprecate flowdθ!(args...) dflow!(args...)
 
-@inline check_coef_length(x::DrillModel, θ) = (length(x) == length(θ) || throw(DimensionMismatch()))
+@inline check_coef_length(x::DrillModel, θ) = (_nparm(x) == length(θ) || throw(DimensionMismatch()))
 
 vw_revenue(x::DrillModel, theta) = view(theta, idx_revenue(x))
 vw_cost(   x::DrillModel, theta) = view(theta, idx_cost(x))
