@@ -11,10 +11,11 @@ abstract type AbstractObservation <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+"Group of observations"
 abstract type AbstractObservationGroup <: AbstractDataStructure end
 
 """
-Observation Groups are associated with an individual and shock (ψ₁,ψ₂)
+Observation Groups help us iterate through a panel
 
 Examples:
 - A vector of production from a well
