@@ -269,7 +269,7 @@ end
 
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
-    length(theta) == length(m) || throw(DimensionMismatch())
+    length(theta) == _nparm(m) || throw(DimensionMismatch())
 
     nper = length(lease)
     if nper > 0
@@ -288,7 +288,7 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
-            f(d) = flow(d,obs,theta,sim)
+            f(d) = flow(reward(m), d,obs,theta,sim)
             ubv .= f.(actionspace(obs))
             logsumexp!(ubv)
             cumsum!(ubv, ubv)

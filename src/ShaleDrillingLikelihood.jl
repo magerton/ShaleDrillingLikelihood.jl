@@ -88,11 +88,13 @@ include("data/drilling.jl")
 include("data/overall.jl")
 
 # drilling model
-include("drilling-model/models.jl")
+# ------------------------------------
+include("drilling-model/abstract-drilling-model.jl")
+include("drilling-model/test-drilling-model.jl")
+include("drilling-model/drilling-model.jl")
+
 include("drilling-model/state-space.jl")
 include("drilling-model/constants.jl")
-
-include("drilling-model/flow.jl")
 
 include("drilling-model/reward-functions.jl")
 include("drilling-model/extend.jl")
@@ -100,6 +102,8 @@ include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 
 include("drilling-model/tempvars.jl")
+
+# ------------------------------------
 
 # likelihoods
 include("likelihood/royalty.jl")

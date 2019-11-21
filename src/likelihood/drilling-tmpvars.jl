@@ -50,7 +50,7 @@ end
 @noinline function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)
     nth = nthreads()
     maxchoices = num_choices(model)
-    k = length(model)
+    k = _nparm(model)
 
     dtvs = Vector{DrillingTmpVars{T}}(undef, nth)
 

@@ -4,6 +4,8 @@ export flow, dflow!, flowdσ, flowdψ
 # components of stuff
 # -----------------------------------------
 
+const DrillModel = DynamicDrillingModel
+
 # access components
 revenue(x::DrillModel) = x.revenue
 drill(  x::DrillModel) = x.drill

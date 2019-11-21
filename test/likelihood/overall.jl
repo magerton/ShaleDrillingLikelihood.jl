@@ -20,6 +20,7 @@ using Base: OneTo
 
 using ShaleDrillingLikelihood: AbstractDataSet,
     DataRoyalty, DataProduce, DataDrill,
+    TestDrillModel,
     simloglik!,
     SimulationDraws,
     idx_drill_ρ, idx_royalty_ρ,

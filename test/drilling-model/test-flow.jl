@@ -27,7 +27,6 @@ using ShaleDrillingLikelihood: TestDrillModel,
     idx_drill_z, theta_drill_z,
     idx_drill_ρ, theta_drill_ρ,
     idx_drill_d, theta_drill_d,
-    TestObs,
     ObservationDrill,
     check_flow_grad
 
