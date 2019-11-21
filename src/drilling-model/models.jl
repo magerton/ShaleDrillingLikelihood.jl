@@ -76,8 +76,6 @@ _Dgt0(obs) = true
 _z(obs) = (1.0, 2010,)
 _ψ(obs) = 0.0
 _ψ2(obs) = 0.0
-_roy(obs) = last(_ichars(obs))
-_geoid(obs) = first(_ichars(obs))
 
 # -------------------------------------------
 # full blow dynamic model

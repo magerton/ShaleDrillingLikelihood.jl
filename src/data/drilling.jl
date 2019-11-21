@@ -104,8 +104,11 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number
 end
 
 _ichars(obs::ObservationDrill) = obs.ichars
-_z(obs::ObservationDrill) = obs.z
-
+_z(     obs::ObservationDrill) = obs.z
+geology(obs::ObservationDrill{<:AbstractDrillModel,NTuple{2,Real}}) = first(_ichars(obs))
+royalty(obs::ObservationDrill{<:AbstractDrillModel,NTuple{2,Real}}) = last(_ichars(obs))
+@deprecate _roy(  obs::ObservationDrill) geology(obs)
+@deprecate _geoid(obs::ObservationDrill) royalty(obs)
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
@@ -131,7 +134,6 @@ hasj1ptr(   j1ptr::Vector{Int}) = length(j1ptr) > 0
 maxj1length(j1ptr::Vector{Int}) = hasj1ptr(j1ptr) ? maximum( diff(j1ptr) ) : 1
 
 # access DataDrill fields
-_model(  d::DataDrill) = d.model
 j1ptr(   d::DataDrill) = d.j1ptr
 j2ptr(   d::DataDrill) = d.j2ptr
 tptr(    d::DataDrill) = d.tptr
