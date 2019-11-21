@@ -92,11 +92,11 @@ flow(d, obs::TestObs, theta, s) = flow(_model(obs), d, obs, theta, s)
 function dflow!(::TestDrillModel, grad, d, obs, theta, s)
     m, x, z = _model(obs), _x(obs), zchars(obs)
 
-    grad[idx_drill_ψ(m)] += d*_ψ(m,x,s)
-    grad[idx_drill_x(m)] += d*x
-    grad[idx_drill_z(m)] += d*first(z)
-    grad[idx_drill_d(m)] += d
-    grad[idx_drill_ρ(m)] += d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s)
+    grad[idx_drill_ψ(m)]  += d*_ψ(m,x,s)
+    grad[idx_drill_x(m)]  += d*x
+    grad[idx_drill_z(m)]  += d*first(z)
+    grad[idx_drill_d(m)]  += d
+    grad[idx_drill_ρ(m)]  += d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s)
     return nothing
 end
 
