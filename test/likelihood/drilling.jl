@@ -60,6 +60,11 @@ println("testing drilling likelihood")
     hess = zeros(length(theta),length(theta))
     dtv = DrillingTmpVars(data)
 
+    # fill!(grad, 0)
+    # update_theta!(DrillingTmpVars(data), theta)
+    # update!(sim, theta_drill_ρ(_model(data), theta))
+    # @code_warntype simloglik_drill_unit!(grad, data[1], theta, view(sim, 1), true)
+    # simloglik_drill_unit!(grad, data[3], theta, view(sim, 3), false)
     LL1 = simloglik_drill_data!(grad, hess, data, theta, sim, true)
     LL2 = simloglik_drill_data!(grad, hess, data, theta, sim, false)
     @test isfinite(LL1)
@@ -77,8 +82,8 @@ println("testing drilling likelihood")
     #     lease = unit[InitialDrilling()][1]
     #     simi = view(sim, 1)
     #     update_theta!(dtv, theta)
-    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], true)
-    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], true)
+    #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[threadid()], true)
+    #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[threadid()], true)
     #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, true)
     # end
 

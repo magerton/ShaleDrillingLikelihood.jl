@@ -30,9 +30,9 @@ using ShaleDrillingLikelihood: AbstractDataSet,
 println("testing overall likelihood")
 
 @testset "Testing Joint Likelihoods" begin
-    num_i = 500
+    num_i = 1_200
     L = 3
-    M = 500
+    M = 1_000
     u = randn(num_i)
     v = randn(num_i)
     psi2 = u

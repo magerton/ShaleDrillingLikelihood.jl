@@ -103,6 +103,10 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number
     x::XT
 end
 
+_ichars(obs::ObservationDrill) = obs.ichars
+_z(obs::ObservationDrill) = obs.z
+
+
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
     j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())

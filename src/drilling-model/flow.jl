@@ -37,32 +37,29 @@ end
 # Check Derivatives
 #-------------------------------------------------------------
 
-function check_flow_grad(m::AbstractDrillModel, d::Integer, obs::ObservationDrill, theta::AbstractVector)
 
-    u, v = rand(2)
 
-    # set up simulations
-    simdraw(x) = SimulationDraw(u, v, theta_drill_ρ(m, x))
-    sim = simdraw(theta)
+function check_flow_grad(m, d, obs, theta, sim)
 
     # compute analytic
-    grad = similar(theta)
-    dflow!(grad, d, obs, theta, sim)
+    grad = zero(theta)
+    dflow!(m, grad, d, obs, theta, sim)
 
     # check finite difference for dθ
-    f(x) = flow(d, obs, x, simdraw(x))
-    grad ≈ Calculus.gradient(f, theta) || return false
+    f(x) = flow(m, d, obs, x, sim)
+    @test grad ≈ Calculus.gradient(f, theta)
 
     # check finite difference for dψ
-    fdpsi(x) = flow(d, obs, theta, SimulationDrawFD(sim, x))
-    dflowdψ(d, obs, theta, sim) ≈ Calculus.derivative(fdpsi, 0.0) || return false
-
-    return true
+    fdpsi(x) = flow(m, d, obs, theta, SimulationDrawFD(sim, x))
+    @test flowdψ(m, d, obs, theta, sim) ≈ Calculus.derivative(fdpsi, 0.0)
 end
 
-
-
-
+function check_flow_grad(m, d, obs, theta)
+    u, v = randn(2)
+    simdraw(x) = SimulationDraw(u, v, theta_drill_ρ(m, x))
+    sim = simdraw(theta)
+    check_flow_grad(m,d,obs,theta,sim)
+end
 
 
 # FOR TESTING ONLY
@@ -77,8 +74,9 @@ idx_drill_ρ(m::Union{TestDrillModel,DataDrill{<:TestDrillModel}}) = 5
 
 full_payoff(             d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = flow(d,obs,theta,s)
 dfull_payoff(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw) = dflow(k,d,obs,theta,s)
+dfull_payoff!(grad, d, obs::TestObs, theta, sim) = dflow!(grad, d, obs, theta, sim)
 
-function flow(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
+function flow(::TestDrillModel, d, obs, theta, s)
     check_model_dims(d,obs,theta)
     m, x, z = _model(obs), _x(obs), zchars(obs)
     return d*(
@@ -89,36 +87,34 @@ function flow(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationD
     )
 end
 
-function dflow(k::Integer, d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
-    # 1 <= k <= length(theta) || throw(BoundsError(theta,k))
-    # check_model_dims(d,obs,theta)
+flow(d, obs::TestObs, theta, s) = flow(_model(obs), d, obs, theta, s)
 
+function dflow!(::TestDrillModel, grad, d, obs, theta, s)
     m, x, z = _model(obs), _x(obs), zchars(obs)
-    k == idx_drill_ψ(m) && return T(d*_ψ(m,x,s))
-    k == idx_drill_x(m) && return T(d*x)
-    k == idx_drill_z(m) && return T(d*first(z))
-    k == idx_drill_d(m) && return T(d)
-    k == idx_drill_ρ(m) && return T(d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s))
 
-    throw(BoundsError(theta,k)) # prevents returning Union{Bool,T}
+    grad[idx_drill_ψ(m)]  += d*_ψ(m,x,s)
+    grad[idx_drill_x(m)]  += d*x
+    grad[idx_drill_z(m)]  += d*first(z)
+    grad[idx_drill_d(m)]  += d
+    grad[idx_drill_ρ(m)]  += d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s)
+    return nothing
 end
 
-function dflow!(grad::AbstractVector, d, obs, theta, s)
-    @fastmath @inbounds @simd for k in OneTo(length(grad))
-        grad[k] = dflow(k, d, obs, theta, s)
-    end
+dflow!(grad, d, obs::TestObs, theta, s) = dflow!(_model(obs), grad, d, obs, theta, s)
+
+function dflow(x::TestDrillModel, d, obs, theta, s)
+    grad = zero(theta)
+    dflow!(x, grad, d, obs, theta, s)
+    return grad
 end
 
-function dflowdψ(d::Integer, obs::TestObs, theta::AbstractVector{T}, s::SimulationDraw) where {T}
-    check_model_dims(d,obs,theta)
+dflow(d, obs::TestObs, theta, s) = dflow(_model(obs), d, obs, theta, s)
+
+function flowdψ(x::TestDrillModel, d, obs, theta, s)
+    T = eltype(theta)
     m, x, z = _model(obs), _x(obs), zchars(obs)
-    return T(d*theta_drill_ψ(m,theta))
+    u = d*theta_drill_ψ(m,theta)
+    return u::T
 end
 
-function dflowdθρ(d::Integer, obs::TestObs, theta::AbstractVector, s::SimulationDraw)
-    m = _model(obs)
-    k = idx_drill_ρ(m)
-    return dflow(k, d, obs, theta, s)
-end
-
-@deprecate flowdσ(d,obs,theta,psis) dflowdθρ(d,obs,theta,psis)
+@deprecate dflowdψ(args...) flowdψ(args...)

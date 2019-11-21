@@ -8,6 +8,7 @@ using Halton
 using Dates
 using Calculus
 using Distributions
+using Test
 
 using LoopVectorization
 
@@ -24,6 +25,7 @@ using Base.Iterators: flatten
 using Dates: Month
 using LinearAlgebra: checksquare
 
+using InteractiveUtils: subtypes
 
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
@@ -47,6 +49,20 @@ abstract type AbstractProductionModel <: AbstractModel end
 abstract type AbstractRoyaltyModel    <: AbstractModel end
 
 
+# to get a scalar one or zero
+aone(x) = one(eltype(x))
+azero(x) = zero(eltype(x))
+
+
+
+function showtypetree(T, level=0)
+    println("\t" ^ level, T)
+    for t in subtypes(T)
+        showtypetree(t, level+1)
+   end
+end
+
+
 # Overall structure
 #----------------------------
 
@@ -68,6 +84,12 @@ include("data/overall.jl")
 
 # flow for drilling
 include("drilling-model/flow.jl")
+include("drilling-model/constants.jl")
+
+include("drilling-model/flow2.jl")
+include("drilling-model/extend.jl")
+include("drilling-model/cost.jl")
+include("drilling-model/revenue.jl")
 
 # likelihoods
 include("likelihood/royalty.jl")
