@@ -168,7 +168,7 @@ end
 
 @deprecate update_dψ1dρ!(dψ1dρ, u, v, θρ) update_dψ1dθρ!(dψ1dρ, u, v, θρ)
 
-update_ψ1!(    s::SimulationDraws, θρ)    = update_ψ1!(   _ψ1(s),    _u(s), _v(s), θρ)
+update_ψ1!(    s::SimulationDraws, θρ) = update_ψ1!(     _ψ1(s),    _u(s), _v(s), θρ)
 update_dψ1dθρ!(s::SimulationDraws, θρ) = update_dψ1dθρ!(_dψ1dθρ(s), _u(s), _v(s), θρ)
 
 function update!(sim::SimulationDraws,θρ::Real)
