@@ -143,11 +143,11 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
 
-@deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
-@deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
-@deprecate log_ogip(x::DrillingRevenue, θ) theta_g(x, θ)
-@deprecate α_ψ(     x::DrillingRevenue, θ) theta_ψ(x, θ)
-@deprecate α_t(     x::DrillingRevenue, θ) theta_t(x, θ)
+# @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
+# @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
+# @deprecate log_ogip(x::DrillingRevenue, θ) theta_g(x, θ)
+# @deprecate α_ψ(     x::DrillingRevenue, θ) theta_ψ(x, θ)
+# @deprecate α_t(     x::DrillingRevenue, θ) theta_t(x, θ)
 
 # taxes
 # -----------------------
@@ -289,50 +289,61 @@ end
 # ------------------------------
 
 @inline function dflow!(x::DrillingRevenue{Unconstrained, NoTrend}, grad, d, obs, θ, sim)
-    d == 0 && return nothing
+    d == 0 && return azero(θ)
     rev = flow(x, d, obs, θ, sim)
+    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
+
     grad[idx_0(x)] += rev
     grad[idx_g(x)] += rev*geology(obs)
     grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
     grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
-    return nothing
+    return rev
 end
 
 @inline function dflow!(x::DrillingRevenue{Unconstrained, TimeTrend}, grad, d, obs, θ, sim)
-    d == 0 && return nothing
+    d == 0 && return azero(θ)
     z = _z(obs)
     rev = flow(x, d, obs, θ, sim)
+    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
+
     grad[idx_0(x)] += rev
     grad[idx_g(x)] += rev*geology(obs)
     grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
     grad[idx_t(x)] += rev*centered_time(x, z)
     grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
-    return nothing
+    return rev
 end
 
 # Constrained gradient
 # ------------------------------
 
 @inline function dflow!(x::DrillingRevenue{Constrained}, grad, d, obs, θ, sim)
-    d == 0 && return nothing
+    d == 0 && return azero(θ)
     rev = flow(x, d, obs, θ, sim)
+    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
+
     grad[idx_0(x)] += rev
     grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
-    return nothing
+    return rev
 end
 
 # ----------------------------------------------------------------
 # dψ is the same across many functions
 # ----------------------------------------------------------------
 
-@inline function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
-    d == 0 && return azero(θ)
-    dψ = flow(x, d, obs, θ, sim) * theta_ψ(x,θ)
+@inline function flowdψ(rev::Real, x::DrillingRevenue, d, obs, θ, sim)
+    dψ = rev * theta_ψ(x,θ)
     if _Dgt0(obs)
         return dψ
     else
         return dψ * _ρ(x,theta_ρ(x,θ))
     end
+end
+
+@inline function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
+    d == 0 && return azero(θ)
+    rev = flow(x, d, obs, θ, sim)
+    return flowdψ(rev, x, d, obs, θ, sim)
 end
 
 

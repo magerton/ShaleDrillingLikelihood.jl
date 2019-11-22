@@ -32,7 +32,7 @@ abstract type AbstractUnitProblem <: AbstractStateSpace end
 idx_drill(d) = OneTo(_nparm(d))
 theta_drill(d, theta) = view(theta, idx_drill(d))
 
-@deprecate length(f::AbstractPayoffFunction) _nparm(f)
+# @deprecate length(f::AbstractPayoffFunction) _nparm(f)
 
 _nparm(m::AbstractDrillModel) = _nparm(reward(m))
 
@@ -72,6 +72,7 @@ statespace(m::AbstractDrillModel) = NotDefinedError(m)
 @inline _Dgt0(obs::ObservationDrill) = _Dgt0(statespace(obs), _x(obs))
 @inline _d(   obs::ObservationDrill) = _y(obs)
 
+@inline _ψ(    obs::ObservationDrill, ψ::Float64) = ψ
 @inline _ψ(    obs::ObservationDrill, s::SimulationDraw) = _ψ(_model(obs), _x(obs), s)
 @inline _dψdθρ(obs::ObservationDrill, s::SimulationDraw) = _dψdθρ(_model(obs), _x(obs), s)
 
@@ -79,11 +80,16 @@ statespace(m::AbstractDrillModel) = NotDefinedError(m)
 # Payoffs...
 # -------------------------------------------
 
-flow(        d, obs, theta, s) = flow(  reward(_model(obs)),       d, obs, theta, s)
-dflow!(grad, d, obs, theta, s) = dflow!(reward(_model(obs)), grad, d, obs, theta, s)
-flowdψ(grad, d, obs, theta, s) = flowdψ(reward(_model(obs)), grad, d, obs, theta, s)
+@inline flow(        d, obs, theta, s) = flow(  reward(_model(obs)),           d,   obs, theta, s)
+@inline dflow!(grad, d, obs, theta, s) = dflow!(reward(_model(obs)), grad,     d,   obs, theta, s)
+@inline flowdψ(grad, d, obs, theta, s) = flowdψ(reward(_model(obs)), grad,     d,   obs, theta, s)
+@inline flow(           obs, theta, s) = flow(  reward(_model(obs)),       _y(obs), obs, theta, s)
+@inline dflow!(grad,    obs, theta, s) = dflow!(reward(_model(obs)), grad, _y(obs), obs, theta, s)
+@inline flowdψ(grad,    obs, theta, s) = flowdψ(reward(_model(obs)), grad, _y(obs), obs, theta, s)
 
-@deprecate dflowdψ(args...) flowdψ(args...)
+
+
+# @deprecate dflowdψ(args...) flowdψ(args...)
 
 function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
     length(theta) == _nparm(x) || throw(DimensionMismatch())
@@ -129,4 +135,4 @@ end
 
 
 
-@deprecate flow(x::AbstractDrillModel) reward(x)
+# @deprecate flow(x::AbstractDrillModel) reward(x)

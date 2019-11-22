@@ -120,8 +120,8 @@ _psi1( s::SimulationDrawOrDraws) = _ψ1(s)
 _psi2( s::SimulationDrawOrDraws) = _ψ2(s)
 _llm(  s::SimulationDrawOrDraws) = _qm(s)
 
-@deprecate _LLm(s::SimulationDrawOrDraws) _llm(s)
-@deprecate _dψ1dρ(s::SimulationDrawOrDraws) _dψ1dθρ(s)
+# @deprecate _LLm(s::SimulationDrawOrDraws) _llm(s)
+# @deprecate _dψ1dρ(s::SimulationDrawOrDraws) _dψ1dθρ(s)
 
 _num_sim(s::SimulationDraws) = size(_u(s),1)
 
@@ -167,8 +167,6 @@ function update_dψ1dθρ!(dψ1dθρ::A, u::A, v::A, θρ::Real) where {A<:Abstr
     dψ1dθρ .= _dψ1dθρ.(u,v,ρ,θρ)
     return nothing
 end
-
-@deprecate update_dψ1dρ!(dψ1dρ, u, v, θρ) update_dψ1dθρ!(dψ1dρ, u, v, θρ)
 
 update_ψ1!(    s::SimulationDraws, θρ) = update_ψ1!(     _ψ1(s),    _u(s), _v(s), θρ)
 update_dψ1dθρ!(s::SimulationDraws, θρ) = update_dψ1dθρ!(_dψ1dθρ(s), _u(s), _v(s), θρ)

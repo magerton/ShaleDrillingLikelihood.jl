@@ -34,14 +34,6 @@ anticipate_t1ev(x::DynamicDrillingModel) = x.anticipate_t1ev
 # components of stuff
 # -----------------------------------------
 
-const DrillModel = Union{DynamicDrillingModel,DrillReward}
-
-# access components
-revenue(x::DrillReward) = x.revenue
-drill(  x::DrillReward) = x.drill
-extend( x::DrillReward) = x.extend
-cost(   x::DrillReward) = drill(x)
-
 # @deprecate revenue(x::ObservationDrill) revenue(_model(x))
 # @deprecate drill(  x::ObservationDrill) drill(  _model(x))
 # @deprecate extend( x::ObservationDrill) extend( _model(x))
@@ -79,6 +71,16 @@ function fill!(x::DCDPEmax, y)
 end
 
 const dcdp_Emax = DCDPEmax
+
+function DCDPEmax(ddm::DynamicDrillingModel{T}) where {T}
+    nz = size(ztransition(ddm), 1)
+    nS = length(statespace(ddm))
+    nψ = length(psispace(ddm))
+    nK = _nparm(reward(ddm))
+    ev = Array{T,3}(undef, nz, nψ, nS)
+    dev = Array{T,4}(undef, nK, nz, nψ, nS)
+    return DCDPEmax(ev, dev)
+end
 
 # EmaxArrays::DCDPEmax{T}
 # tmpvars::DCDPTmpVars{T, AM, Array{T,3}, Array{T,4}}
@@ -161,6 +163,14 @@ function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T
     return DCDPTmpVars(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
 end
 
+function DCDPTmpVars(x::DynamicDrillingModel)
+    piz = ztransition(x)
+    nθt = length(reward(x))
+    nz = size(piz, 1)
+    nψ = length(psispace(x))
+    nd = num_choices(statespace(x))
+    DCDPTmpVars(nθt, nz, nψ, nd, ztransition)
+end
 
 function view(t::DCDPTmpVars, idxd::AbstractVector)
     first(idxd) == 1 || throw(DomainError())
@@ -169,4 +179,30 @@ function view(t::DCDPTmpVars, idxd::AbstractVector)
     @views dubV = view(_dubVfull(t),:,:,:,idxd)
     @views q    = view(_q(t), :,:,idxd)
     return dcdp_tmpvars(ubV, dubV, q, _lse(t), _tmp(t), _tmp_cart(t), _Πψtmp(t), _IminusTEVp(t))
+end
+
+
+# --------------------------------------------------------
+# Fill reward matrices
+# --------------------------------------------------------
+
+function flow!(tmpv, ddm, θ, sidx, ichars, dograd)
+    zψpdct = product(product(zspace(ddm)), psispace(ddm))
+
+    model = _model(ddm)
+    k = _nparm(reward(model))
+    nc = num_choices(statespace(ddm))
+
+    dubv = reshape(_dubVfull(tmpv), k, :, nc)
+    ubv  = reshape( _ubVfull(tmpv),    :, nc)
+
+    @threads for dp1 in dp1space(statespace(ddm), sidx)
+
+        @inbounds for (i, (z,ψ)) in zψpdct
+            obs = ObservationDrill(model, ichars, z, dp1-1, sidx)
+            grad = view(dubvvw, :, i, dp1)
+            ubv[i,dp1] = flow!(grad, obs, θ, ψ, dograd)
+        end
+        
+    end
 end

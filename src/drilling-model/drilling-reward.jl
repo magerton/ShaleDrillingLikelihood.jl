@@ -5,6 +5,12 @@ struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstrac
     extend::E
 end
 
+# access components
+revenue(x::DrillReward) = x.revenue
+drill(  x::DrillReward) = x.drill
+extend( x::DrillReward) = x.extend
+cost(   x::DrillReward) = drill(x)
+
 # -----------------------------------------
 # lengths
 # -----------------------------------------
@@ -36,23 +42,27 @@ vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
 end
 
 @inline function dflow!(x::DrillReward, grad, d, obs, θ, sim)
+    T = eltype(θ)
     if d == 0
-        dflow!(extend( x), vw_extend( x, grad), d, obs, vw_extend( x, θ), sim)
+        u = dflow!(extend( x), vw_extend( x, grad), d, obs, vw_extend( x, θ), sim)
     else
-        dflow!(cost(   x), vw_cost(   x, grad), d, obs, vw_cost(   x, θ), sim)
-        dflow!(revenue(x), vw_revenue(x, grad), d, obs, vw_revenue(x, θ), sim)
+        c = dflow!(cost(   x), vw_cost(   x, grad), d, obs, vw_cost(   x, θ), sim)
+        r = dflow!(revenue(x), vw_revenue(x, grad), d, obs, vw_revenue(x, θ), sim)
+        u = r+c
     end
-    return nothing
+    return u::T
 end
 
 @inline function flowdψ(x::DrillReward, d, obs, theta, sim)
+    T = eltype(θ)
     if d == 0
-        return flowdψ(extend(x), d, obs, vw_extend(x,theta), sim)
+        u = flowdψ(extend(x), d, obs, vw_extend(x,theta), sim)
     else
         c = flowdψ(cost(x),    d, obs, vw_cost(x,theta), sim)
         r = flowdψ(revenue(x), d, obs, vw_revenue(x,theta), sim)
-        return r+c
+        u = r+c
     end
+    return u::T
 end
 
 # -----------------------------------------
