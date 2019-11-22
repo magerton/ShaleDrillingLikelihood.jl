@@ -89,17 +89,19 @@ include("data/overall.jl")
 
 # drilling model
 # ------------------------------------
-include("drilling-model/abstract-drilling-model.jl")
-include("drilling-model/test-drilling-model.jl")
-include("drilling-model/drilling-model.jl")
+include("drilling-model/abstract.jl")
+include("drilling-model/test-reward-and-model.jl")
 
 include("drilling-model/state-space.jl")
 
-include("drilling-model/reward-functions.jl")
+# reward function and components
+include("drilling-model/drilling-reward.jl")
 include("drilling-model/extend.jl")
 include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 
+# dynamic model
+include("drilling-model/dynamic-drilling-model.jl")
 include("drilling-model/tempvars.jl")
 
 # ------------------------------------

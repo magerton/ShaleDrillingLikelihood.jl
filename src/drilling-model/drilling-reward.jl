@@ -1,16 +1,24 @@
-export flow, dflow!, flowdσ, flowdψ
+"Reward function for basic drilling model"
+struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost} <: AbstractStaticPayoff
+    revenue::R
+    drill::C
+    extend::E
+end
 
-# -----------------------------------------
-# components of stuff
-# -----------------------------------------
+# -------------------------------------------
+# some functions to look at stuff
+# -------------------------------------------
 
-const DrillModel = Union{DynamicDrillingModel,DrillReward}
+_sgnext(wp,i) = true
+_sgnext(wp, i, d) = true
+_sgnext(obs) = _y(obs) == 0
 
-# access components
-revenue(x::DrillReward) = x.revenue
-drill(  x::DrillReward) = x.drill
-extend( x::DrillReward) = x.extend
-cost(   x::DrillReward) = drill(x)
+_d(obs) = _y(obs)
+_Dgt0(obs) = true
+
+_z(obs) = (1.0, 2010,)
+_ψ(obs) = 0.0
+_ψ2(obs) = 0.0
 
 # -----------------------------------------
 # lengths
@@ -22,10 +30,6 @@ cost(   x::DrillReward) = drill(x)
 @inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x)))
 @inline idx_cost(   x::DrillReward) = OneTo(_nparm(drill(x)))  .+  _nparm(revenue(x))
 @inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x))) .+ (_nparm(revenue(x)) + _nparm(drill(x)))
-
-@inline theta_drill_indexes(x::DrillReward) = (idx_revenue(x), idx_cost(x), idx_extend(x),)
-
-@inline check_coef_length(x::DrillReward, θ) = (_nparm(x) == length(θ) || throw(DimensionMismatch()))
 
 vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
 vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
@@ -66,25 +70,15 @@ end
     end
 end
 
-
-
-
-@deprecate revenue(x::ObservationDrill) revenue(_model(x))
-@deprecate drill(  x::ObservationDrill) drill(  _model(x))
-@deprecate extend( x::ObservationDrill) extend( _model(x))
-
-@deprecate extensioncost(x::DrillModel) extend(x)
-@deprecate drillingcost( x::DrillModel) drill(x)
+# -----------------------------------------
+# deprecate
+# -----------------------------------------
 
 @deprecate number_of_model_parms(x::DrillReward) _nparm(x)
-
 @deprecate coef_range_revenue(x)       idx_revenue(x)
 @deprecate coef_range_drillingcost(x)  idx_cost(x)
 @deprecate coef_range_extensioncost(x) idx_extend(x)
-@deprecate coef_ranges(x)              theta_drill_indexes(x)
-
 @deprecate flowdθ!(args...) dflow!(args...)
-
 @deprecate theta_revenue(x::DrillReward, theta) vw_revenue(x, theta)
 @deprecate theta_cost(   x::DrillReward, theta) vw_cost(   x, theta)
 @deprecate theta_extend( x::DrillReward, theta) vw_extend( x, theta)

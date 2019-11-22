@@ -6,7 +6,9 @@ export AbstractPayoffFunction,
     AbstractExtensionCost,
     AbstractStaticPayoff,
     DrillReward,
-    DynamicDrillingModel
+    DynamicDrillingModel,
+    flow, dflow!, flowdψ
+
 
 # -------------------------------------------
 # abstract types

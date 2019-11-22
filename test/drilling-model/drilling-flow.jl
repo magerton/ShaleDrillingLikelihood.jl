@@ -7,8 +7,7 @@ using Calculus
 using InteractiveUtils
 
 using Base.Iterators: product
-using ShaleDrillingLikelihood: check_coef_length,
-    showtypetree,
+using ShaleDrillingLikelihood: showtypetree,
     ObservationDrill,
     Observation,
     SimulationDraw,
@@ -24,11 +23,6 @@ using Calculus: finite_difference!
         DrillingCost_constant(),
         ExtensionCost_Constant()
     )
-
-    let θ = fill(0.25, _nparm(problem)),
-        σ = 0.75
-        check_coef_length(problem, θ)
-    end
 
     showtypetree(AbstractPayoffFunction)
     @test true == true

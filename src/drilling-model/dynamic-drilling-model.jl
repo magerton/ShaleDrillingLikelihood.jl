@@ -1,33 +1,3 @@
-# -------------------------------------------
-# Actual dynamic model
-# -------------------------------------------
-
-"Basic Drilling model"
-struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost} <: AbstractStaticPayoff
-    revenue::R
-    drill::C
-    extend::E
-end
-
-# -------------------------------------------
-# some functions to look at stuff
-# -------------------------------------------
-
-_sgnext(wp,i) = true
-_sgnext(wp, i, d) = true
-_sgnext(obs) = _y(obs) == 0
-
-_d(obs) = _y(obs)
-_Dgt0(obs) = true
-
-_z(obs) = (1.0, 2010,)
-_ψ(obs) = 0.0
-_ψ2(obs) = 0.0
-
-# -------------------------------------------
-# full blow dynamic model
-# -------------------------------------------
-
 "Full-blown Dynamic discrete choice model"
 struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, TT<:Tuple, AM<:AbstractMatrix{T}, AR<:StepRangeLen{T}}
     reward::PF            # payoff function
@@ -59,6 +29,24 @@ zspace(         x::DynamicDrillingModel) = x.zspace
 ztransition(    x::DynamicDrillingModel) = x.ztransition
 psispace(       x::DynamicDrillingModel) = x.psispace
 anticipate_t1ev(x::DynamicDrillingModel) = x.anticipate_t1ev
+
+# -----------------------------------------
+# components of stuff
+# -----------------------------------------
+
+const DrillModel = Union{DynamicDrillingModel,DrillReward}
+
+# access components
+revenue(x::DrillReward) = x.revenue
+drill(  x::DrillReward) = x.drill
+extend( x::DrillReward) = x.extend
+cost(   x::DrillReward) = drill(x)
+
+@deprecate revenue(x::ObservationDrill) revenue(_model(x))
+@deprecate drill(  x::ObservationDrill) drill(  _model(x))
+@deprecate extend( x::ObservationDrill) extend( _model(x))
+@deprecate extensioncost(x::DrillModel) extend(x)
+@deprecate drillingcost( x::DrillModel) drill(x)
 
 @deprecate flow(x::DynamicDrillingModel)          reward(x)
 @deprecate β(x::DynamicDrillingModel)             discount(x)
