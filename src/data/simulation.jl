@@ -42,6 +42,8 @@ struct SimulationDraw{T,V<:AbstractVector{T}}
     drillgradm::V
 end
 
+eltype(::SimulationDraw{T}) where {T} = T
+
 function SimulationDraw(u::Real, v::Real, θρ::T) where {T}
     ρ = _ρ(θρ)
     return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), Vector{T}(undef,0))
@@ -96,7 +98,7 @@ function SimulationDraws(M::Integer, N::Integer, K::Integer=0; bases::NTuple{2,I
 end
 
 function SimulationDraws(M, data::AbstractDataSet; kwargs...)
-    return SimulationDraws(M, length(data), length(_model(data)); kwargs...)
+    return SimulationDraws(M, length(data), _nparm(_model(data)); kwargs...)
 end
 
 # interface

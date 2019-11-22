@@ -146,7 +146,7 @@ DrillingTmpVars(data) = DrillingTmpVars(_data(data))
 hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
-_nparm(     d::AbstractDataDrill) = length(_model(d))
+_nparm(     d::AbstractDataDrill) = _nparm(_model(d))
 
 # getindex in fields of AbstractDataDrill
 ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
@@ -354,7 +354,7 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
 
     # update leases
     for (i,unit) in enumerate(data)
-        sim = SimulationDraw(u[i], v[i], theta_drill_ρ(m,theta))
+        sim = SimulationDraw(u[i], v[i], theta_drill_ρ(reward(m),theta))
         for regimes in unit
             for lease in regimes
                 simulate_lease(lease, theta, sim)

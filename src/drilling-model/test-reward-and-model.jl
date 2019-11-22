@@ -1,7 +1,3 @@
-# -------------------------------------------
-# Test model
-# -------------------------------------------
-
 "Static discrete choice model to test likelihood"
 struct TestDrillModel  <: AbstractDrillModel end
 struct TestDrillReward <: AbstractStaticPayoff end
@@ -13,9 +9,8 @@ const TestDrillModelOrRewardOrData = Union{TestDrillModel,TestDrillReward,DataDr
 reward(    m::TestDrillModel) = TestDrillReward()
 statespace(m::TestDrillModel) = TestStateSpace()
 
-length(m::Union{TestDrillModel,TestDrillReward}) = _nparm(m)
-
 _nparm(     m::TestDrillModelOrRewardOrData) = 5
+
 idx_drill_ψ(m::TestDrillModelOrRewardOrData) = 1
 idx_drill_x(m::TestDrillModelOrRewardOrData) = 2
 idx_drill_z(m::TestDrillModelOrRewardOrData) = 3
@@ -29,11 +24,13 @@ theta_drill_ρ(d, theta) = theta[idx_drill_ρ(d)]
 theta_drill_d(d, theta) = theta[idx_drill_d(d)]
 
 # Number of parameters
-num_choices(  m::TestStateSpace, args...) = 3
-actionspace(  m::TestStateSpace, args...) = 0:2
-Dgt0(         m::TestStateSpace, state) = state >= 0
-next_state(   m::TestStateSpace, state, d::Integer) = state + d
+num_choices(  m::TestStateSpace, i...) = 3
+actionspace(  m::TestStateSpace, i...) = 0:2
+_Dgt0(        m::TestStateSpace, i) = i >= 0
+next_state(   m::TestStateSpace, i, d) = state + d
 initial_state(m::TestStateSpace) = 1
+_sgnext(      m::TestStateSpace, i) = i > 1
+_sgnext(      m::TestStateSpace, i, d) = _sgnext(m,i) && d == 0
 
 
 function check_model_dims(d, obs::ObservationDrill{TestDrillModel}, theta)
@@ -48,29 +45,25 @@ end
 
 function flow(m::TestDrillReward, d, obs, theta, s)
     check_model_dims(d,obs,theta)
-    m, x, z = _model(obs), _x(obs), zchars(obs)
     return d*(
-        theta_drill_ψ(m,theta)*_ψ(m,x,s) +
-        theta_drill_x(m,theta)*x +
-        theta_drill_z(m,theta)*first(z) +
+        theta_drill_ψ(m,theta)*_ψ(obs,s) +
+        theta_drill_x(m,theta)*_x(obs) +
+        theta_drill_z(m,theta)*first(zchars(obs)) +
         theta_drill_d(m,theta)
     )
 end
 
-function dflow!(::TestDrillReward, grad, d, obs, theta, s)
-    m, x, z = _model(obs), _x(obs), zchars(obs)
-
-    grad[idx_drill_ψ(m)] += d*_ψ(m,x,s)
-    grad[idx_drill_x(m)] += d*x
-    grad[idx_drill_z(m)] += d*first(z)
+function dflow!(m::TestDrillReward, grad, d, obs, theta, s)
+    grad[idx_drill_ψ(m)] += d*_ψ(obs,s)
+    grad[idx_drill_x(m)] += d*_x(obs)
+    grad[idx_drill_z(m)] += d*first(zchars(obs))
     grad[idx_drill_d(m)] += d
-    grad[idx_drill_ρ(m)] += d*theta_drill_ψ(m,theta)*_dψdθρ(m,x,s)
+    grad[idx_drill_ρ(m)] += d*theta_drill_ψ(m,theta)*_dψdθρ(obs,s)
     return nothing
 end
 
-function flowdψ(x::TestDrillReward, d, obs, theta, s)
+function flowdψ(m::TestDrillReward, d, obs, theta, s)
     T = eltype(theta)
-    m, x, z = _model(obs), _x(obs), zchars(obs)
     u = d*theta_drill_ψ(m,theta)
     return u::T
 end

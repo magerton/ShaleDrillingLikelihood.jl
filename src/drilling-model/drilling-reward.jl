@@ -5,21 +5,6 @@ struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstrac
     extend::E
 end
 
-# -------------------------------------------
-# some functions to look at stuff
-# -------------------------------------------
-
-_sgnext(wp,i) = true
-_sgnext(wp, i, d) = true
-_sgnext(obs) = _y(obs) == 0
-
-_d(obs) = _y(obs)
-_Dgt0(obs) = true
-
-_z(obs) = (1.0, 2010,)
-_ψ(obs) = 0.0
-_ψ2(obs) = 0.0
-
 # -----------------------------------------
 # lengths
 # -----------------------------------------

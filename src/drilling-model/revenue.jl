@@ -204,9 +204,6 @@ oneminusroyalty(x::DrillingRevenue, roy) = 1-royalty(x)(roy)
 # base functions
 # -------------------------------------------
 
-_ψ(obs::ObservationDrill, s::SimulationDraw) = _Dgt0(obs) ? _ψ2(s) : _ψ1(s)
-
-
 @inline function Eexpψ(x::DrillingRevenue, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
     θ4 = theta_ψ(x,θ)

@@ -49,6 +49,8 @@ _τ0max( wp::PerpetualProblem) = -1
 _τ1max( wp::PerpetualProblem) = -1
 _ext(   wp::PerpetualProblem) = 0
 
+@inline num_choices(wp, i...) = _dmax(wp, i...)+1
+
 # ----------------------------------
 # endpoints of each set of states
 #   end_ex1 - Expiration of first lease term

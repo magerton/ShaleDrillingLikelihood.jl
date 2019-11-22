@@ -16,7 +16,7 @@ using LoopVectorization
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
     view, ==, eltype, +, -, isless,
-    fill!,string, show, convert
+    fill!,string, show, convert, eltype
 
 # specific functions
 using Distributions: _F1

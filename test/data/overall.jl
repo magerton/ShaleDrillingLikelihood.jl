@@ -31,7 +31,8 @@ using ShaleDrillingLikelihood: AbstractDataSet,
     idx_produce, theta_produce,
     idx_drill_ρ, idx_royalty_ρ,
     idx_drill_ψ, idx_produce_ψ,
-    thetas
+    thetas,
+    reward
 
 println("testing overall royalty")
 
@@ -53,8 +54,8 @@ println("testing overall royalty")
     # set up drilling coefs
     model_drill = TestDrillModel()
     θ_drill   = [αψ, 2.0, -2.0, -0.75, θρ]
-    @test theta_drill_ρ(model_drill, θ_drill) == θρ
-    @test theta_drill_ψ(model_drill, θ_drill) == αψ
+    @test theta_drill_ρ(reward(model_drill), θ_drill) == θρ
+    @test theta_drill_ψ(reward(model_drill), θ_drill) == αψ
 
     # set up royalty coefs
     θ_royalty = [θρ, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
@@ -66,7 +67,7 @@ println("testing overall royalty")
 
     # big theta
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
-    @test theta_drill(model_drill, θ) == θ_drill
+    @test theta_drill(reward(model_drill), θ) == θ_drill
 
     # make data
     data_drill_opt = (num_zt=200, minmaxleases=1:2, nper_initial=10:20, nper_development=0:10, tstart=1:50,)

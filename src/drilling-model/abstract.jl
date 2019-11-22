@@ -34,43 +34,55 @@ theta_drill(d, theta) = view(theta, idx_drill(d))
 
 @deprecate length(f::AbstractPayoffFunction) _nparm(f)
 
+_nparm(m::AbstractDrillModel) = _nparm(reward(m))
+
 # -------------------------------------------
 # Generic functions
 # -------------------------------------------
 
 NotDefinedError(m) = throw(error("Not defined for $m"))
 
-reward(m::AbstractDrillModel) = NotDefinedError(m)
+# navigate through state space
+num_choices(m::AbstractStateSpace, i...) = NotDefinedError(m)
+actionspace(m::AbstractStateSpace, i...) = NotDefinedError(m)
+_Dgt0(      m::AbstractStateSpace, i...) = NotDefinedError(m)
+
+# navigate through model primitives
+reward(    m::AbstractDrillModel) = NotDefinedError(m)
 statespace(m::AbstractDrillModel) = NotDefinedError(m)
-_nparm(m::AbstractDrillModel) = _nparm(reward(m))
 
-@deprecate flow(x::AbstractDrillModel) reward(x)
+# From model to things about states
+@inline actionspace(m::AbstractDrillModel, i...) = actionspace(statespace(m), i...)
+@inline num_choices(m::AbstractDrillModel, i...) = num_choices(statespace(m), i...)
+@inline _Dgt0(      m::AbstractDrillModel, i...) = _Dgt0(statespace(m), i...)
 
-actionspace(m::ObservationDrill, state...) = actionspace(statespace(_model(m)), state...)
+@inline _ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
+@inline _dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? azero(s) : _dψ1dθρ(s)
 
+# -------------------------------------------
+# some functions to look at stuff
+# -------------------------------------------
 
-num_choices(m::AbstractStateSpace) = NotDefinedError(m)
-actionspace(m::AbstractStateSpace) = NotDefinedError(m)
-num_choices(m::AbstractDrillModel) = num_choices(statespace(m))
-actionspace(m::AbstractDrillModel) = actionspace(statespace(m))
+@inline actionspace(obs::ObservationDrill) = actionspace(_model(obs), _x(obs))
+@inline statespace( obs::ObservationDrill) = statespace(_model(obs))
+@inline reward(     obs::ObservationDrill) = reward(_model(obs))
 
-num_choices(m::AbstractStateSpace, state...) = NotDefinedError(m)
-actionspace(m::AbstractStateSpace, state...) = NotDefinedError(m)
-Dgt0(       m::AbstractStateSpace, state...) = NotDefinedError(m)
+@inline _sgnext(            obs::ObservationDrill) = _sgnext(statespace(obs), _x(obs), _y(obs))
+@inline _sgnext(d::Integer, obs::ObservationDrill) = _sgnext(statespace(obs), _x(obs), d)
+@inline _Dgt0(obs::ObservationDrill) = _Dgt0(statespace(obs), _x(obs))
+@inline _d(   obs::ObservationDrill) = _y(obs)
 
-num_choices(m::AbstractDrillModel, state...) = num_choices(statespace(m), state...)
-actionspace(m::AbstractDrillModel, state...) = actionspace(statespace(m), state...)
-Dgt0(       m::AbstractDrillModel, state...) = Dgt0(       statespace(m), state...)
+@inline _ψ(    obs::ObservationDrill, s::SimulationDraw) = _ψ(_model(obs), _x(obs), s)
+@inline _dψdθρ(obs::ObservationDrill, s::SimulationDraw) = _dψdθρ(_model(obs), _x(obs), s)
 
-
-
-_ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
-_dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw{T}) where {T} = Dgt0(m, state) ? zero(T) : _dψ1dθρ(s)
-
+# -------------------------------------------
+# Payoffs...
+# -------------------------------------------
 
 flow(        d, obs, theta, s) = flow(  reward(_model(obs)),       d, obs, theta, s)
 dflow!(grad, d, obs, theta, s) = dflow!(reward(_model(obs)), grad, d, obs, theta, s)
 flowdψ(grad, d, obs, theta, s) = flowdψ(reward(_model(obs)), grad, d, obs, theta, s)
+
 @deprecate dflowdψ(args...) flowdψ(args...)
 
 function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
@@ -112,3 +124,9 @@ function check_flow_grad(m, d, obs, theta)
     sim = simdraw(theta)
     check_flow_grad(m,d,obs,theta,sim)
 end
+
+
+
+
+
+@deprecate flow(x::AbstractDrillModel) reward(x)
