@@ -54,12 +54,12 @@ function flow(m::TestDrillReward, d, obs, theta, s)
 end
 
 function dflow!(m::TestDrillReward, grad, d, obs, theta, s)
-    grad[idx_drill_ψ(m)] += d*_ψ(obs,s)
-    grad[idx_drill_x(m)] += d*_x(obs)
-    grad[idx_drill_z(m)] += d*first(zchars(obs))
-    grad[idx_drill_d(m)] += d
-    grad[idx_drill_ρ(m)] += d*theta_drill_ψ(m,theta)*_dψdθρ(obs,s)
-    return nothing
+    grad[idx_drill_ψ(m)] = d*_ψ(obs,s)
+    grad[idx_drill_x(m)] = d*_x(obs)
+    grad[idx_drill_z(m)] = d*first(zchars(obs))
+    grad[idx_drill_d(m)] = d
+    grad[idx_drill_ρ(m)] = d*theta_drill_ψ(m,theta)*_dψdθρ(obs,s)
+    return flow(m, d, obs, theta, s)
 end
 
 function flowdψ(m::TestDrillReward, d, obs, theta, s)

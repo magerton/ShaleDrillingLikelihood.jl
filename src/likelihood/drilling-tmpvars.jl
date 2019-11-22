@@ -11,14 +11,17 @@
 
 struct DrillingTmpVars{T<:AbstractFloat} <: AbstractTmpVars
     ubv::Vector{T}
+    dubv::Matrix{T}
     llj::Vector{T}
     grad::Vector{T}
     theta::Vector{T}
     gradJ::Matrix{T}
     function DrillingTmpVars(ubv, llj, grad, theta, gradJ)
-        length(theta) == length(grad)==size(gradJ,1) || throw(DimensionMismatch())
+        k = length(theta)
+        k == length(grad)==size(gradJ,1) == size(dubv,1) || throw(DimensionMismatch())
+        length(ubv) == size(dubv,2) || throw(DimensionMismatch())
         T = eltype(ubv)
-        return new{T}(ubv, llj, grad, theta, gradJ)
+        return new{T}(ubv, dubv, llj, grad, theta, gradJ)
     end
 end
 
@@ -26,6 +29,7 @@ const DrillingTmpVarsAll{T} = Vector{DrillingTmpVars{T}}
 const DrillingTmpVarsThread = DrillingTmpVars
 
 _ubv(  dtv::DrillingTmpVars) = dtv.ubv
+_dubv( dtv::DrillingTmpVars) = dtv.dubv
 _llj(  dtv::DrillingTmpVars) = dtv.llj
 _grad( dtv::DrillingTmpVars) = dtv.grad
 _gradJ(dtv::DrillingTmpVars) = dtv.gradJ
@@ -40,11 +44,12 @@ _theta(dtv::DrillingTmpVars) = dtv.theta
 function DrillingTmpVars(J::Integer, maxchoices::Integer, k::Integer, T::Type=Float64)
     tid = T(threadid())
     ubv = fill(tid, maxchoices)
+    dubv = fill(tid, k, maxchoices)
     llj = fill(tid, J)
     grad = fill(tid, k)
     theta = fill(tid, k)
     gradJ = fill(tid, k, J)
-    return DrillingTmpVars(ubv, llj, grad, theta, gradJ)
+    return DrillingTmpVars(ubv, dubv, llj, grad, theta, gradJ)
 end
 
 @noinline function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)

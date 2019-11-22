@@ -1,23 +1,3 @@
-function gradweight(could_choose, did_choose, payoff)
-    if did_choose == could_choose
-        return one(payoff) - payoff
-    else
-        return - payoff
-    end
-end
-
-function dloglik_drill_obs!(grad, obs, theta, sim, dtv)
-    ubv = _ubv(dtv)
-    tmpgrad = _grad(dtv)
-    @inbounds for d in actionspace(obs)
-        wt = gradweight(d, _y(obs), ubv[d+1])
-        fill!(tmpgrad, 0)
-        dfull_payoff!(tmpgrad, d, obs, theta, sim)
-        grad .+= wt .* tmpgrad
-    end
-end
-
-
 """
     loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
 
@@ -33,21 +13,27 @@ function loglik_drill_lease!(
 
     LL = zero(T)
     ubv = _ubv(dtv)
+    dubv = _dubv(dtv)
 
     for obs in lease
         actions = actionspace(obs)
         n = length(actions)
         ubv_vw = view(ubv, OneTo(n))
+        dubv_vw = view(dubv, :, OneTo(n))
 
         @inbounds @simd for d in actions
-            ubv[d+1] = full_payoff(d, obs, theta, sim)
+            dp1 = d+1
+            dubv_slice = view(dubv, :, dp1)
+            ubv[dp1] = full_payoff!(dubv_slice, d, obs, theta, sim)
         end
 
-        tmp = ubv[_y(obs)+1]
-        LL += tmp - logsumexp!(ubv_vw)
+        dp1 = _y(obs)+1
+        LL += ubv[dp1] - logsumexp!(ubv_vw)
 
-        dograd && dloglik_drill_obs!(grad, obs, theta, sim, dtv)
-
+        if dograd
+            ubv[dp1] -= one(T)
+            BLAS.gemv!('N', -1.0, dubv_vw, ubv_vw, 1.0, grad)
+        end
     end
 
     return LL

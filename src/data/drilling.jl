@@ -108,6 +108,11 @@ _z(     obs::ObservationDrill) = obs.z
 geology(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = first(_ichars(obs))
 royalty(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = last(_ichars(obs))
 
+@inline logprice(obs::ObservationDrill) = first(_z(obs))
+@inline price(   obs::ObservationDrill) = exp(logprice(obs))
+@inline rigrate( obs::ObservationDrill) = exp(getindex(_z(obs), 2))
+@inline year(    obs::ObservationDrill) = last(_z(obs))
+
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
     j in j1_range(d,i) || j == j2ptr(d,i) || throw(BoundsError())

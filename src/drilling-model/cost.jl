@@ -5,18 +5,22 @@ export     AbstractDrillingCost,
     DrillingCost_constant,
     DrillingCost_dgt1
 
+@inline flowdψ(::AbstractDrillingCost, d, obs, theta, sim) = azero(theta)
+@inline flow!(grad, u::AbstractDrillingCost, d, obs, θ, sim)
+    dflow!(u, grad, d, obs, θ, sim)
+    return flow(u, d, obs, θ, sim)
+end
+
 # -------------------------------------------
 # Drilling Cost
 # -------------------------------------------
-
-@inline flowdψ(::AbstractDrillingCost, d, obs, theta, sim) = azero(theta)
 
 "Single drilling cost"
 struct DrillingCost_constant <: AbstractDrillingCost end
 @inline _nparm(x::DrillingCost_constant) = 1
 @inline flow(::DrillingCost_constant, d, obs, θ, sim) = d*θ[1]
 @inline function dflow!(::DrillingCost_constant, grad, d, obs, θ, sim)
-    grad[1] += d
+    grad[1] = d
     return nothing
 end
 
@@ -25,7 +29,9 @@ struct DrillingCost_dgt1 <: AbstractDrillingCost end
 @inline _nparm(x::DrillingCost_dgt1) = 2
 @inline flow(::DrillingCost_dgt1, d, obs, θ, sim) = d*(d<=1 ? θ[1] : θ[2])
 @inline function dflow!(::DrillingCost_dgt1, grad, d, obs, θ, sim)
-    grad[1+(d>1)] += d
+    dgt1 = d>1
+    grad[1] = !dgt1
+    grad[2] = dgt1
     return nothing
 end
 
@@ -36,6 +42,7 @@ abstract type AbstractDrillingCost_TimeFE <: AbstractDrillingCost end
 @inline stop(     x::AbstractDrillingCost_TimeFE) = x.stop
 @inline startstop(x::AbstractDrillingCost_TimeFE) = start(x), stop(x)
 @inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = clamp(t, start(x), stop(x)) - start(x) + 1
+@inline time_idx(x, obs) = time_idx(x,year(obs))
 
 "Time FE for 2008-2012"
 struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE
@@ -45,14 +52,15 @@ end
 @inline _nparm(x::DrillingCost_TimeFE) = 2 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE, d, obs, θ, sim)
     d < 1 && return azero(θ)
-    z = _z(obs)
-    d == 1 && return    θ[time_idx(u,last(z))]
-    return d*(θ[time_idx(u,last(z))] + last(θ) )
+    tidx = time_idx(u,obs)
+    d == 1 && return θ[tidx]
+    return d*(θ[tidx] + last(θ) )
 end
 @inline function dflow!(u::DrillingCost_TimeFE, grad, d, obs, θ, sim)
-    z = _z(obs)
+    fill!(grad, 0)
     if d > 0
-        grad[time_idx(u,last(z))] += d
+        tidx = time_idx(u,obs)
+        grad[tidx] += d
         if d > 1
             grad[end] += d
         end
@@ -69,9 +77,7 @@ end
 @inline _nparm(x::DrillingCost_TimeFE_costdiffs) = 4 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_costdiffs, d, obs, θ, sim)
     d < 1 && return azero(θ)
-    z = _z(obs)
-    tidx = time_idx(u, last(z))
-
+    tidx = time_idx(u,obs)
     r = θ[tidx]
     if !_Dgt0(obs)
         d > 1 && (r += θ[end-2])
@@ -82,15 +88,14 @@ end
 end
 
 @inline function dflow!(u::DrillingCost_TimeFE_costdiffs, grad, d, obs, θ, sim)
+    fill!(grad, 0)
     d < 1 && return nothing
-    z = _z(obs)
-    tidx = time_idx(u, last(z))
-
-    grad[tidx] += d
+    tidx = time_idx(u,obs)
+    grad[tidx] = d
     if !_Dgt0(obs)
-        d > 1 && ( grad[end-2] += d )
+        d > 1 && ( grad[end-2] = d )
     else
-        grad[end-(d==1)] += d
+        grad[end-(d==1)] = d
     end
     return nothing
 end
@@ -104,20 +109,18 @@ end
 @inline _nparm(x::DrillingCost_TimeFE_rigrate) = 3 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_rigrate, d, obs, θ, sim)
     d  < 1 && return azero(θ)
-    z = _z(obs)
-    tidx = time_idx(u,last(z))
-    r = θ[tidx] + θ[end]*exp(z[2])
+    tidx = time_idx(u,obs)
+    r = θ[tidx] + θ[end]*rigrate(obs)
     d == 1 && return r
     return d*( r + θ[end-1])
 end
 @inline function dflow!(u::DrillingCost_TimeFE_rigrate, grad, d, obs, θ, sim)
+    fill!(grad, 0)
     d == 0 && return nothing
-    z = _z(obs)
-    tidx = time_idx(u,last(z))
-
-    grad[tidx] += d
-    d > 1 && (grad[end-1] += d)
-    grad[end] += d*exp(z[2])
+    tidx = time_idx(u,obs)
+    grad[tidx] = d
+    d > 1 && (grad[end-1] = d)
+    grad[end] = d*rigrate(obs)
     return nothing
 end
 
@@ -131,8 +134,7 @@ end
 @inline _nparm(x::DrillingCost_TimeFE_rig_costdiffs) = 5 + stop(x) - start(x)
 @inline function flow(u::DrillingCost_TimeFE_rig_costdiffs, d, obs, θ, sim)
     d < 1 && return azero(θ)
-    z = _z(obs)
-    tidx = time_idx(u, last(z))
+    tidx = time_idx(u, obs)
 
     r = θ[tidx]
     if !_Dgt0(obs)
@@ -140,13 +142,13 @@ end
     else
         r += θ[end-1-(d==1)]
     end
-    return d*( r + θ[end]*exp(z[2]) )
+    return d*( r + θ[end]*rigrate(obs) )
 end
 
 @inline function dflow!(u::DrillingCost_TimeFE_rig_costdiffs, grad, d, obs, θ, sim)
+    fill!(grad, 0)
     d == 0 && return nothing
-    z = _z(obs)
-    tidx = time_idx(u,last(z))
+    tidx = time_idx(u,obs)
 
     grad[tidx] += d
     if !_Dgt0(obs)
@@ -154,6 +156,6 @@ end
     else
         grad[end-1-(d==1)] += d
     end
-    grad[end] += d*exp(z[2])
+    grad[end] += d*rigrate(obs)
     return nothing
 end

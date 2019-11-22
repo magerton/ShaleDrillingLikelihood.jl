@@ -264,7 +264,7 @@ end
     z = _z(obs)
     u = d_tax_royalty(x, d, royalty(obs)) *
     exp(
-        theta_0(x,θ) + z[1] + theta_g(x,θ)*geology(obs) +
+        theta_0(x,θ) + logprice(obs) + theta_g(x,θ)*geology(obs) +
         Eexpψ(x, d, obs, θ, sim) +
         trend_component(x, θ, z)
     )
@@ -279,7 +279,7 @@ end
         Eexpψ(x, d, obs, θ, sim) +
         trend_component(x, θ, z)
     ) * (
-        exp(z[1]) - cost_per_mcf(x)
+        price(obs) - cost_per_mcf(x)
     )
     return u
 end
@@ -293,10 +293,10 @@ end
     rev = flow(x, d, obs, θ, sim)
     # dpsi = flowdψ(rev, x, d, obs, θ, sim)
 
-    grad[idx_0(x)] += rev
-    grad[idx_g(x)] += rev*geology(obs)
-    grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
-    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] = rev
+    grad[idx_g(x)] = rev*geology(obs)
+    grad[idx_ψ(x)] = rev*dEexpψdα_ψ(x, d, obs, θ, sim)
+    grad[idx_ρ(x)] = rev*dEexpψdσ(x, d, obs, θ, sim)
     return rev
 end
 
@@ -306,11 +306,11 @@ end
     rev = flow(x, d, obs, θ, sim)
     # dpsi = flowdψ(rev, x, d, obs, θ, sim)
 
-    grad[idx_0(x)] += rev
-    grad[idx_g(x)] += rev*geology(obs)
-    grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
-    grad[idx_t(x)] += rev*centered_time(x, z)
-    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] = rev
+    grad[idx_g(x)] = rev*geology(obs)
+    grad[idx_ψ(x)] = rev*dEexpψdα_ψ(x, d, obs, θ, sim)
+    grad[idx_t(x)] = rev*centered_time(x, z)
+    grad[idx_ρ(x)] = rev*dEexpψdσ(x, d, obs, θ, sim)
     return rev
 end
 
@@ -322,8 +322,8 @@ end
     rev = flow(x, d, obs, θ, sim)
     # dpsi = flowdψ(rev, x, d, obs, θ, sim)
 
-    grad[idx_0(x)] += rev
-    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] = rev
+    grad[idx_ρ(x)] = rev*dEexpψdσ(x, d, obs, θ, sim)
     return rev
 end
 

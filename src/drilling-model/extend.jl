@@ -20,21 +20,6 @@ struct ExtensionCost_Constant <: AbstractExtensionCost end
 _nparm(::ExtensionCost_Constant) = 1
 @inline flow(  ::ExtensionCost_Constant, d, obs, θ, sim) = _sgnext(d, obs) ? θ[1] : azero(θ)
 @inline function dflow!(::ExtensionCost_Constant, grad, d, obs, θ, sim)
-    if _sgnext(d, obs)
-        grad[1] += 1
-    end
+    grad[1] = _sgnext(d, obs)
     return nothing
 end
-
-# "Extension cost depends on ψ"
-# struct ExtensionCost_ψ <: AbstractExtensionCost end
-# _nparm(::ExtensionCost_ψ) = 2
-# @inline flow(  ::ExtensionCost_ψ, d, obs, θ, sim) = θ[1] + θ[2] * _ψ(obs, sim)
-# @inline flowdψ(::ExtensionCost_ψ, d, obs, θ, sim) = θ[2]
-# @inline function dflow!(::ExtensionCost_ψ, grad, d, obs, θ, sim)
-#     if _sgnext(d, obs)
-#         grad[1] += 1
-#         grad[2] += _ψ(obs, sim)
-#     end
-#     return nothing
-# end
