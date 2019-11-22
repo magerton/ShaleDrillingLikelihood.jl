@@ -105,10 +105,8 @@ end
 
 _ichars(obs::ObservationDrill) = obs.ichars
 _z(     obs::ObservationDrill) = obs.z
-geology(obs::ObservationDrill{<:AbstractDrillModel,NTuple{2,Real}}) = first(_ichars(obs))
-royalty(obs::ObservationDrill{<:AbstractDrillModel,NTuple{2,Real}}) = last(_ichars(obs))
-@deprecate _roy(  obs::ObservationDrill) geology(obs)
-@deprecate _geoid(obs::ObservationDrill) royalty(obs)
+geology(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = first(_ichars(obs))
+royalty(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = last(_ichars(obs))
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())

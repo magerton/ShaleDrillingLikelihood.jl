@@ -94,7 +94,6 @@ include("drilling-model/test-drilling-model.jl")
 include("drilling-model/drilling-model.jl")
 
 include("drilling-model/state-space.jl")
-include("drilling-model/constants.jl")
 
 include("drilling-model/reward-functions.jl")
 include("drilling-model/extend.jl")

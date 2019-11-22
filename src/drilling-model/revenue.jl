@@ -3,27 +3,22 @@ export AbstractTaxType,
     AbstractConstrainedType,
     AbstractLearningType,
     AbstractRoyaltyType,
-
     NoTaxes,
     WithTaxes,
     GathProcess,
-
     NoTrend,
     TimeTrend,
-
     Unconstrained,
     Constrained,
-
     DrillingRevenue,
-
     Learn,
     NoLearn,
-
     ConstrainedProblem,
     UnconstrainedProblem,
-    NoLearningProblem
-
-
+    NoLearningProblem,
+    STARTING_α_ψ,
+    STARTING_log_ogip,
+    STARTING_α_t
 
 # ----------------------------------------------------------------
 # Drilling revenue variations
@@ -56,14 +51,26 @@ tax(    x::DrillingRevenue) = x.tax
 learn(  x::DrillingRevenue) = x.learn
 royalty(x::DrillingRevenue) = x.royalty
 
-constr( x) = constr(revenue(x))
-tech(   x) = tech(revenue(x))
-tax(    x) = tax(revenue(x))
-learn(  x) = learn(revenue(x))
-royalty(x) = royalty(revenue(x))
+# Constrained parameters
+# -----------------------
+
+# Whether we've constrained coefs
+struct Unconstrained <: AbstractConstrainedType end
+struct Constrained   <: AbstractConstrainedType
+    log_ogip::Float64
+    α_ψ::Float64
+    α_t::Float64
+end
+Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTING_α_t, args...) = Constrained(log_ogip, α_ψ, α_t)
+
+theta_g(x::Constrained) = x.log_ogip
+theta_ψ(x::Constrained) = x.α_ψ
+theta_t(x::Constrained) = x.α_t
 
 # Technology
 # -----------------
+
+const TIME_TREND_BASE = 2008
 
 struct NoTrend <: AbstractTechChange  end
 struct TimeTrend <: AbstractTechChange
@@ -76,11 +83,85 @@ const DrillingRevenueTimeTrend = DrillingRevenue{Cn,TimeTrend} where {Cn}
 const DrillingRevenueNoTrend   = DrillingRevenue{Cn,NoTrend} where {Cn}
 
 @inline centered_time(x::DrillingRevenue, z::Tuple) = last(z) - baseyear(tech(x))
-@inline trend_component(x::DrillingRevenueTimeTrend, θ, z) = α_t(x,θ) * centered_time(x, z)
+@inline trend_component(x::DrillingRevenueTimeTrend, θ, z) = theta_t(x,θ) * centered_time(x, z)
 @inline trend_component(x::DrillingRevenueNoTrend, θ, z) = 0
+
+# chebshev polynomials
+# See http://www.aip.de/groups/soe/local/numres/bookcpdf/c5-8.pdf
+@inline checkinterval(x::Real,min::Real,max::Real) =  min <= x <= max || throw(DomainError("x = $x must be in [$min,$max]"))
+@inline checkinterval(x::Real) = checkinterval(x,-1,1)
+
+@inline cheb0(z::Real) = one(z)
+@inline cheb1(z::Real) = clamp(z,-1,1)
+@inline cheb2(z::Real) = (x = cheb1(z); return 2*x^2 - 1)
+@inline cheb3(z::Real) = (x = cheb1(z); return 4*x^3 - 3*x)
+@inline cheb4(z::Real) = (x = cheb1(z); return 8*(x^4 - x^2) + 1)
+
+# learning
+# -----------------------
+
+struct Learn       <: AbstractLearningType end
+struct NoLearn     <: AbstractLearningType end
+struct PerfectInfo <: AbstractLearningType end
+struct MaxLearning <: AbstractLearningType end
+
+const DrillingRevenueLearn       = DrillingRevenue{Cn,Tech,Tax,Learn}       where {Cn,Tech,Tax}
+const DrillingRevenueNoLearn     = DrillingRevenue{Cn,Tech,Tax,NoLearn}     where {Cn,Tech,Tax}
+const DrillingRevenuePerfectInfo = DrillingRevenue{Cn,Tech,Tax,PerfectInfo} where {Cn,Tech,Tax}
+const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} where {Cn,Tech,Tax}
+
+@inline _ρ(x::AbstractLearningType, σ::Number) = _ρ(σ)
+@inline _ρ(x::PerfectInfo         , σ::Number) = 1
+@inline _ρ(x::MaxLearning         , σ::Number) = 0
+@inline _ρ(x::DrillingRevenue     , σ::Number) = _ρ(σ, learn(x))
+
+@deprecate _ρ(σ::Number, x::AbstractLearningType) _ρ(x,σ)
+@deprecate _ρ(σ::Number, x::PerfectInfo) _ρ(x,σ)
+@deprecate _ρ(σ::Number, x::MaxLearning) _ρ(x,σ)
+@deprecate _ρ(σ::Number, x::DrillingRevenue) _ρ(x,σ)
+
+# parameter access
+# -----------------------
+
+@inline _nparm(x::DrillingRevenue{Constrained}) = 2
+@inline _nparm(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
+@inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
+
+@inline idx_0(x::DrillingRevenue) = 1
+@inline idx_g(x::DrillingRevenue) = 2
+@inline idx_ψ(x::DrillingRevenue) = 3
+@inline idx_t(x::DrillingRevenueTimeTrend) = 4
+@inline idx_ρ(x::DrillingRevenue) = _nparm(x)
+
+@inline theta_0(x::DrillingRevenue, θ) = θ[idx_0(x)]
+@inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
+@inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
+@inline theta_t(x::DrillingRevenue, θ) = θ[idx_t(x)]
+@inline theta_ρ(x::DrillingRevenue, θ) = θ[idx_ρ(x)]
+
+@inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
+@inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
+@inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
+
+@deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
+@deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
+@deprecate log_ogip(x::DrillingRevenue, θ) theta_g(x, θ)
+@deprecate α_ψ(     x::DrillingRevenue, θ) theta_ψ(x, θ)
+@deprecate α_t(     x::DrillingRevenue, θ) theta_t(x, θ)
 
 # taxes
 # -----------------------
+
+# From Gulen et al (2015) "Production scenarios for the Haynesville..."
+const GATH_COMP_TRTMT_PER_MCF   = 0.42 + 0.07
+const MARGINAL_TAX_RATE = 0.402
+
+# other calculations
+const REAL_DISCOUNT_AND_DECLINE = 0x1.8e06b611ed4d8p-1  #  0.777394952476835= sum( β^((t+5-1)/12) q(t)/Q(240) for t = 1:240)
+
+const STARTING_α_ψ      = 0x1.7587cc6793516p-2 # 0.365
+const STARTING_log_ogip = 0x1.401755c339009p-1 # 0.625
+const STARTING_α_t      = 0.01948
 
 struct NoTaxes <: AbstractTaxType end
 
@@ -93,8 +174,8 @@ struct GathProcess <: AbstractTaxType
     cost_per_mcf::Float64
 end
 
-const DrillingRevenueNoTaxes = DrillingRevenue{Cn,Tech,NoTaxes} where {Cn,Tech}
-const DrillingRevenueWithTaxes = DrillingRevenue{Cn,Tech,WithTaxes} where {Cn,Tech}
+const DrillingRevenueNoTaxes     = DrillingRevenue{Cn,Tech,NoTaxes}     where {Cn,Tech}
+const DrillingRevenueWithTaxes   = DrillingRevenue{Cn,Tech,WithTaxes}   where {Cn,Tech}
 const DrillingRevenueGathProcess = DrillingRevenue{Cn,Tech,GathProcess} where {Cn,Tech}
 
 WithTaxes(;mgl_tax_rate = 1-MARGINAL_TAX_RATE, cost_per_mcf = GATH_COMP_TRTMT_PER_MCF * REAL_DISCOUNT_AND_DECLINE) = WithTaxes(mgl_tax_rate, cost_per_mcf)
@@ -104,7 +185,7 @@ one_minus_mgl_tax_rate(x::AbstractTaxType) = 1
 one_minus_mgl_tax_rate(x::WithTaxes) = x.one_minus_mgl_tax_rate
 one_minus_mgl_tax_rate(x) = one_minus_mgl_tax_rate(tax(x))
 
-cost_per_mcf(x::NoTaxes)         = 0
+cost_per_mcf(x::NoTaxes) = 0
 cost_per_mcf(x::AbstractTaxType) = x.cost_per_mcf
 cost_per_mcf(x) = cost_per_mcf(tax(x))
 
@@ -116,67 +197,9 @@ struct NoRoyalty   <: AbstractRoyaltyType end
 
 (::WithRoyalty)(roy) = roy
 (::NoRoyalty)(roy) = 0
-oneminusroyalty(x, roy) = 1-royalty(x)(roy)
+oneminusroyalty(x::DrillingRevenue, roy) = 1-royalty(x)(roy)
 
-@inline d_tax_royalty(x::DrillingRevenue, d, roy) = d * oneminusroyalty(x, roy) * one_minus_mgl_tax_rate(x)
-
-# learning
-# -----------------------
-
-struct Learn       <: AbstractLearningType end
-struct NoLearn     <: AbstractLearningType end
-struct PerfectInfo <: AbstractLearningType end
-struct MaxLearning <: AbstractLearningType end
-
-const DrillingRevenueLearn = DrillingRevenue{Cn,Tech,Tax,Learn} where {Cn,Tech,Tax}
-const DrillingRevenueNoLearn = DrillingRevenue{Cn,Tech,Tax,NoLearn} where {Cn,Tech,Tax}
-const DrillingRevenuePerfectInfo = DrillingRevenue{Cn,Tech,Tax,PerfectInfo} where {Cn,Tech,Tax}
-const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} where {Cn,Tech,Tax}
-
-@inline _ρ(σ, x::AbstractLearningType) = _ρ(σ)
-@inline _ρ(σ, x::PerfectInfo) = 1
-@inline _ρ(σ, x::MaxLearning) = 0
-
-@inline _ρ(σ, x::DrillingRevenue) = _ρ(σ, learn(x))
-@inline _ρ(σ, x::DrillModel)      = _ρ(σ, revenue(x))
-
-# Constrained parameters
-# -----------------------
-
-# Whether we've constrained coefs
-struct Unconstrained <: AbstractConstrainedType end
-struct Constrained   <: AbstractConstrainedType
-    log_ogip::Float64
-    α_ψ::Float64
-    α_t::Float64
-end
-Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTING_α_t, args...) = Constrained(log_ogip, α_ψ, α_t)
-log_ogip(x::Constrained) = x.log_ogip
-α_ψ(     x::Constrained) = x.α_ψ
-α_t(     x::Constrained) = x.α_t
-
-# Access parameters
-# ----------------------------------------------------------------
-
-@inline _nparm(x::DrillingRevenue{Constrained}) = 2
-@inline _nparm(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
-@inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
-
-@inline α_0(x::DrillingRevenue, θ) = θ[1]
-@inline _σ( x::DrillingRevenue, θ) = θ[end]
-
-@inline log_ogip(x::DrillingRevenue{Unconstrained}, θ) = θ[2]
-@inline α_ψ(     x::DrillingRevenue{Unconstrained}, θ) = θ[3]
-@inline α_t(     x::DrillingRevenue{Unconstrained, TimeTrend}, θ) = θ[4]
-
-@inline log_ogip(x::DrillingRevenue{Constrained}, θ) = log_ogip(constr(x))
-@inline α_ψ(     x::DrillingRevenue{Constrained}, θ) = α_ψ(constr(x))
-@inline α_t(     x::DrillingRevenue{Constrained, TimeTrend}, θ) = α_t(constr(x))
-
-constrained_parms(::DrillingRevenue{<:AbstractConstrainedType, NoTrend})   = (log_ogip=2, α_ψ=3,)
-constrained_parms(::DrillingRevenue{<:AbstractConstrainedType, TimeTrend}) = (log_ogip=2, α_ψ=3, α_t=4)
-constrained_parms(x::DrillModel) = constrained_parms(revenue(x))
-
+@inline d_tax_royalty(x::DrillingRevenue, d::Integer, roy::Real) = d * oneminusroyalty(x, roy) * one_minus_mgl_tax_rate(x)
 
 # base functions
 # -------------------------------------------
@@ -186,12 +209,13 @@ _ψ(obs::ObservationDrill, s::SimulationDraw) = _Dgt0(obs) ? _ψ2(s) : _ψ1(s)
 
 @inline function Eexpψ(x::DrillingRevenue, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
-    θ4 = α_ψ(x,θ)
+    θ4 = theta_ψ(x,θ)
 
     if _Dgt0(obs)
         return θ4*ψ
     else
-        ρ = _ρ(_σ(x,θ), x)
+        σ = theta_ρ(x,θ)
+        ρ = _ρ(x, σ)
         return θ4*(ψ*ρ + θ4*0.5*(1-ρ^2))
     end
 end
@@ -201,23 +225,23 @@ end
     if _Dgt0(obs)
         return ψ
     else
-        ρ = _ρ(_σ(x,θ), x)
-        return ψ*ρ + α_ψ(x,θ) * (1-ρ^2)
+        σ = theta_ρ(x,θ)
+        ρ = _ρ(x, σ)
+        return ψ*ρ + theta_ψ(x,θ) * (1-ρ^2)
     end
 end
 
 @inline function Eexpψ(x::DrillingRevenueNoLearn, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
-    θ4= α_ψ(x,θ)
-    ρ = _ρ(_σ(x,θ))
+    θ4= theta_ψ(x,θ)
+    ρ = _ρ(theta_ρ(x,θ))
     return θ4*(ψ*ρ + θ4*0.5*(1-ρ^2))
 end
 
 @inline function Eexpψ(x::DrillingRevenueMaxLearning, d, obs, θ, sim)
-    θ4= α_ψ(x,θ)
+    θ4= theta_ψ(x,θ)
     if _Dgt0(obs)
         return θ4 * _ψ(obs, sim)
-
     else
         return 0.5 * θ4^2
     end
@@ -227,8 +251,8 @@ end
 
 @inline function dEexpψdσ(x::DrillingRevenueLearn, d, obs, θ, sim)
     if !_Dgt0(obs) && d > 0
-        θ4= α_ψ(x,θ)
-        σ = _σ(x,θ)
+        θ4= theta_ψ(x,θ)
+        σ = theta_ρ(x,θ)
         return θ4 *(ψ - θ4*_ρ(σ)) * _dρdσ(σ)
     else
         return azero(θ)
@@ -239,27 +263,22 @@ end
 # flow revenue
 # ----------------------------------------------------------------
 
-# revenue
-# -----------
-
-@inline function flow(x::DrillingRevenueNoTaxes, d, obs, θ, sim) where {Cn,Trnd}
-    z, (geoid, roy,) = _z(obs), _ichars(obs)
-
-    u = d_tax_royalty(x, d, roy) *
+@inline function flow(x::DrillingRevenueNoTaxes, d, obs, θ, sim)
+    z = _z(obs)
+    u = d_tax_royalty(x, d, royalty(obs)) *
     exp(
-        θ[1] + z[1] + log_ogip(x,θ)*geoid +
+        theta_0(x,θ) + z[1] + theta_g(x,θ)*geology(obs) +
         Eexpψ(x, d, obs, θ, sim) +
         trend_component(x, θ, z)
     )
     return u
 end
 
-
 @inline function flow(x::DrillingRevenue, d, obs, θ, sim)
-    z, (geoid, roy,) = _z(obs), _ichars(obs)
-
-    u = d_tax_royalty(x, d, roy) * exp(
-        θ[1] + log_ogip(x,θ)*geoid +
+    z = _z(obs)
+    u = d_tax_royalty(x, d, royalty(obs)) *
+    exp(
+        theta_0(x,θ) + theta_g(x,θ)*geology(obs) +
         Eexpψ(x, d, obs, θ, sim) +
         trend_component(x, θ, z)
     ) * (
@@ -269,59 +288,53 @@ end
 end
 
 
-# Constrained derivatives
+# Gradient
 # ------------------------------
 
 @inline function dflow!(x::DrillingRevenue{Unconstrained, NoTrend}, grad, d, obs, θ, sim)
     d == 0 && return nothing
-
-    z, (geoid, roy,) = _z(obs), _ichars(obs)
     rev = flow(x, d, obs, θ, sim)
-
-    grad[1] += rev
-    grad[2] += rev*geoid
-    grad[3] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
-    grad[4] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] += rev
+    grad[idx_g(x)] += rev*geology(obs)
+    grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
+    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
     return nothing
 end
 
 @inline function dflow!(x::DrillingRevenue{Unconstrained, TimeTrend}, grad, d, obs, θ, sim)
     d == 0 && return nothing
-
-    z, (geoid, roy,) = _z(obs), _ichars(obs)
+    z = _z(obs)
     rev = flow(x, d, obs, θ, sim)
-
-    grad[1] += rev
-    grad[2] += rev*geoid
-    grad[3] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
-    grad[4] += rev*centered_time(x, z)
-    grad[5] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] += rev
+    grad[idx_g(x)] += rev*geology(obs)
+    grad[idx_ψ(x)] += rev*dEexpψdα_ψ(x, d, obs, θ, sim)
+    grad[idx_t(x)] += rev*centered_time(x, z)
+    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
     return nothing
 end
 
-# Constrained derivatives
+# Constrained gradient
 # ------------------------------
 
 @inline function dflow!(x::DrillingRevenue{Constrained}, grad, d, obs, θ, sim)
     d == 0 && return nothing
     rev = flow(x, d, obs, θ, sim)
-    grad[1] += rev
-    grad[2] += rev*dEexpψdσ(x, d, obs, θ, sim)
+    grad[idx_0(x)] += rev
+    grad[idx_ρ(x)] += rev*dEexpψdσ(x, d, obs, θ, sim)
     return nothing
 end
 
-
 # ----------------------------------------------------------------
-# dψ and dσ are the same across many functions
+# dψ is the same across many functions
 # ----------------------------------------------------------------
 
 @inline function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
     d == 0 && return azero(θ)
-    dψ = flow(x, d, obs, θ, sim) * α_ψ(x,θ)
+    dψ = flow(x, d, obs, θ, sim) * theta_ψ(x,θ)
     if _Dgt0(obs)
         return dψ
     else
-        return dψ * _ρ(_σ(x,θ))
+        return dψ * _ρ(x,theta_ρ(x,θ))
     end
 end
 
