@@ -6,10 +6,25 @@ export     AbstractDrillingCost,
     DrillingCost_dgt1
 
 @inline flowdψ(::AbstractDrillingCost, d, obs, theta, sim) = azero(theta)
-@inline flow!(grad, u::AbstractDrillingCost, d, obs, θ, sim)
+@inline function flow!(grad, u::AbstractPayoffFunction, d, obs, θ, sim)
     dflow!(u, grad, d, obs, θ, sim)
     return flow(u, d, obs, θ, sim)
 end
+
+@inline function flow!(u::AbstractPayoffFunction, grad, d, obs, θ, sim)
+    dflow!(u, grad, d, obs, θ, sim)
+    return flow(u, d, obs, θ, sim)
+end
+
+
+
+"Abstract Type for Costs w Fixed Effects"
+abstract type AbstractDrillingCost_TimeFE <: AbstractDrillingCost end
+@inline start(    x::AbstractDrillingCost_TimeFE) = x.start
+@inline stop(     x::AbstractDrillingCost_TimeFE) = x.stop
+@inline startstop(x::AbstractDrillingCost_TimeFE) = start(x), stop(x)
+@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = clamp(t, start(x), stop(x)) - start(x) + 1
+@inline time_idx(x, obs) = time_idx(x,year(obs))
 
 # -------------------------------------------
 # Drilling Cost
@@ -29,20 +44,15 @@ struct DrillingCost_dgt1 <: AbstractDrillingCost end
 @inline _nparm(x::DrillingCost_dgt1) = 2
 @inline flow(::DrillingCost_dgt1, d, obs, θ, sim) = d*(d<=1 ? θ[1] : θ[2])
 @inline function dflow!(::DrillingCost_dgt1, grad, d, obs, θ, sim)
-    dgt1 = d>1
-    grad[1] = !dgt1
-    grad[2] = dgt1
+    if d == 0
+        fill!(grad, 0)
+    else
+        dgt1 = d>1
+        grad[1+dgt1] = d
+        grad[2-dgt1] = 0
+    end
     return nothing
 end
-
-
-"Abstract Type for Costs w Fixed Effects"
-abstract type AbstractDrillingCost_TimeFE <: AbstractDrillingCost end
-@inline start(    x::AbstractDrillingCost_TimeFE) = x.start
-@inline stop(     x::AbstractDrillingCost_TimeFE) = x.stop
-@inline startstop(x::AbstractDrillingCost_TimeFE) = start(x), stop(x)
-@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = clamp(t, start(x), stop(x)) - start(x) + 1
-@inline time_idx(x, obs) = time_idx(x,year(obs))
 
 "Time FE for 2008-2012"
 struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE

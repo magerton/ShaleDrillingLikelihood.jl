@@ -22,4 +22,4 @@ include("drilling-model/drilling-flow.jl")
 # include("likelihood/drilling.jl")
 # include("likelihood/overall.jl")
 
-include("drilling-model/dynamic-drilling-model.jl")
+# include("drilling-model/dynamic-drilling-model.jl")

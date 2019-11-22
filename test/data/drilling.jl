@@ -10,7 +10,7 @@ using Dates
 using BenchmarkTools
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
-    AbstractDrillModel, DrillModel, TestDrillModel,
+    AbstractDrillModel, TestDrillModel,
     ExogTimeVars, _timestamp, _timevars, Quarter,
     j1ptr, j2ptr, tptr, zchars, jtstart, ichars, _y, _x, j1chars, hasj1ptr, maxj1length,
     j1start, j1stop, j1length, j1_range,
@@ -24,7 +24,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     AbstractDrillRegime, DrillInitial, DrillDevelopment, DrillLease,
     _i, _data,
     ObservationGroup,
-    # action, 
+    # action,
     state,
     uniti,
     simulate_lease,

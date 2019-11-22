@@ -16,7 +16,7 @@ struct DrillingTmpVars{T<:AbstractFloat} <: AbstractTmpVars
     grad::Vector{T}
     theta::Vector{T}
     gradJ::Matrix{T}
-    function DrillingTmpVars(ubv, llj, grad, theta, gradJ)
+    function DrillingTmpVars(ubv, dubv, llj, grad, theta, gradJ)
         k = length(theta)
         k == length(grad)==size(gradJ,1) == size(dubv,1) || throw(DimensionMismatch())
         length(ubv) == size(dubv,2) || throw(DimensionMismatch())

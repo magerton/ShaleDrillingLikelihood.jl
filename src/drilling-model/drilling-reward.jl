@@ -44,22 +44,22 @@ end
 @inline function dflow!(x::DrillReward, grad, d, obs, θ, sim)
     T = eltype(θ)
     if d == 0
-        u = dflow!(extend( x), vw_extend( x, grad), d, obs, vw_extend( x, θ), sim)
+        u = flow!(extend( x), vw_extend( x, grad), d, obs, vw_extend( x, θ), sim)
     else
-        c = dflow!(cost(   x), vw_cost(   x, grad), d, obs, vw_cost(   x, θ), sim)
-        r = dflow!(revenue(x), vw_revenue(x, grad), d, obs, vw_revenue(x, θ), sim)
+        c = flow!(cost(   x), vw_cost(   x, grad), d, obs, vw_cost(   x, θ), sim)
+        r = flow!(revenue(x), vw_revenue(x, grad), d, obs, vw_revenue(x, θ), sim)
         u = r+c
     end
     return u::T
 end
 
-@inline function flowdψ(x::DrillReward, d, obs, theta, sim)
+@inline function flowdψ(x::DrillReward, d, obs, θ, sim)
     T = eltype(θ)
     if d == 0
-        u = flowdψ(extend(x), d, obs, vw_extend(x,theta), sim)
+        u = flowdψ(extend(x), d, obs, vw_extend(x,θ), sim)
     else
-        c = flowdψ(cost(x),    d, obs, vw_cost(x,theta), sim)
-        r = flowdψ(revenue(x), d, obs, vw_revenue(x,theta), sim)
+        c = flowdψ(cost(x),    d, obs, vw_cost(x,θ), sim)
+        r = flowdψ(revenue(x), d, obs, vw_revenue(x,θ), sim)
         u = r+c
     end
     return u::T
