@@ -9,12 +9,12 @@ end
 # lengths
 # -----------------------------------------
 
-@inline _nparms(x::DrillReward) = (_nparm(revenue(x)), _nparm(drill(x)), _nparm(extend(x)),)
+@inline _nparms(x::DrillReward) = (_nparm(drill(x)), _nparm(extend(x)), _nparm(revenue(x)))
 @inline _nparm( x::DrillReward) = sum(_nparms(x))
 
-@inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x)))
-@inline idx_cost(   x::DrillReward) = OneTo(_nparm(drill(x)))  .+  _nparm(revenue(x))
-@inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x))) .+ (_nparm(revenue(x)) + _nparm(drill(x)))
+@inline idx_cost(   x::DrillReward) = OneTo(_nparm(drill(x)))
+@inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+ _nparm(drill(x))
+@inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(drill(x)) + _nparm(extend(x)))
 
 vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
 vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
