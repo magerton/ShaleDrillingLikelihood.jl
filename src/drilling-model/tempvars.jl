@@ -66,7 +66,7 @@ struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA4<:AbstractArray4{T}, SM<:
     end
 end
 
-# const dcdp_tmpvars{T,AA3,AA4,SM} = DCDPTmpVars{T,AA3,AA4,SM}
+const dcdp_tmpvars = DCDPTmpVars
 
 _ubVfull(   x::DCDPTmpVars) = x.ubVfull
 _dubVfull(  x::DCDPTmpVars) = x.dubVfull
