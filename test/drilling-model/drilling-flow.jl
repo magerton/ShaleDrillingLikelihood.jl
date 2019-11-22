@@ -13,7 +13,8 @@ using ShaleDrillingLikelihood: showtypetree,
     SimulationDraw,
     check_flow_grad,
     TestDrillModel,
-    _nparm
+    _nparm,
+    flow!
 
 using Calculus: finite_difference!
 
@@ -72,8 +73,7 @@ using Calculus: finite_difference!
             # s = sim
             # obs = ObservationDrill(m, ichars, z, d, i)
             # g = zero(theta)
-            # @code_warntype flow(f, d, obs, theta, s)
-            # @code_warntype dflow!(f, g, d, obs, theta, s)
+            # @code_warntype flow!(g, f, d, obs, theta, s, true)
 
             for (d,i) in product(0:2, 1:3)
 

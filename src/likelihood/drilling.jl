@@ -5,13 +5,9 @@ Return log lik of `lease` history. Optionally *adds* to gradient vector `grad`.
 
 Uses temp vector `ubv` from thread-specific `dtv::DrillingTmpVarsThread`
 """
-function loglik_drill_lease!(
-    grad::AbstractVector, lease::DrillLease,
-    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread{T},
-    dograd::Bool
-)::T where {T}
+function loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
 
-    LL = zero(T)
+    LL = azero(theta)
     ubv = _ubv(dtv)
     dubv = _dubv(dtv)
 
@@ -24,14 +20,14 @@ function loglik_drill_lease!(
         @inbounds @simd for d in actions
             dp1 = d+1
             dubv_slice = view(dubv, :, dp1)
-            ubv[dp1] = full_payoff!(dubv_slice, d, obs, theta, sim)
+            ubv[dp1] = full_payoff!(dubv_slice, d, obs, theta, sim, dograd)
         end
 
         dp1 = _y(obs)+1
         LL += ubv[dp1] - logsumexp!(ubv_vw)
 
         if dograd
-            ubv[dp1] -= one(T)
+            ubv[dp1] -= 1
             BLAS.gemv!('N', -1.0, dubv_vw, ubv_vw, 1.0, grad)
         end
     end
@@ -47,11 +43,7 @@ Return log lik of `unit` history, integrating over `J`. possible leases.
 If `dograd`, then `grad .+= ∇(log Lᵢ)` using thread-specific temp variables
 `dtv::DrillingTmpVarsThread`. This overwrites `_gradJ(dtv)`
 """
-function loglik_drill_unit!(
-    grad::AbstractVector, unit::DrillUnit,
-    theta::AbstractVector{T}, sim::SimulationDraw, dtv::DrillingTmpVarsThread,
-    dograd::Bool
-)::T where {T}
+function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
 
     nJ    = num_initial_leases(unit)
     gradJ = view(_gradJ(dtv), :, OneTo(nJ))
@@ -59,7 +51,7 @@ function loglik_drill_unit!(
 
     fill!(gradJ, 0)
 
-    LL = zero(T)
+    LL = azero(theta)
     if nJ > 0
         LLj .= log.(j1chars(InitialDrilling(unit)))
         for (ji,lease) in enumerate(InitialDrilling(unit))
@@ -67,13 +59,9 @@ function loglik_drill_unit!(
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
-        if dograd
-            # BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad) # grad .+= gradJ * LLj
-            # No BLAS b/c maybe it conflicts w/ threads?
-            @inbounds for (j,llj) in enumerate(LLj)
-                grad .+= view(gradJ, :, j) .* llj
-            end
-        end
+
+        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad)
+
     end
 
     for lease in DevelopmentDrilling(unit)
@@ -143,10 +131,7 @@ function simloglik_drill_unit!(grad, unit, theta, sims, dograd)
 end
 
 
-function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data::DataDrill,
-    theta::AbstractVector{T}, sim::SimulationDrawsMatrix,
-    dograd::Bool=false, dohess::Bool=false
-) where {T}
+function simloglik_drill_data!(grad, hess, data, theta, sim::SimulationDrawsMatrix, dograd=false, dohess=false)
 
     dohess == true && dograd == false && throw(error("can't dohess without dograd"))
     checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
@@ -155,7 +140,7 @@ function simloglik_drill_data!(grad::AbstractVector, hess::AbstractMatrix, data:
     update!(sim, theta_drill_ρ(_model(data), theta))
     g = dohess ? similar(grad) : grad
 
-    LL = zero(T)
+    LL = azero(theta)
     for (i,unit) in enumerate(data)
         dohess && fill!(g, 0)
         LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dograd)

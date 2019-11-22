@@ -33,25 +33,30 @@ abstract type AbstractDrillingCost_TimeFE <: AbstractDrillingCost end
 "Single drilling cost"
 struct DrillingCost_constant <: AbstractDrillingCost end
 @inline _nparm(x::DrillingCost_constant) = 1
-@inline flow(::DrillingCost_constant, d, obs, θ, sim) = d*θ[1]
-@inline function dflow!(::DrillingCost_constant, grad, d, obs, θ, sim)
-    grad[1] = d
-    return nothing
+@inline function flow!(grad, ::DrillingCost_constant, d, obs, θ, sim, dograd::Bool)
+    if dograd
+        grad[1] = d
+    end
+    return d*θ[1]
 end
 
 "Drilling cost changes if `d>1`"
 struct DrillingCost_dgt1 <: AbstractDrillingCost end
 @inline _nparm(x::DrillingCost_dgt1) = 2
-@inline flow(::DrillingCost_dgt1, d, obs, θ, sim) = d*(d<=1 ? θ[1] : θ[2])
-@inline function dflow!(::DrillingCost_dgt1, grad, d, obs, θ, sim)
+@inline function flow!(grad, ::DrillingCost_dgt1, d, obs, θ, sim, dograd::Bool)
+    T = eltype(θ)
     if d == 0
-        fill!(grad, 0)
+        dograd && fill!(grad, 0)
+        u = zero(T)
     else
         dgt1 = d>1
-        grad[1+dgt1] = d
-        grad[2-dgt1] = 0
+        u = d*θ[1+dgt1]
+        if dograd
+            grad[1+dgt1] = d
+            grad[2-dgt1] = 0
+        end
     end
-    return nothing
+    return u::T
 end
 
 "Time FE for 2008-2012"
@@ -60,22 +65,20 @@ struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE
     stop::Int16
 end
 @inline _nparm(x::DrillingCost_TimeFE) = 2 + stop(x) - start(x)
-@inline function flow(u::DrillingCost_TimeFE, d, obs, θ, sim)
-    d < 1 && return azero(θ)
+@inline function flow!(grad, u::DrillingCost_TimeFE, d, obs, θ, sim, dograd::Bool)
+    T = eltype(θ)
+    dograd && fill!(grad, 0)
+    d == 0 && return zero(T)
+
     tidx = time_idx(u,obs)
-    d == 1 && return θ[tidx]
-    return d*(θ[tidx] + last(θ) )
-end
-@inline function dflow!(u::DrillingCost_TimeFE, grad, d, obs, θ, sim)
-    fill!(grad, 0)
-    if d > 0
-        tidx = time_idx(u,obs)
-        grad[tidx] += d
-        if d > 1
-            grad[end] += d
-        end
+    dgt1 = d > 1
+
+    r = d*(θ[tidx] + dgt1*θ[end])
+    if dograd
+        grad[tidx] = d
+        grad[end]  = d*dgt1
     end
-    return nothing
+    return r::T
 end
 
 
@@ -85,30 +88,24 @@ struct DrillingCost_TimeFE_costdiffs <: AbstractDrillingCost_TimeFE
     stop::Int16
 end
 @inline _nparm(x::DrillingCost_TimeFE_costdiffs) = 4 + stop(x) - start(x)
-@inline function flow(u::DrillingCost_TimeFE_costdiffs, d, obs, θ, sim)
-    d < 1 && return azero(θ)
+@inline function flow!(grad, u::DrillingCost_TimeFE_costdiffs, d, obs, θ, sim, dograd::Bool)
+    T = eltype(θ)
+    dograd && fill!(grad, 0)
+    d == 0 && return zero(T)
+
     tidx = time_idx(u,obs)
-    r = θ[tidx]
-    if !_Dgt0(obs)
-        d > 1 && (r += θ[end-2])
-    else
-        r += θ[end-(d==1)]
+    Dgt0 = _Dgt0(obs)
+    dgt1 = d > 1
+
+    r = d * ( θ[tidx] + (!Dgt0*dgt1)*θ[end-2] + Dgt0*θ[end-1+dgt1] )
+    if dograd
+        grad[tidx]       = d
+        grad[end-2]      = d * !Dgt0*dgt1
+        grad[end-1+dgt1] = d * Dgt0
     end
-    return d*r
+    return r::T
 end
 
-@inline function dflow!(u::DrillingCost_TimeFE_costdiffs, grad, d, obs, θ, sim)
-    fill!(grad, 0)
-    d < 1 && return nothing
-    tidx = time_idx(u,obs)
-    grad[tidx] = d
-    if !_Dgt0(obs)
-        d > 1 && ( grad[end-2] = d )
-    else
-        grad[end-(d==1)] = d
-    end
-    return nothing
-end
 
 
 "Time FE w rig rates for 2008-2012"
@@ -117,23 +114,24 @@ struct DrillingCost_TimeFE_rigrate <: AbstractDrillingCost_TimeFE
     stop::Int16
 end
 @inline _nparm(x::DrillingCost_TimeFE_rigrate) = 3 + stop(x) - start(x)
-@inline function flow(u::DrillingCost_TimeFE_rigrate, d, obs, θ, sim)
-    d  < 1 && return azero(θ)
-    tidx = time_idx(u,obs)
-    r = θ[tidx] + θ[end]*rigrate(obs)
-    d == 1 && return r
-    return d*( r + θ[end-1])
-end
-@inline function dflow!(u::DrillingCost_TimeFE_rigrate, grad, d, obs, θ, sim)
-    fill!(grad, 0)
-    d == 0 && return nothing
-    tidx = time_idx(u,obs)
-    grad[tidx] = d
-    d > 1 && (grad[end-1] = d)
-    grad[end] = d*rigrate(obs)
-    return nothing
-end
+@inline function flow!(grad, u::DrillingCost_TimeFE_rigrate, d, obs, θ, sim, dograd::Bool)
+    T = eltype(θ)
+    dograd && fill!(grad, 0)
+    d == 0 && return zero(T)
 
+    tidx = time_idx(u,obs)
+    rig = rigrate(obs)
+    Dgt0 = _Dgt0(obs)
+    dgt1 = d > 1
+
+    r = d*(θ[tidx] + dgt1*θ[end-1] + θ[end]*rig)
+    if dograd
+        grad[tidx]  = d
+        grad[end-1] = d*dgt1
+        grad[end]   = d*rig
+    end
+    return r
+end
 
 
 "Time FE for 2008-2012 with shifters for (D==0,d>1), (D>1,d==1), (D>1,d>1)"
@@ -142,30 +140,21 @@ struct DrillingCost_TimeFE_rig_costdiffs <: AbstractDrillingCost_TimeFE
     stop::Int16
 end
 @inline _nparm(x::DrillingCost_TimeFE_rig_costdiffs) = 5 + stop(x) - start(x)
-@inline function flow(u::DrillingCost_TimeFE_rig_costdiffs, d, obs, θ, sim)
-    d < 1 && return azero(θ)
-    tidx = time_idx(u, obs)
+@inline function flow!(grad, u::DrillingCost_TimeFE_rig_costdiffs, d, obs, θ, sim, dograd::Bool)
+    dograd && fill!(grad, 0)
+    d == 0 && return zero(T)
 
-    r = θ[tidx]
-    if !_Dgt0(obs)
-        d > 1  && (r += θ[end-3] )
-    else
-        r += θ[end-1-(d==1)]
-    end
-    return d*( r + θ[end]*rigrate(obs) )
-end
-
-@inline function dflow!(u::DrillingCost_TimeFE_rig_costdiffs, grad, d, obs, θ, sim)
-    fill!(grad, 0)
-    d == 0 && return nothing
     tidx = time_idx(u,obs)
+    rig = rigrate(obs)
+    Dgt0 = _Dgt0(obs)
+    dgt1 = d > 1
 
-    grad[tidx] += d
-    if !_Dgt0(obs)
-        d > 1 && ( grad[end-3] += d )
-    else
-        grad[end-1-(d==1)] += d
+    r = d * ( θ[tidx] + (!Dgt0*dgt1)*θ[end-3] + Dgt0*θ[end-2+dgt1] + rig)
+    if dograd
+        grad[tidx]       = d
+        grad[end-3]      = d * (!Dgt0*dgt1)
+        grad[end-2+dgt1] = d * Dgt0
+        grad[end]        = d * rig
     end
-    grad[end] += d*rigrate(obs)
-    return nothing
+    return r
 end

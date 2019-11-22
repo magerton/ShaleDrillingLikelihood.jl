@@ -6,10 +6,10 @@ struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstrac
 end
 
 # access components
-revenue(x::DrillReward) = x.revenue
-drill(  x::DrillReward) = x.drill
-extend( x::DrillReward) = x.extend
-cost(   x::DrillReward) = drill(x)
+@inline revenue(x::DrillReward) = x.revenue
+@inline drill(  x::DrillReward) = x.drill
+@inline extend( x::DrillReward) = x.extend
+@inline cost(   x::DrillReward) = drill(x)
 
 # -----------------------------------------
 # lengths
@@ -22,35 +22,19 @@ cost(   x::DrillReward) = drill(x)
 @inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+ _nparm(drill(x))
 @inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(drill(x)) + _nparm(extend(x)))
 
-vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
-vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
-vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
+@inline vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
+@inline vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
+@inline vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
 
 # -----------------------------------------
 # flow payoffs
 # -----------------------------------------
 
-@inline function flow(x::DrillReward, d, obs, θ, sim)
-    T = eltype(θ)
-    if d == 0
-        u = flow(extend(x),  d, obs, vw_extend(x,θ), sim)
-    else
-        u = flow(cost(x),    d, obs, vw_cost(x,θ), sim) +
-            flow(revenue(x), d, obs, vw_revenue(x,θ), sim)
-    end
-    return u::T
-end
-
-@inline function dflow!(x::DrillReward, grad, d, obs, θ, sim)
-    T = eltype(θ)
-    if d == 0
-        u = flow!(extend( x), vw_extend( x, grad), d, obs, vw_extend( x, θ), sim)
-    else
-        c = flow!(cost(   x), vw_cost(   x, grad), d, obs, vw_cost(   x, θ), sim)
-        r = flow!(revenue(x), vw_revenue(x, grad), d, obs, vw_revenue(x, θ), sim)
-        u = r+c
-    end
-    return u::T
+@inline function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
+    e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
+    c = flow!(vw_cost(   x, grad), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
+    r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
+    return e+c+r
 end
 
 @inline function flowdψ(x::DrillReward, d, obs, θ, sim)

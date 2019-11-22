@@ -103,15 +103,19 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number
     x::XT
 end
 
-_ichars(obs::ObservationDrill) = obs.ichars
-_z(     obs::ObservationDrill) = obs.z
-geology(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = first(_ichars(obs))
-royalty(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = last(_ichars(obs))
+# ichars
+@inline ichars(obs::ObservationDrill) = obs.ichars
+@deprecate _ichars(obs::ObservationDrill) ichars(obs)
+@inline geology(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = first(ichars(obs))
+@inline royalty(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = last(ichars(obs))
 
-@inline logprice(obs::ObservationDrill) = first(_z(obs))
+# zchars
+zchars(obs::ObservationDrill) = obs.z
+@deprecate _z(     obs::ObservationDrill) zchars(obs)
+@inline logprice(obs::ObservationDrill) = first(zchars(obs))
 @inline price(   obs::ObservationDrill) = exp(logprice(obs))
-@inline rigrate( obs::ObservationDrill) = exp(getindex(_z(obs), 2))
-@inline year(    obs::ObservationDrill) = last(_z(obs))
+@inline rigrate( obs::ObservationDrill) = exp(getindex(zchars(obs), 2))
+@inline year(    obs::ObservationDrill) = last(zchars(obs))
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
@@ -123,8 +127,6 @@ end
 
 Observation(d::AbstractDataDrill, i, r::AbstractRegimeType, j, t) = Observation(d,i,j,t)
 
-ichars(obs::ObservationDrill) = obs.ichars
-zchars(obs::ObservationDrill) = obs.z
 
 # @deprecate action(obs::ObservationDrill) _y(obs)
 # @deprecate state(obs::ObservationDrill) _x(obs)

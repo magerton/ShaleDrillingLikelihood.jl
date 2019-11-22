@@ -7,8 +7,8 @@ module CompileShaleDrillingLikelihood
     using ShaleDrillingLikelihood
 end
 
-# include("sum-functions.jl")
-# include("threadutils.jl")
+include("sum-functions.jl")
+include("threadutils.jl")
 
 include("data/data-structure.jl")
 include("data/drilling.jl")

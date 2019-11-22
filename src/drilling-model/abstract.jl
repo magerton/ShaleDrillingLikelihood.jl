@@ -87,28 +87,29 @@ statespace(m::AbstractDrillModel) = NotDefinedError(m)
 @inline dflow!(grad,    obs, theta, s) = dflow!(reward(_model(obs)), grad, _y(obs), obs, theta, s)
 @inline flowdψ(grad,    obs, theta, s) = flowdψ(reward(_model(obs)), grad, _y(obs), obs, theta, s)
 
-
-
 # @deprecate dflowdψ(args...) flowdψ(args...)
 
 function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
     length(theta) == _nparm(x) || throw(DimensionMismatch())
     grad = zero(theta)
-    dflow!(x, grad, d, obs, theta, s)
+    dflow!(grad, x, d, obs, theta, s, true)
     return grad
 end
 
-full_payoff(        d, obs, theta, sim) =  flow(       d, obs, theta, sim)
-function full_payoff!(grad, d, obs, theta, sim)
-    u = flow(d, obs, theta, sim)
-    dfull_payoff!(grad, d, obs, theta, sim)
-    return u
+function flow(x::AbstractPayoffFunction, d, obs, theta, s)
+    grad = Vector{eltype(theta)}(undef, 0)
+    return flow!(grad, x, d, obs, theta, s, false)
 end
-dfull_payoff!(grad, d, obs, theta, sim) = dflow!(grad, d, obs, theta, sim)
-dfull_payoff(       d, obs, theta, sim) = dflow(       d, obs, theta, sim)
 
-# Check Derivatives
-#-------------------------------------------------------------
+@inline function full_payoff!(grad, d, obs, theta, sim, dograd)
+    return flow!(grad, reward(_model(obs)), d, obs, theta, sim, dograd)
+end
+
+@inline function full_payoff(d, obs, theta, sim)
+    grad = Vector{eltype(theta)}(undef, 0)
+    full_payoff!(grad, d, obs, theta, sim, false)
+end
+
 
 # Check Derivatives
 #-------------------------------------------------------------
@@ -118,14 +119,14 @@ function check_flow_grad(m, d, obs, theta, sim)
 
     # compute analytic
     grad = zero(theta)
-    dflow!(m, grad, d, obs, theta, sim)
+    flow!(grad, m, d, obs, theta, sim, true)
 
     # check finite difference for dθ
-    f(x) = flow(m, d, obs, x, sim)
+    f(x) = flow!(grad, m, d, obs, x, sim, false)
     @test grad ≈ Calculus.gradient(f, theta)
 
     # check finite difference for dψ
-    fdpsi(x) = flow(m, d, obs, theta, SimulationDrawFD(sim, x))
+    fdpsi(x) = flow!(grad, m, d, obs, theta, SimulationDrawFD(sim, x), false)
     @test flowdψ(m, d, obs, theta, sim) ≈ Calculus.derivative(fdpsi, 0.0)
 end
 
