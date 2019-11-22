@@ -99,6 +99,11 @@ function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
 end
 
 full_payoff(        d, obs, theta, sim) =  flow(       d, obs, theta, sim)
+function full_payoff!(grad, d, obs, theta, sim)
+    u = flow(d, obs, theta, sim)
+    dfull_payoff!(grad, d, obs, theta, sim)
+    return u
+end
 dfull_payoff!(grad, d, obs, theta, sim) = dflow!(grad, d, obs, theta, sim)
 dfull_payoff(       d, obs, theta, sim) = dflow(       d, obs, theta, sim)
 
