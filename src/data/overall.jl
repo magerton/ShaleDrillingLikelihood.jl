@@ -43,9 +43,9 @@ produce(d::DataSetofSets) = d.data[3] # produce
 _nparm(d::DataFull)      = sum(_nparm.(d)) - length(coef_links(d)) - 1
 _nparm(d::DataSetofSets) = sum(_nparm.(d)) - length(coef_links(d))
 
-@deprecate DataDrill(  d::DataSetofSets) drill(d)
-@deprecate DataRoyalty(d::DataSetofSets) royalty(d)
-@deprecate DataProduce(d::DataSetofSets) produce(d)
+# @deprecate DataDrill(  d::DataSetofSets) drill(d)
+# @deprecate DataRoyalty(d::DataSetofSets) royalty(d)
+# @deprecate DataProduce(d::DataSetofSets) produce(d)
 
 # -------------------------------------------------
 # Indexing into parameter vector

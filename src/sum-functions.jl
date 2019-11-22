@@ -44,7 +44,7 @@ end
 
 logsumexp!(x) = logsumexp!(x,x)
 
-@deprecate logsumexp_and_softmax!(x) logsumexp!(x)
+# @deprecate logsumexp_and_softmax!(x) logsumexp!(x)
 
 
 """

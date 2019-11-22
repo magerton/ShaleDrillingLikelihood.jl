@@ -115,10 +115,10 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline _ρ(x::MaxLearning         , σ::Number) = 0
 @inline _ρ(x::DrillingRevenue     , σ::Number) = _ρ(σ, learn(x))
 
-@deprecate _ρ(σ::Number, x::AbstractLearningType) _ρ(x,σ)
-@deprecate _ρ(σ::Number, x::PerfectInfo) _ρ(x,σ)
-@deprecate _ρ(σ::Number, x::MaxLearning) _ρ(x,σ)
-@deprecate _ρ(σ::Number, x::DrillingRevenue) _ρ(x,σ)
+# @deprecate _ρ(σ::Number, x::AbstractLearningType) _ρ(x,σ)
+# @deprecate _ρ(σ::Number, x::PerfectInfo) _ρ(x,σ)
+# @deprecate _ρ(σ::Number, x::MaxLearning) _ρ(x,σ)
+# @deprecate _ρ(σ::Number, x::DrillingRevenue) _ρ(x,σ)
 
 # parameter access
 # -----------------------

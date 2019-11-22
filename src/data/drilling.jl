@@ -176,10 +176,10 @@ tlength(d::AbstractDataDrill, j) = tstop(d,j) - tstart(d,j) + 1
 # iteration through zchars
 zcharsvec(d::AbstractDataDrill, t0) = view(zchars(d), t0:length(zchars(d)))
 
-@deprecate j2_index(     data::DataDrill, i::Integer) j2ptr(  data,i)
-@deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
-@deprecate tend(         data::DataDrill, j::Integer) tstop(  data,j)
-@deprecate ilength(      data::DataDrill)             length( data)
+# @deprecate j2_index(     data::DataDrill, i::Integer) j2ptr(  data,i)
+# @deprecate j1_indexrange(data::DataDrill, i::Integer) j1range(data,i)
+# @deprecate tend(         data::DataDrill, j::Integer) tstop(  data,j)
+# @deprecate ilength(      data::DataDrill)             length( data)
 
 # Unit (first layer of iteration)
 #------------------------------------------

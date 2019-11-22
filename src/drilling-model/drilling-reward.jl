@@ -59,11 +59,11 @@ end
 # deprecate
 # -----------------------------------------
 
-@deprecate number_of_model_parms(x::DrillReward) _nparm(x)
-@deprecate coef_range_revenue(x)       idx_revenue(x)
-@deprecate coef_range_drillingcost(x)  idx_cost(x)
-@deprecate coef_range_extensioncost(x) idx_extend(x)
-@deprecate flowdθ!(args...) dflow!(args...)
-@deprecate theta_revenue(x::DrillReward, theta) vw_revenue(x, theta)
-@deprecate theta_cost(   x::DrillReward, theta) vw_cost(   x, theta)
-@deprecate theta_extend( x::DrillReward, theta) vw_extend( x, theta)
+# @deprecate number_of_model_parms(x::DrillReward) _nparm(x)
+# @deprecate coef_range_revenue(x)       idx_revenue(x)
+# @deprecate coef_range_drillingcost(x)  idx_cost(x)
+# @deprecate coef_range_extensioncost(x) idx_extend(x)
+# @deprecate flowdθ!(args...) dflow!(args...)
+# @deprecate theta_revenue(x::DrillReward, theta) vw_revenue(x, theta)
+# @deprecate theta_cost(   x::DrillReward, theta) vw_cost(   x, theta)
+# @deprecate theta_extend( x::DrillReward, theta) vw_extend( x, theta)

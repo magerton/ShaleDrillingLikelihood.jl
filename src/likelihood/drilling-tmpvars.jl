@@ -31,11 +31,11 @@ _grad( dtv::DrillingTmpVars) = dtv.grad
 _gradJ(dtv::DrillingTmpVars) = dtv.gradJ
 _theta(dtv::DrillingTmpVars) = dtv.theta
 
-@deprecate _ubv(  dtv::DrillingTmpVarsAll, id) _ubv(  dtv[id])
-@deprecate _llj(  dtv::DrillingTmpVarsAll, id) _llj(  dtv[id])
-@deprecate _grad( dtv::DrillingTmpVarsAll, id) _grad( dtv[id])
-@deprecate _gradJ(dtv::DrillingTmpVarsAll, id) _gradJ(dtv[id])
-@deprecate _theta(dtv::DrillingTmpVarsAll, id) _theta(dtv[id])
+# @deprecate _ubv(  dtv::DrillingTmpVarsAll, id) _ubv(  dtv[id])
+# @deprecate _llj(  dtv::DrillingTmpVarsAll, id) _llj(  dtv[id])
+# @deprecate _grad( dtv::DrillingTmpVarsAll, id) _grad( dtv[id])
+# @deprecate _gradJ(dtv::DrillingTmpVarsAll, id) _gradJ(dtv[id])
+# @deprecate _theta(dtv::DrillingTmpVarsAll, id) _theta(dtv[id])
 
 function DrillingTmpVars(J::Integer, maxchoices::Integer, k::Integer, T::Type=Float64)
     tid = T(threadid())

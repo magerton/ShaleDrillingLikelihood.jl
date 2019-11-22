@@ -4,8 +4,8 @@
 @inline _ρ(θρ) = logistic(θρ)
 @inline _dρdθρ(θρ) = (z = logistic(θρ); z*(1-z) )
 @inline _ρsq(θρ) = _ρ(θρ)^2
-@deprecate _dρdσ(θρ) _dρdθρ(θρ)
-@deprecate _ρ2(θρ) _ρsq(θρ)
+# @deprecate _dρdσ(θρ) _dρdθρ(θρ)
+# @deprecate _ρ2(θρ) _ρsq(θρ)
 
 # go from iid normal u,v to correlated shocks
 @inline _ψ1(u::Number, v::Number, ρ::Number) = ρ*u + sqrt(1-ρ^2)*v
@@ -18,19 +18,19 @@
 
 # z(ψ2|ψ1)
 @inline cond_z(x2::Number, x1::Number, Δ::Number, ρ::Number) = (x2 - ρ*x1 + Δ)/sqrt(1-ρ^2)
-@deprecate  _z(x2::Number, x1::Number, Δ::Number, ρ::Number) conditional_z(x2, x1, Δ, ρ)
+# @deprecate  _z(x2::Number, x1::Number, Δ::Number, ρ::Number) conditional_z(x2, x1, Δ, ρ)
 
 # derivatives
 @inline dcond_zdρ(x2::Number, x1::Number, ρ::Number, z::Number) = -x1/sqrt(1-ρ^2) + ρ*z/(1-ρ^2)
-@deprecate  _dzdρ(x2::Number, x1::Number, ρ::Number, z::Number) dcond_zdρ(x2,x1,ρ,z)
+# @deprecate  _dzdρ(x2::Number, x1::Number, ρ::Number, z::Number) dcond_zdρ(x2,x1,ρ,z)
 
 @inline _dcond_probdρ(x2::Number, x1::Number, Δ::Number, ρ::Number) = (z = cond_z(x2,x1,Δ,ρ);  normpdf(z) * dcond_zdρ(x2,x1,ρ,z))
-@deprecate      _dπdρ(x2::Number, x1::Number, Δ::Number, ρ::Number) _dcond_probdρ(x2,x1,Δ,ρ)
+# @deprecate      _dπdρ(x2::Number, x1::Number, Δ::Number, ρ::Number) _dcond_probdρ(x2,x1,Δ,ρ)
 
 # finite difference versions
 @inline _ρfd(x::Number, h::Number) = _ρ(x+h)
 @inline cond_zfd(x2::Number, x1::Number, Δ::Number, ρ::Number, h::Number) = cond_z(x2, x1+h, Δ, ρ)
-@deprecate    _z(x2::Number, x1::Number, Δ::Number, ρ::Number, h::Number) cond_zfd(x2,x1,Δ,ρ,h)
+# @deprecate    _z(x2::Number, x1::Number, Δ::Number, ρ::Number, h::Number) cond_zfd(x2,x1,Δ,ρ,h)
 
 # data strucutres
 #---------------------------

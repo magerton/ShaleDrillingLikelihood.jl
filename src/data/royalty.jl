@@ -133,7 +133,7 @@ theta_royalty_β(d, theta) = view(theta, idx_royalty_β(d))
 theta_royalty_κ(d, theta) = view(theta, idx_royalty_κ(d))
 theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
 
-@deprecate theta_roy(d, theta) theta_royalty(d,theta)
+# @deprecate theta_roy(d, theta) theta_royalty(d,theta)
 
 # check if theta is okay
 theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
