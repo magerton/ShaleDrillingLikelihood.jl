@@ -91,12 +91,12 @@ Sets `lse = ∑_k exp(x[i,j,k])`
 
 Uses temporary array `tmp`
 """
-@generated function softmax3!(q::AbstractArray{T}, lse::Matrix{T}, tmpmax::Matrix{T}, x::AbstractArray{T}, maxk::Integer=size(q, ndims(q)) ) where {T<:Real}
+@generated function softmax3!(q::AA, lse::Matrix{T}, tmpmax::Matrix{T}, x::AA, maxk::Integer=size(q, ndims(q)) ) where {T<:Real, AA<:AbstractArray{T}}
     quote
         xsizes = size(x)
-        xsizes == size(q) || throw(DimensionMismatch())
+        xsizes == size(q) || throw(DimensionMismatch("size(x) = $(size(x)) but size(q) = $(size(q))"))
         nk = last(xsizes)
-        xsizes[1:end-1] ==  size(lse) == size(tmpmax) || throw(DimensionMismatch())
+        xsizes[1:end-1] ==  size(lse) == size(tmpmax) || throw(DimensionMismatch("size(x) = $(size(x)),  size(lse) = $(size(lse)), and size(tmpmax) = $(size(tmpmax))"))
         0 < maxk <= nk || throw(DomainError(maxk))
         1 == stride1(q) == stride1(x) || throw(error("Arrays not strided"))
 

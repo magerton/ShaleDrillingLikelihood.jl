@@ -48,7 +48,10 @@ using ShaleDrillingLikelihood: DynamicDrillingModel,
     dEV,
     EV,
     anticipate_t1ev,
-    _dmax
+    _dmax,
+    solve_inf_vfit!,
+    solve_inf_pfit!,
+    solve_inf_vfit_pfit!
 
 const DOBTIME = false
 
@@ -70,7 +73,7 @@ println("print")
     zs = ( range(-1.5; stop=1.5, length=nz), )
     nz = prod(length.(zs))
     ztrans = spdiagm(-1 => fill(1.0/3, nz-1), 0 => fill(1.0/3, nz), 1 => fill(1.0/3, nz-1) )
-    ztrans ./= sum(ztrans; dims=2)
+    ztrans[1,1] = ztrans[1,2] = ztrans[end,end-1] = ztrans[end,end] = 0.5
 
     # wp = LeasedProblemContsDrill(dmx,4,5,3,2)
     wp = LeasedProblem(dmx,4,5,3,2)
@@ -266,6 +269,49 @@ println("print")
                 @test fdEV0 ≈ dEV0
             end
         end # finite horizon
+
+
+
+        @testset "Check vfit/pfit for infinite horizon, anticipate_e = $(anticipate_t1ev(ddm))" begin
+            i = length(statespace(ddm))-1
+
+            fdEV = zero(dEV(evs))
+
+            idxd  = dp1space(wp,i)
+            idxs  = collect(sprimes(statespace(ddm),i))
+            horzn = _horizon(wp,i)
+            @test horzn == :Infinite
+
+            EV0   = view(EV(evs) ,    :, :, i)
+            EV1   = view(EV(evs) ,    :, :, idxs)
+            dEV0  = view(dEV(evs), :, :, :, i)
+            dEV1  = view(dEV(evs), :, :, :, idxs)
+            fdEV0 = view(fdEV    , :, :, :, i)
+
+            tmp_vw = view(tmpv, idxd)
+
+            vfEV0 = zeros(size(EV0))
+
+            fill!(evs, 0)
+            flow!(tmp_vw, ddm, theta, i, ichar, true)
+            ubV(tmp_vw)  .+= discount(ddm) .* EV0
+            dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
+            converged, iter, bnds = solve_inf_vfit!(EV0, tmp_vw, ddm; maxit=1000, vftol=1e-10)
+            println("vfit done. converged = $converged after $iter iterations. error bounds are $bnds")
+            vfEV0 .= EV0
+
+            fill!(evs, 0)
+            flow!(tmp_vw, ddm, theta, i, ichar, true)
+            ubV(tmp_vw)  .+= discount(ddm) .* EV0
+            dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
+            converged, iter, bnds = solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-10, maxit0=20, maxit1=40)
+            println("pfit done. converged = $converged after $iter iterations. error bounds are $bnds")
+
+            @views maxv, idx = findmax(abs.(vfEV0 .- EV0))
+            @views sub = CartesianIndices(EV0)[idx]
+            println("worst value is $maxv at $sub for vfit vs pfit")
+            @test EV0 ≈ vfEV0
+        end
     end # vfit
 
 

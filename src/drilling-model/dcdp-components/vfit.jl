@@ -37,7 +37,7 @@ function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit::
     while true
         vfit!(tmp(t), t, ddm)
         bnds = extrema( tmp(t) .- EV0 ) .* beta_1minusbeta(ddm)
-        ubV(t)[:,:,1] .= β .* (EV0 .= tmp(t))
+        ubV(t)[:,:,1] .= discount(ddm) .* (EV0 .= tmp(t))
         iter += 1
         converged = all(abs.(bnds) .< vftol)
         if converged  ||  iter >= maxit
@@ -52,26 +52,26 @@ end
 function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; vftol::Real=1e-11)
 
     ΔEV = lse(t)
-    q0 = view(ubVfull(t), :,:,1)
+    q0 = ubV(t)
 
     if anticipate_t1ev(ddm)
-        logsumexp_and_softmax3!(ΔEV, q0, tmp(t), ubV(t))
+        logsumexp_and_softmax!(ΔEV, q0, tmp(t), ubV(t), 1)
     else
         findmax!(add_1_dim(ΔEV), add_1_dim(tmp_cart(t)), ubV(t))
-        q0 .= last.(getfield.(tmp_cart, :I)) .== 1         # update q0 as Pr(d=0|x)
+        q0[:,:,1] .= last.(getfield.(tmp_cart, :I)) .== 1         # update q0 as Pr(d=0|x)
     end
     A_mul_B_md!(tmp(t), ztransition(ddm), ΔEV, 1)
 
     # compute difference & check bnds
-    bnds = extrema(ΔEV .= EV0 .- tmp) .* -beta_1minusbeta(ddm)
+    bnds = extrema(ΔEV .= EV0 .- tmp(t)) .* -beta_1minusbeta(ddm)
     if all(abs.(bnds) .< vftol)
-        EV0 .= tmp
+        EV0 .= tmp(t)
         return bnds
     end
 
     # full PFit
     for j in OneTo(size(EV0, 2))
-        q0j  = view(q0, :, j)
+        q0j  = view(q0, :, j, 1)
         ΔEVj = view(ΔEV, :, j)
 
         update_IminusTVp!(t, ddm, q0j)
@@ -114,7 +114,7 @@ end
 #
 #     q = ubV
 #
-#     if anticipate_e
+#     if anticipate_t1ev(ddm)
 #         softmax3!(q, lse, tmp)
 #     else
 #         findmax!(add_1_dim(lse), add_1_dim(tmp_cart), ubV)
@@ -147,18 +147,18 @@ end
 #
 # # --------------------------- double vfit/pfit loop -----------------------
 #
-# function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::dcdp_tmpvars, prim::dcdp_primitives; vftol::Real=1e-9, maxit0::Integer=40, maxit1::Integer=20)
-#     solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
-#
-#     # try-catch loop in case we have insane parameters that have Pr(no action) = 0, producing a singular IminusTEVp matrix.
-#     converged, iter, bnds = try
-#         solve_inf_pfit!(EV0, t, prim; maxit=maxit1, vftol=vftol)
-#     catch
-#         @warn "pfit threw error. trying vfit."
-#         solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
-#     end
-#     return converged, iter, bnds
-# end
+function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol::Real=1e-9, maxit0::Integer=40, maxit1::Integer=20)
+    solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
+
+    # try-catch loop in case we have insane parameters that have Pr(no action) = 0, producing a singular IminusTEVp matrix.
+    # converged, iter, bnds = try
+       converged, iter, bnds =  solve_inf_pfit!(EV0, t, prim; maxit=maxit1, vftol=vftol)
+    # catch
+    #     @warn "pfit threw error. trying vfit."
+        # converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
+    # end
+    return converged, iter, bnds
+end
 
 # --------------------------- helper function  ----------------------------
 

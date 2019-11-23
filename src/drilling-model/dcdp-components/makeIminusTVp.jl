@@ -3,7 +3,7 @@
 # -----------------------------------------
 
 function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:Matrix,PF}
-    IminusTVp = _IminusTVp(tmpv)
+    IminusTVp = IminusTEVp(tmpv)
     ztrans = ztransition(ddm)
     β = discount(ddm)
 
@@ -20,9 +20,8 @@ end
 
 
 function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:SparseMatrixCSC,PF}
-    IminusTVp = _IminusTVp(tmpv)
+    IminusTVp = IminusTEVp(tmpv)
     ztrans = ztransition(ddm)
-    β = discount(ddm)
 
     n = checksquare(IminusTVp)
     n == length(q0) == checksquare(ztrans) || throw(DimensionMismatch())
@@ -33,11 +32,16 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,P
     IminusTVp_vals = nonzeros(IminusTVp)
 
     # consider eliminmating this check?
-    length(ztrans_rows) == length(IminusTVp_rows) || throw(DimensionMismatch())
+    length(ztrans_rows) == length(IminusTVp_rows) || throw(DimensionMismatch(
+        "length(ztrans_rows) = $(length(ztrans_rows)) but length(IminusTVp_rows) = $(length(IminusTVp_rows))"
+    ))
 
+    # IminusTVp_rows == ztrans_rows || throw(error("IminusTVp rows not the same as ztrans"))
+
+    fill!(IminusTVp, 0)
     @inbounds for j in OneTo(n)
         @simd for nzi in nzrange(IminusTVp, j)
-            x = -ztrans_vals[nzi] * β * q0[j]
+            x = -ztrans_vals[nzi] * discount(ddm) * q0[j]
             i = IminusTVp_rows[nzi]
             IminusTVp_vals[nzi] = j==i  ?  1+x  :  x
         end

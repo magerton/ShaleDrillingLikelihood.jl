@@ -110,8 +110,12 @@ function ensure_diagonal(x)
           j == Arows[i]  &&  (Avals[i] -= 1)
        end
     end
+    check_rowvals_equal(A,x) || throw(error("rowvals are not the same..."))
     return A
 end
+
+check_rowvals_equal(A::SparseMatrixCSC, X::SparseMatrixCSC) = rowvals(A) == rowvals(X)
+check_rowvals_equal(A, X) = true
 
 
 "Temp vars for dynamic model"
