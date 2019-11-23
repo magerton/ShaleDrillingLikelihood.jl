@@ -34,6 +34,8 @@ ztransition(    x::DynamicDrillingModel) = x.ztransition
 psispace(       x::DynamicDrillingModel) = x.psispace
 anticipate_t1ev(x::DynamicDrillingModel) = x.anticipate_t1ev
 
+beta_1minusbeta(ddm::DynamicDrillingModel) = discount(ddm) / (1-discount(ddm))
+
 # -----------------------------------------
 # components of stuff
 # -----------------------------------------
@@ -134,25 +136,38 @@ end
 
 const dcdp_tmpvars = DCDPTmpVars
 
-_ubVfull(   x::DCDPTmpVars) = x.ubVfull
-_dubVfull(  x::DCDPTmpVars) = x.dubVfull
-_q(         x::DCDPTmpVars) = x.q
-_lse(       x::DCDPTmpVars) = x.lse
-_tmp(       x::DCDPTmpVars) = x.tmp
-_tmp_cart(  x::DCDPTmpVars) = x.tmp_cart
-_Πψtmp(     x::DCDPTmpVars) = x.Πψtmp
-_IminusTEVp(x::DCDPTmpVars) = x.IminusTEVp
+ubVfull(   x::DCDPTmpVars) = x.ubVfull
+dubVfull(  x::DCDPTmpVars) = x.dubVfull
+q(         x::DCDPTmpVars) = x.q
+lse(       x::DCDPTmpVars) = x.lse
+tmp(       x::DCDPTmpVars) = x.tmp
+tmp_cart(  x::DCDPTmpVars) = x.tmp_cart
+Πψtmp(     x::DCDPTmpVars) = x.Πψtmp
+IminusTEVp(x::DCDPTmpVars) = x.IminusTEVp
+ubV(x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = ubVfull(x)
+dubV(x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = dubVfull(x)
 
-size(x::DCDPTmpVars) = size(_dubVfull(x))
+@deprecate _ubVfull(   x::DCDPTmpVars)   ubVfull(   x)
+@deprecate _dubVfull(  x::DCDPTmpVars)   dubVfull(  x)
+@deprecate _q(         x::DCDPTmpVars)   q(         x)
+@deprecate _lse(       x::DCDPTmpVars)   lse(       x)
+@deprecate _tmp(       x::DCDPTmpVars)   tmp(       x)
+@deprecate _tmp_cart(  x::DCDPTmpVars)   tmp_cart(  x)
+@deprecate _Πψtmp(     x::DCDPTmpVars)   Πψtmp(     x)
+@deprecate _IminusTEVp(x::DCDPTmpVars)   IminusTEVp(x)
+@deprecate _ubV(       x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3} ubV(  x)
+@deprecate _dubV(      x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3} dubV( x)
+
+size(x::DCDPTmpVars) = size(dubVfull(x))
 
 function fill!(t::DCDPTmpVars, x)
-    fill!(_ubVfull(   t), x)
-    fill!(_dubVfull(  t), x)
-    fill!(_q(         t), x)
-    fill!(_lse(       t), x)
-    fill!(_tmp(       t), x)
-    fill!(_tmp_cart(  t), x)
-    fill!(_Πψtmp(     t), x)
+    fill!(ubVfull(   t), x)
+    fill!(dubVfull(  t), x)
+    fill!(q(         t), x)
+    fill!(lse(       t), x)
+    fill!(tmp(       t), x)
+    fill!(tmp_cart(  t), x)
+    fill!(Πψtmp(     t), x)
 end
 
 function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T<:Real}
@@ -178,11 +193,11 @@ end
 
 function view(t::DCDPTmpVars, idxd::AbstractVector)
     first(idxd) == 1 || throw(DomainError())
-    last(idxd) <= size(_ubVfull(t),3) || throw(DomainError())
-    @views ubV  = view(_ubVfull(t), :,:,  idxd)
-    @views dubV = view(_dubVfull(t),:,:,:,idxd)
-    @views q    = view(_q(t), :,:,idxd)
-    return dcdp_tmpvars(ubV, dubV, q, _lse(t), _tmp(t), _tmp_cart(t), _Πψtmp(t), _IminusTEVp(t))
+    last(idxd) <= size(ubVfull(t),3) || throw(DomainError())
+    @views ubV  = view(ubVfull(t), :,:,  idxd)
+    @views dubV = view(dubVfull(t),:,:,:,idxd)
+    @views q    = view(q(t), :,:,idxd)
+    return dcdp_tmpvars(ubV, dubV, q, lse(t), tmp(t), tmp_cart(t), Πψtmp(t), IminusTEVp(t))
 end
 
 
@@ -196,8 +211,8 @@ function flow!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector,
     k = _nparm(reward(ddm))
     nc = num_choices(statespace(ddm))
 
-    dubv = reshape(_dubVfull(tmpv), k, :, nc)
-    ubv  = reshape( _ubVfull(tmpv),    :, nc)
+    dubv = reshape(dubVfull(tmpv), k, :, nc)
+    ubv  = reshape( ubVfull(tmpv),    :, nc)
 
     @threads for dp1 in dp1space(statespace(ddm), sidx)
 
