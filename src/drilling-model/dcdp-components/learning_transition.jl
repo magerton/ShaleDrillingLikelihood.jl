@@ -2,7 +2,7 @@
 # ------------------------------ matrix updates -------------------------
 
 function _βΠψdθρ!(tmp, ddm, θ)
-    P = _Πψtmp(tmp)
+    P = Πψtmp(tmp)
     y = psispace(ddm)
     β = discount(ddm)
     n = checksquare(P)
@@ -29,7 +29,7 @@ end
 
 
 function _βΠψ!(tmp, ddm, θ)
-    P = _Πψtmp(tmp)
+    P = Πψtmp(tmp)
     y = psispace(ddm)
     β = discount(ddm)
     n = checksquare(P)
