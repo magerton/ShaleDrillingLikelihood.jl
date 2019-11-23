@@ -7,9 +7,14 @@ using StatsFuns
 using Random
 using BenchmarkTools
 
-using ShaleDrillingLikelihood: logsumexp!,
-    sumprod3
+using StatsFuns: softmax!
 
+using ShaleDrillingLikelihood: logsumexp!,
+    sumprod3,
+    softmax3test!,
+    logsumexp3test!
+
+using Base: OneTo
 
 @testset "sumprod3" begin
     for n in (1,2,3,4,10,)
@@ -45,4 +50,46 @@ end
     end
 
 end
+
+println("printme")
+
+@testset "softmax3! functionw" begin
+
+    ni, nj, nk = (100, 100, 10)
+    x0 = rand(ni, nj, nk)
+    q0 = similar(x0)
+
+    # x = view(x0, :, :, OneTo(nk))
+    # q = view(q0, :, :, OneTo(nk))
+    x = x0
+    q = q0
+
+
+    tmpmax = zeros(ni,nj)
+    lse = similar(tmpmax)
+
+    qcopy = similar(q)
+    softmax3test!(qcopy, x)
+    @test sum(qcopy; dims=3) ≈ ones(ni,nj)
+
+    lsetest = logsumexp3test!(x)
+
+    # test softmax3 broadcast
+    softmax3!(q, lse, tmpmax, x)
+    @test sum(q; dims=3) ≈ ones(ni,nj)
+    @test q ≈ qcopy
+
+    fill!(q,0)
+    fill!(lse,0)
+    logsumexp_and_softmax!(lse, q, tmpmax, x, 1)
+    @test lse ≈ lsetest
+    @test all(q[:,:,1] .< 1)
+
+    @btime softmax3!($q, $lse, $tmpmax, $x)
+    @btime softmax3test!($q, $x)
+
+
+end
+
+
 end

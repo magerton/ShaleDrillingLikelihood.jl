@@ -25,7 +25,7 @@ using StatsBase: countmap, sample
 using Base: OneTo
 using Base.Iterators: flatten, product
 using Dates: Month
-using LinearAlgebra: checksquare
+using LinearAlgebra: checksquare, stride1
 
 using InteractiveUtils: subtypes
 
@@ -103,6 +103,7 @@ include("drilling-model/revenue.jl")
 
 # dynamic model
 include("drilling-model/dynamic-drilling-model.jl")
+include("drilling-model/dcdp-components/makeIminusTVp.jl")
 # include("drilling-model/dcdp-components/learning_transition.jl")
 
 # ------------------------------------

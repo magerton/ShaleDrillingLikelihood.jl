@@ -3,7 +3,7 @@ export DynamicDrillingModel,
 
 
 "Full-blown Dynamic discrete choice model"
-struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, TT<:Tuple, AM<:AbstractMatrix{T}, AR<:StepRangeLen{T}} <: AbstractDrillModel
+struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T}, AUP<:AbstractUnitProblem, TT<:Tuple, AR<:StepRangeLen{T}} <: AbstractDrillModel
     reward::PF            # payoff function
     discount::T           # discount factor
     statespace::AUP       # structure of endogenous choice vars
@@ -22,7 +22,7 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, 
         0 < discount < 1 || throw(DomainError(discount))
         nz == prod(length.(zspace)) || throw(DimensionMismatch("zspace dim != ztransition dim"))
 
-        return new{T,APF,AUP,TT,AM,AR}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev)
+        return new{T,APF,AM,AUP,TT,AR}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev)
     end
 end
 
@@ -111,7 +111,7 @@ end
 
 
 "Temp vars for dynamic model"
-struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}, SM<:AbstractMatrix{T}} <: AbstractTmpVars
+struct DCDPTmpVars{T<:Real, SM<:AbstractMatrix{T}, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}} <: AbstractTmpVars
     ubVfull::AA3
     dubVfull::AA4
     q::AA3b
@@ -128,7 +128,7 @@ struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4
         nψ == checksquare(Πψtmp) || throw(DimensionMismatch())
         nz == checksquare(IminusTEVp) || throw(DimensionMismatch())
         T = eltype(ubVfull)
-        return new{T,AA3,AA3b,AA4,SM}(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
+        return new{T,SM,AA3,AA3b,AA4}(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
     end
 end
 
