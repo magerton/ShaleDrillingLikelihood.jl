@@ -171,8 +171,6 @@ dubVperm(x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = dubVfullperm(x)
 @deprecate _ubV(       x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3} ubV(  x)
 @deprecate _dubV(      x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3} dubV( x)
 
-size(x::DCDPTmpVars) = size(dubVfull(x))
-
 function fill!(t::DCDPTmpVars, x)
     fill!(ubVfull(     t), x)
     fill!(dubVfull(    t), x)

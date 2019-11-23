@@ -51,7 +51,8 @@ using ShaleDrillingLikelihood: DynamicDrillingModel,
     _dmax,
     solve_inf_vfit!,
     solve_inf_pfit!,
-    solve_inf_vfit_pfit!
+    solve_inf_vfit_pfit!,
+    gradinf!
 
 const DOBTIME = false
 
@@ -209,15 +210,18 @@ println("print")
     end
 
     @testset "VF Iteration" begin
+
+        fdEV = zero(dEV(evs))
+        thetaminus = similar(theta)
+        thetaplus = similar(theta)
+
         for ddm in (ddm_with_t1ev, ddm_no_t1ev)
 
+            println("\n-----------------------\nanticipate_e = $(anticipate_t1ev(ddm))\n---------------------------------------")
+
             @testset "Finite horizon VF gradient with anticipate_e = $(anticipate_t1ev(ddm))" begin
-                fdEV = zero(dEV(evs))
-                thetaminus = similar(theta)
-                thetaplus = similar(theta)
-
                 for i in 1:length(statespace(ddm))
-
+                    # println("state $i of $(length(statespace(ddm)))")
                     idxd  = dp1space(wp,i)
                     idxs  = collect(sprimes(statespace(ddm),i))
                     horzn = _horizon(wp,i)
@@ -230,6 +234,8 @@ println("print")
                     dEV1  = view(dEV(evs), :, :, :, idxs)
                     fdEV0 = view(fdEV    , :, :, :, i)
 
+                    fill!(fdEV0, 0)
+
                     for k in OneTo(length(theta))
                         thetaminus .= theta
                         thetaplus .= theta
@@ -241,13 +247,13 @@ println("print")
                         fill!(evs, 0)
                         flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
                         vfit!(EV0, tmp_vw, ddm)
-                        ubV(tmp_vw) .+= discount(ddm) .* EV0
+                        ubV(tmp_vw) .+= discount(ddm) .* EV1
                         fdEV0[:,:,k] .-= EV0
 
                         fill!(evs, 0)
                         flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
                         vfit!(EV0, tmp_vw, ddm)
-                        ubV(tmp_vw) .+= discount(ddm) .* EV0
+                        ubV(tmp_vw) .+= discount(ddm) .* EV1
                         fdEV0[:,:,k] .+= EV0
 
                         fdEV0[:,:,k] ./= hh
@@ -255,23 +261,23 @@ println("print")
 
                     fill!(evs, 0)
                     flow!(tmp_vw, ddm, theta, i, ichar, true)
-                    ubV(tmp_vw)  .+= discount(ddm) .* EV0
+                    ubV(tmp_vw)  .+= discount(ddm) .* EV1
                     dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                     vfit!(EV0, dEV0, tmp_vw, ddm)
 
-                    # println("extrema(dEV0) = $(extrema(dEV0))")
-                    # println("extrema(fdEV0) = $(extrema(fdEV0))")
+                    # println("\textrema(dEV0) = $(extrema(dEV0))")
+                    # println("\textrema(fdEV0) = $(extrema(fdEV0))")
 
                     @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
                     @views sub = CartesianIndices(fdEV0)[idx]
-                    # println("worst value is $maxv at $sub for dθ")
+                    # println("\tworst value is $maxv at $sub for dθ")
 
                     @test 0.0 <= maxv < 1.0
                     @test all(isfinite.(dEV0))
                     @test all(isfinite.(fdEV0))
                     @test fdEV0 ≈ dEV0
                 end
-            end # finite horizon
+            end # teest finite horizon
 
             @testset "Check vfit/pfit for infinite horizon, anticipate_e = $(anticipate_t1ev(ddm))" begin
                 i = length(statespace(ddm))-1
@@ -295,7 +301,7 @@ println("print")
 
                 fill!(evs, 0)
                 flow!(tmp_vw, ddm, theta, i, ichar, true)
-                ubV(tmp_vw)  .+= discount(ddm) .* EV0
+                ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterv, bnds = solve_inf_vfit!(EV0, tmp_vw, ddm; maxit=1000, vftol=1e-10)
                 # println("vfit done. converged = $converged after $iterv iterations. error bounds are $bnds")
@@ -303,7 +309,7 @@ println("print")
 
                 fill!(evs, 0)
                 flow!(tmp_vw, ddm, theta, i, ichar, true)
-                ubV(tmp_vw)  .+= discount(ddm) .* EV0
+                ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterp, bnds = solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-10, maxit0=20, maxit1=40)
                 # println("pfit done. converged = $converged after $iterp iterations. error bounds are $bnds")
@@ -314,7 +320,92 @@ println("print")
                 @views sub = CartesianIndices(EV0)[idx]
                 # println("worst value is $maxv at $sub for vfit vs pfit")
                 @test EV0 ≈ vfEV0
+
+            end # test infinite horizon
+
+
+            @testset "Check gradient for infinite horizon, anticipate_e = $(anticipate_t1ev(ddm))" begin
+
+                i = length(statespace(ddm))-1
+
+                fdEV = zero(dEV(evs))
+
+                idxd  = dp1space(wp,i)
+                idxs  = collect(sprimes(statespace(ddm),i))
+                horzn = _horizon(wp,i)
+                @test horzn == :Infinite
+
+                EV0   = view(EV(evs) ,    :, :, i)
+                EV1   = view(EV(evs) ,    :, :, idxs)
+                dEV0  = view(dEV(evs), :, :, :, i)
+                dEV1  = view(dEV(evs), :, :, :, idxs)
+                fdEV0 = view(fdEV    , :, :, :, i)
+
+                tmp_vw = view(tmpv, idxd)
+
+                vfEV0 = zeros(size(EV0))
+
+                nk = length(theta)
+                for k in OneTo(nk)
+                    thetaminus .= theta
+                    thetaplus .= theta
+                    h = peturb(theta[k])
+                    thetaminus[k] -= h
+                    thetaplus[k] += h
+                    hh = thetaplus[k] - thetaminus[k]
+
+                    fill!(evs, 0)
+                    flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
+                    ubV(tmp_vw) .+= discount(ddm) .* EV1
+                    solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-11, maxit0=10, maxit1=40)
+                    fdEV0[:,:,k] .-= EV0
+
+                    fill!(evs, 0)
+                    flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
+                    ubV(tmp_vw) .+= discount(ddm) .* EV1
+                    solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-11, maxit0=10, maxit1=40)
+                    fdEV0[:,:,k] .+= EV0
+
+                    fdEV0[:,:,k] ./= hh
+                end
+                @test any(fdEV0 .!= 0)
+
+
+                fill!(evs, 0.0)
+                flow!(tmp_vw, ddm, theta, i, ichar, true)
+                ubV(tmp_vw)      .+= discount(ddm) .* EV1
+                dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
+
+                solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-11, maxit0=10, maxit1=40)
+                ubV(tmp_vw)[:,:,1] .= discount(ddm) .* EV0
+                gradinf!(dEV0, tmp_vw, ddm)   # note: destroys ubV & dubV
+                @test any(dEV0 .!= 0)
+
+                println("extrema(dEV0) = $(extrema(dEV0))")
+                println("extrema(fdEV0) = $(extrema(fdEV0))")
+                @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
+                @views sub = CartesianIndices(fdEV0)[idx]
+                println("worst value is $maxv at $sub for dθ")
+
+                @test 0.0 < maxv < 1.0
+                @test all(isfinite.(dEV0))
+                @test all(isfinite.(fdEV0))
+                @test fdEV0 ≈ dEV0
+
             end
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         end # ddm
     end # VF Iteration

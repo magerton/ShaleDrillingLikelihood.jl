@@ -100,45 +100,47 @@ end
 # --------------------------- inf horizon gradient ----------------------------
 
 
-# # note -- this destroys ubV
-# function gradinf!(dEV0::AbstractArray3{T}, dEV0σ::AbstractMatrix{T}, t::DCDPTmpVars, ddm::DynamicDrillingModel, do_σ::Bool=false) where {T}
-#
-#     size(dubV,4) >= 2 || throw(DimensionMismatch("Need dubV with at least 2+ action possibilities"))
-#     nθ = size(dubV,3)
-#
-#     @views sumdubV   = dubV[:,:,:,1]
-#     @views ΠsumdubV  = dubV[:,:,:,2]
-#
-#     @views ΠsumdubVj = lse[:,1:nθ] # Array{T}(nz,nθ)
-#     @views dev0tmpj  = tmp[:,1:nθ] # Array{T}(nz,nθ)
-#
-#     q = ubV
-#
-#     if anticipate_t1ev(ddm)
-#         softmax3!(q, lse, tmp)
-#     else
-#         findmax!(add_1_dim(lse), add_1_dim(tmp_cart), ubV)
-#         fill!(q, 0.0)
-#         for i in tmp_cart
-#             q[i] = 1.0
-#         end
-#     end
-#
-#     # for dubV/dθt
-#     sumprod!(sumdubV, dubV, q)
-#     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
-#
-#     for j in 1:size(dubV,2)
-#         qj = view(q(t),:,j,1)
-#         update_IminusTVp!(t, ddm, qj)
-#         fact = lu(IminusTEVp(t))
-#
-#         # Note: cannot do this with @view(dEV0[:,j,:])
-#         @views ΠsumdubVj .= ΠsumdubV[:,j,:]
-#         ldiv!(dev0tmpj, fact, ΠsumdubVj) # ΠsumdubV[:,j,:])
-#         dEV0[:,j,:] .= dev0tmpj
-#     end
-# end
+# note -- this destroys ubV
+function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingModel)
+
+    nz, nψ, nk, nd = size(dubVperm(t))
+    nd >= 2 || throw(error("Need dubV with at least 2+ action possibilities"))
+    nψ >= nk  || throw(error("Need nψ >= length(theta)"))
+
+    sumdubV   = view(dubVperm(t), :,:,:,1)
+    ΠsumdubV  = view(dubVperm(t), :,:,:,2)
+
+    ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
+    dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
+
+    qq = ubV(t)
+
+    if anticipate_t1ev(ddm)
+        softmax3!(qq, lse(t), tmp(t), qq, 1)
+        # softmax3!(q, lse, tmp)
+    else
+        findmax!(add_1_dim(lse(t)), add_1_dim(tmp_cart(t)), qq)
+        fill!(qq, 0)
+        @inbounds for i in tmp_cart(t)
+            qq[i] = 1
+        end
+    end
+
+    # for dubV/dθt
+    sumprod!(sumdubV, dubVperm(t), qq)
+    A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
+
+    for j in OneTo(nψ)
+        qj = view(qq, :, j, 1)
+        update_IminusTVp!(t, ddm, qj)
+        fact = lu(IminusTEVp(t))
+
+        # Note: cannot do this with @view(dEV0[:,j,:])
+        ΠsumdubVj .= view(ΠsumdubV, :, j, :)
+        ldiv!(dev0tmpj, fact, ΠsumdubVj) # ΠsumdubV[:,j,:])
+        dEV0[:,j,:] .= dev0tmpj
+    end
+end
 
 # function gradinf!(dEV0::AbstractArray3{T}, t::dcdp_tmpvars, prim::dcdp_primitives) where {T}
 #     zeros2 = Array{T,2}(undef,0,0)
