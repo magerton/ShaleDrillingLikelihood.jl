@@ -47,7 +47,8 @@ using ShaleDrillingLikelihood: DynamicDrillingModel,
     vfit!,
     dEV,
     EV,
-    anticipate_t1ev
+    anticipate_t1ev,
+    _dmax
 
 const DOBTIME = false
 
@@ -91,8 +92,14 @@ println("print")
     thetaplus = similar(theta)
 
     @testset "Fill per-period flow payoffs" begin
+
+        tmpvminus = DCDPTmpVars(ubvminus, dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
+        tmpvplus  = DCDPTmpVars(ubvplus,  dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
+
         for sidx in 1:length(wp)
             T = eltype(theta)
+            idxd = dp1space(wp,sidx)
+
             for i in OneTo(length(theta))
                 thetaminus .= theta
                 thetaplus .= theta
@@ -102,21 +109,18 @@ println("print")
                 twoh = thetaplus[i] - thetaminus[i]
                 @test maximum(abs.(thetaplus .- thetaminus)) ≈ twoh
 
-                @views tmpvminus = DCDPTmpVars(ubvminus, dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
-                @views tmpvplus  = DCDPTmpVars(ubvplus,  dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
-
                 fill!(dubVfull(tmpv), 0)
                 fill!(ubVfull(tmpvminus), 0)
                 fill!(ubVfull(tmpvplus), 0)
 
-                flow!(tmpvminus, ddm, thetaminus, sidx, ichar, false)
-                flow!(tmpvplus,  ddm, thetaplus, sidx, ichar, false)
+                flow!(view(tmpvminus, idxd), ddm, thetaminus, sidx, ichar, false)
+                flow!(view(tmpvplus , idxd), ddm, thetaplus, sidx, ichar, false)
                 @test all(dubVfull(tmpv) .== 0)
 
-                fd[i,:,:,:] .= (ubvplus .- ubvminus)./ twoh
+                fd[i,:,:,:] .= (ubVfull(tmpvplus) .- ubVfull(tmpvminus))./ twoh
             end
 
-            flow!(tmpv, ddm, theta, sidx, ichar, true)
+            flow!(view(tmpv, idxd), ddm, theta, sidx, ichar, true)
 
             fdnosig = fd[1:end-1,:,:,:] .- dubVfull(tmpv)[1:end-1,:,:,:]
             fdsig = fd[end,:,:,:] .- dubVfull(tmpv)[end,:,:,:]
@@ -190,7 +194,7 @@ println("print")
 
             @views maxv, idx = findmax(abs.(pipsi .- fdpi))
             sub = CartesianIndices(fdpi)[idx]
-            @show "worst value is $maxv at $sub for β dΠ/dσ"
+            # @show "worst value is $maxv at $sub for β dΠ/dσ"
 
             @test 0.0 < maxv < 1e-5
             @test fdpi ≈ pipsi
@@ -200,62 +204,67 @@ println("print")
 
     @testset "VF Iteration" begin
 
-        @testset "Finite horizon gradient" begin
+        @testset "Finite horizon VF gradient" begin
 
-            fdEV = similar(dEV(evs))
+            fdEV = zero(dEV(evs))
             thetaminus = similar(theta)
             thetaplus = similar(theta)
 
-            i = 1
+            for i in 1:length(statespace(ddm))
 
-            idxd  = dp1space(wp,i)
-            idxs  = collect(sprimes(statespace(ddm),i))
-            horzn = _horizon(wp,i)
+                idxd  = dp1space(wp,i)
+                idxs  = collect(sprimes(statespace(ddm),i))
+                horzn = _horizon(wp,i)
 
-            tmp_vw = view(tmpv, idxd)
+                tmp_vw = view(tmpv, idxd)
 
-            EV0   = view(EV(evs) ,    :, :, i)
-            EV1   = view(EV(evs) ,    :, :, idxs)
-            dEV0  = view(dEV(evs), :, :, :, i)
-            dEV1  = view(dEV(evs), :, :, :, idxs)
-            fdEV0 = view(fdEV    , :, :, :, i)
+                EV0   = view(EV(evs) ,    :, :, i)
+                EV1   = view(EV(evs) ,    :, :, idxs)
+                dEV0  = view(dEV(evs), :, :, :, i)
+                dEV1  = view(dEV(evs), :, :, :, idxs)
+                fdEV0 = view(fdEV    , :, :, :, i)
 
-            for k in OneTo(length(theta))
-                h = peturb(theta[k])
-                thetaminus[k] -= h
-                thetaplus[k] += h
-                hh = thetaplus[k] - thetaminus[k]
+                for k in OneTo(length(theta))
+                    thetaminus .= theta
+                    thetaplus .= theta
+                    h = peturb(theta[k])
+                    thetaminus[k] -= h
+                    thetaplus[k] += h
+                    hh = thetaplus[k] - thetaminus[k]
+
+                    fill!(evs, 0)
+                    flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
+                    vfit!(EV0, tmp_vw, ddm)
+                    ubV(tmp_vw) .+= discount(ddm) .* EV0
+                    fdEV0[:,:,k] .-= EV0
+
+                    fill!(evs, 0)
+                    flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
+                    vfit!(EV0, tmp_vw, ddm)
+                    ubV(tmp_vw) .+= discount(ddm) .* EV0
+                    fdEV0[:,:,k] .+= EV0
+
+                    fdEV0[:,:,k] ./= hh
+                end
 
                 fill!(evs, 0)
+                flow!(tmp_vw, ddm, theta, i, ichar, true)
+                ubV(tmp_vw)  .+= discount(ddm) .* EV0
+                dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
+                vfit!(EV0, dEV0, tmp_vw, ddm)
 
-                flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
-                vfit!(EV0, tmp_vw, ddm)
-                ubV(tmp_vw) .+= discount(ddm) .* EV0
-                fdEV0[:,:,k] .-= EV0
+                # println("extrema(dEV0) = $(extrema(dEV0))")
+                # println("extrema(fdEV0) = $(extrema(fdEV0))")
 
-                fill!(evs, 0)
-                flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
-                vfit!(EV0, tmp_vw, ddm)
-                ubV(tmp_vw) .+= discount(ddm) .* EV0
-                fdEV0[:,:,k] .+= EV0
-                fdEV0[:,:,k] ./= hh
+                @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
+                @views sub = CartesianIndices(fdEV0)[idx]
+                # println("worst value is $maxv at $sub for dθ")
+
+                @test 0.0 <= maxv < 1.0
+                @test all(isfinite.(dEV0))
+                @test all(isfinite.(fdEV0))
+                @test fdEV0 ≈ dEV0
             end
-
-            fill!(evs, 0)
-            flow!(tmp_vw, ddm, thetaplus, i, ichar, true)
-            ubV(tmp_vw)  .+= discount(ddm) .* EV0
-            dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
-            vfit!(EV0, dEV0, tmp_vw, ddm)
-
-            println("extrema(dEV0) = $(extrema(dEV0))")
-            @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
-            @views sub = CartesianIndices(fdEV0)[idx]
-            println("worst value is $maxv at $sub for dθ")
-
-            @test 0.0 < maxv < 1.0
-            @test all(isfinite.(dEV0))
-            @test all(isfinite.(fdEV0))
-            @test fdEV0 ≈ dEV0
         end # finite horizon
     end # vfit
 

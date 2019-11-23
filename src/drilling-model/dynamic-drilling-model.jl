@@ -150,6 +150,8 @@ tmp_cart(    x::DCDPTmpVars) = x.tmp_cart
 Πψtmp(       x::DCDPTmpVars) = x.Πψtmp
 IminusTEVp(  x::DCDPTmpVars) = x.IminusTEVp
 
+size(x::DCDPTmpVars) = size(dubVfullperm(x))
+
 ubV(     x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = ubVfull(x)
 dubV(    x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = dubVfull(x)
 dubVperm(x::DCDPTmpVars{T,SM,AA3}) where {T,SM,AA3<:SubArray} = dubVfullperm(x)
@@ -216,10 +218,14 @@ end
 # --------------------------------------------------------
 
 function flow!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
-    zψpdct = product(product(zspace(ddm)...), psispace(ddm))
-
+    ψspace = psispace(ddm)
+    zs = product(zspace(ddm)...)
+    zψpdct = product(zs, ψspace)
     nk = _nparm(reward(ddm))
-    nc = num_choices(statespace(ddm))
+    nc = num_choices(statespace(ddm), sidx)
+
+    sztup = (length(zs), length(ψspace), nk, nc)
+    size(tmpv) == sztup || throw(DimensionMismatch("size tmvp = $(size(tmpv)) vs $sztup"))
 
     dubv  = reshape(dubVfull(tmpv),    nk,  :, nc)
     dubvp = reshape(dubVfullperm(tmpv), :, nk, nc)
