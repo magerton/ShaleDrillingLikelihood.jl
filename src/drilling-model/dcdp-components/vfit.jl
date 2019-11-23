@@ -1,6 +1,4 @@
-# --------------------------- basic VFIT ----------------------------
-
-# simple Vfit
+"Value function iteration for 1 period"
 function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(lse(t), q(t), tmp(t), ubV(t))
@@ -76,13 +74,15 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; v
 
         update_IminusTVp!(t, ddm, q0j)
         fact = lu(IminusTEVp(t))
-        ldiv!(fact, ΔEVj)                          # Vtmp = [I - T'(V)] \ [V - T(V)]
+        ldiv!(fact, ΔEVj)                        # Vtmp = [I - T'(V)] \ [V - T(V)]
     end
     EV0 .-= ΔEV                                  # update V
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
+
 # --------------------------- pfit until convergence ----------------------------
+
 
 function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit::Integer=30, vftol::Real=1e-11)
     iter = zero(maxit)
@@ -96,6 +96,7 @@ function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrilli
         ubVfull(t)[:,:,1] .= discount(ddm) .* EV0
     end
 end
+
 
 # --------------------------- inf horizon gradient ----------------------------
 
@@ -142,13 +143,8 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingMode
     end
 end
 
-# function gradinf!(dEV0::AbstractArray3{T}, t::dcdp_tmpvars, prim::dcdp_primitives) where {T}
-#     zeros2 = Array{T,2}(undef,0,0)
-#     gradinf!(dEV0, zeros2, t, prim, false)
-# end
-#
 # # --------------------------- double vfit/pfit loop -----------------------
-#
+
 function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol::Real=1e-9, maxit0::Integer=40, maxit1::Integer=20)
     solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
 
@@ -160,34 +156,4 @@ function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::Dynamic
     #     converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
     # end
     return converged, iter, bnds
-end
-
-# --------------------------- helper function  ----------------------------
-
-
-function sumprod!(red::AbstractArray3, big::AbstractArray4, small::AbstractArray3)
-     nz, nψ, nk, nd = size(big)
-    (nz, nψ,     nd) == size(small) || throw(DimensionMismatch())
-    (nz, nψ, nk,   ) == size(red)   || throw(DimensionMismatch())
-
-    # second set w/ plus equals
-    @inbounds for d in 1:nd, k in 1:nk
-        if d == 1
-            @views red[:,:,k] .=  small[:,:,d] .* big[:,:,k,d]
-        else
-            @views red[:,:,k] .+= small[:,:,d] .* big[:,:,k,d]
-        end
-    end
-end
-
-
-function sumprod!(red::AbstractMatrix, big::AbstractArray3, small::AbstractArray3)
-     nz, nψ, nd  = size(big)
-    (nz, nψ, nd) == size(small) || throw(DimensionMismatch())
-    (nz, nψ)     == size(red) || throw(DimensionMismatch())
-
-    fill!(red, 0)
-    @inbounds for d in 1:nd
-        @views red .+= small[:,:,d] .* big[:,:,d]
-    end
 end

@@ -30,6 +30,34 @@ function sumprod3(x::AbstractArray{T}, y::AbstractArray{T}, z::AbstractArray{T})
 end
 
 
+function sumprod!(red::AbstractArray3, big::AbstractArray4, small::AbstractArray3)
+     nz, nψ, nk, nd = size(big)
+    (nz, nψ,     nd) == size(small) || throw(DimensionMismatch())
+    (nz, nψ, nk,   ) == size(red)   || throw(DimensionMismatch())
+
+    # second set w/ plus equals
+    @inbounds for d in 1:nd, k in 1:nk
+        if d == 1
+            @views red[:,:,k] .=  small[:,:,d] .* big[:,:,k,d]
+        else
+            @views red[:,:,k] .+= small[:,:,d] .* big[:,:,k,d]
+        end
+    end
+end
+
+
+function sumprod!(red::AbstractMatrix, big::AbstractArray3, small::AbstractArray3)
+     nz, nψ, nd  = size(big)
+    (nz, nψ, nd) == size(small) || throw(DimensionMismatch())
+    (nz, nψ)     == size(red) || throw(DimensionMismatch())
+
+    fill!(red, 0)
+    @inbounds for d in 1:nd
+        @views red .+= small[:,:,d] .* big[:,:,d]
+    end
+end
+
+
 
 # TODO would be good to evaluate whether I can do better with tmapreduce
 # https://github.com/jw3126/ThreadingTools.jl
@@ -91,7 +119,7 @@ Sets `lse = ∑_k exp(x[i,j,k])`
 
 Uses temporary array `tmp`
 """
-@generated function softmax3!(q::AA, lse::Matrix{T}, tmpmax::Matrix{T}, x::AA, maxk::Integer=size(q, ndims(q)) ) where {T<:Real, AA<:AbstractArray{T}}
+@generated function softmax3!(q::AA, lse::Array{T}, tmpmax::Array{T}, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, AA<:AbstractArray{T}}
     quote
         xsizes = size(x)
         xsizes == size(q) || throw(DimensionMismatch("size(x) = $(size(x)) but size(q) = $(size(q))"))
