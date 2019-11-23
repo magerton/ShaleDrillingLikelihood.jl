@@ -217,7 +217,7 @@ println("print")
 
         for ddm in (ddm_with_t1ev, ddm_no_t1ev)
 
-            println("\n-----------------------\nanticipate_e = $(anticipate_t1ev(ddm))\n---------------------------------------")
+            # println("\n-----------------------\nanticipate_e = $(anticipate_t1ev(ddm))\n---------------------------------------")
 
             @testset "Finite horizon VF gradient with anticipate_e = $(anticipate_t1ev(ddm))" begin
                 for i in 1:length(statespace(ddm))
@@ -381,11 +381,11 @@ println("print")
                 gradinf!(dEV0, tmp_vw, ddm)   # note: destroys ubV & dubV
                 @test any(dEV0 .!= 0)
 
-                println("extrema(dEV0) = $(extrema(dEV0))")
-                println("extrema(fdEV0) = $(extrema(fdEV0))")
+                # println("extrema(dEV0) = $(extrema(dEV0))")
+                # println("extrema(fdEV0) = $(extrema(fdEV0))")
                 @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
                 @views sub = CartesianIndices(fdEV0)[idx]
-                println("worst value is $maxv at $sub for dθ")
+                # println("worst value is $maxv at $sub for dθ")
 
                 @test 0.0 < maxv < 1.0
                 @test all(isfinite.(dEV0))

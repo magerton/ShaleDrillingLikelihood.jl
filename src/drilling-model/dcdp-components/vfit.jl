@@ -113,25 +113,25 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingMode
     ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
     dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
 
-    qq = ubV(t)
+    qq =
 
     if anticipate_t1ev(ddm)
-        softmax3!(qq, lse(t), tmp(t), qq, 1)
+        softmax3!(ubV(t), lse(t), tmp(t), ubV(t))
         # softmax3!(q, lse, tmp)
     else
-        findmax!(add_1_dim(lse(t)), add_1_dim(tmp_cart(t)), qq)
-        fill!(qq, 0)
+        findmax!(add_1_dim(lse(t)), add_1_dim(tmp_cart(t)), ubV(t))
+        fill!(ubV(t), 0)
         @inbounds for i in tmp_cart(t)
-            qq[i] = 1
+            setindex!(ubV(t), 1, i)
         end
     end
 
     # for dubV/dθt
-    sumprod!(sumdubV, dubVperm(t), qq)
+    sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
 
     for j in OneTo(nψ)
-        qj = view(qq, :, j, 1)
+        qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
         fact = lu(IminusTEVp(t))
 
