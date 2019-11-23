@@ -13,6 +13,8 @@ export AbstractTaxType,
     DrillingRevenue,
     Learn,
     NoLearn,
+    WithRoyalty,
+    NoRoyalty,
     ConstrainedProblem,
     UnconstrainedProblem,
     NoLearningProblem,
@@ -211,7 +213,7 @@ struct NoRoyalty   <: AbstractRoyaltyType end
         return θ4*ψ
     else
         σ = theta_ρ(x,θ)
-        ρ = _ρ(x, σ)
+        ρ = _ρ(learn(x), σ)
         return θ4*(ψ*ρ + θ4*0.5*(1-ρ^2))
     end
 end
@@ -243,14 +245,15 @@ end
     end
 end
 
-@inline Eexpψ(::DrillingRevenuePerfectInfo, d, obs, θ, sim) = α_ψ(x,θ) * _ψ(sim, obs)
+@inline Eexpψ(::DrillingRevenuePerfectInfo, d, obs, θ, sim) = α_ψ(x,θ) * _ψ(obs, sim)
 
 @inline function dEexpψdσ(x::DrillingRevenueLearn, d, obs, θ, sim)
     T = eltype(θ)
+    ψ = _ψ(obs, sim)
     if !_Dgt0(obs) && d > 0
         θ4= theta_ψ(x,θ)
         σ = theta_ρ(x,θ)
-        out = θ4 *(ψ - θ4*_ρ(σ)) * _dρdσ(σ)
+        out = θ4 *(ψ - θ4*_ρ(σ)) * _dρdθρ(σ)
     else
         out = zero(T)
     end
@@ -261,7 +264,7 @@ end
 # flow revenue
 # ----------------------------------------------------------------
 
-@inline function flow(x::DrillingRevenueNoTaxes, d, obs, θ, sim)
+@inline function flow(x::DrillingRevenueNoTaxes, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
     z = zchars(obs)
     u = d_tax_royalty(x, d, royalty(obs)) *
     exp(
@@ -272,7 +275,7 @@ end
     return u
 end
 
-@inline function flow(x::DrillingRevenue, d, obs, θ, sim)
+@inline function flow(x::DrillingRevenue, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
     z = zchars(obs)
     u = d_tax_royalty(x, d, royalty(obs)) *
     exp(

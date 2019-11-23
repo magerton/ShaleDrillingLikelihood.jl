@@ -87,7 +87,7 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
     size(gradM, 1) == length(grad) || throw(DimensionMismatch("gradM not OK"))
 
-    mapper = Mapper(M, 5)
+    mapper = Mapper(M, 10)
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
         @threads for j in OneTo(nthreads())

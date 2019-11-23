@@ -1,5 +1,9 @@
+export DynamicDrillingModel,
+    reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev
+
+
 "Full-blown Dynamic discrete choice model"
-struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, TT<:Tuple, AM<:AbstractMatrix{T}, AR<:StepRangeLen{T}}
+struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, TT<:Tuple, AM<:AbstractMatrix{T}, AR<:StepRangeLen{T}} <: AbstractDrillModel
     reward::PF            # payoff function
     discount::T           # discount factor
     statespace::AUP       # structure of endogenous choice vars
@@ -16,9 +20,9 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AUP<:AbstractUnitProblem, 
         ntheta = _nparm(reward)
 
         0 < discount < 1 || throw(DomainError(discount))
-        nz == prod(lengths.(zspace)) || throw(DimensionMismatch("zspace dim != ztransition dim"))
+        nz == prod(length.(zspace)) || throw(DimensionMismatch("zspace dim != ztransition dim"))
 
-        return DynamicDrillingModel{T,APF,AUP,TT,AM,AR}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev)
+        return new{T,APF,AUP,TT,AM,AR}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev)
     end
 end
 
@@ -107,24 +111,24 @@ end
 
 
 "Temp vars for dynamic model"
-struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA4<:AbstractArray4{T}, SM<:AbstractMatrix{T}} <: AbstractTmpVars
+struct DCDPTmpVars{T<:Real, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}, SM<:AbstractMatrix{T}} <: AbstractTmpVars
     ubVfull::AA3
     dubVfull::AA4
-    q::AA3
+    q::AA3b
     lse::Matrix{T}
     tmp::Matrix{T}
     tmp_cart::Matrix{CartesianIndex{3}}
     Πψtmp::Matrix{T}
     IminusTEVp::SM
 
-    function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, q::AA3, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM) where {AA3, AA4, SM}
+    function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, q::AA3b, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM) where {AA3, AA3b, AA4, SM}
         (nθt, nz, nψ, nd) = size(dubVfull)
         (nz, nψ, nd) == size(ubVfull) == size(q) || throw(DimensionMismatch())
         (nz,nψ) == size(lse) == size(tmp) == size(tmp_cart) || throw(DimensionMismatch())
         nψ == checksquare(Πψtmp) || throw(DimensionMismatch())
         nz == checksquare(IminusTEVp) || throw(DimensionMismatch())
         T = eltype(ubVfull)
-        return new{T,AA3,AA4,SM}(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
+        return new{T,AA3,AA3b,AA4,SM}(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
     end
 end
 
@@ -158,18 +162,18 @@ function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T
     lse = Matrix{T}(undef, nz, nψ)
     tmp = similar(lse)
     tmp_cart = similar(lse, CartesianIndex{3})
-    Πψtmp = Matrix{T}(nψ, nψ)
+    Πψtmp = Matrix{T}(undef, nψ, nψ)
     IminusTEVp = ensure_diagonal(ztransition)
     return DCDPTmpVars(ubVfull, dubVfull, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
 end
 
 function DCDPTmpVars(x::DynamicDrillingModel)
     piz = ztransition(x)
-    nθt = length(reward(x))
+    nθt = _nparm(reward(x))
     nz = size(piz, 1)
     nψ = length(psispace(x))
     nd = num_choices(statespace(x))
-    DCDPTmpVars(nθt, nz, nψ, nd, ztransition)
+    DCDPTmpVars(nθt, nz, nψ, nd, piz)
 end
 
 function view(t::DCDPTmpVars, idxd::AbstractVector)
@@ -186,11 +190,10 @@ end
 # Fill reward matrices
 # --------------------------------------------------------
 
-function flow!(tmpv, ddm, θ, sidx, ichars, dograd)
-    zψpdct = product(product(zspace(ddm)), psispace(ddm))
+function flow!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
+    zψpdct = product(product(zspace(ddm)...), psispace(ddm))
 
-    model = _model(ddm)
-    k = _nparm(reward(model))
+    k = _nparm(reward(ddm))
     nc = num_choices(statespace(ddm))
 
     dubv = reshape(_dubVfull(tmpv), k, :, nc)
@@ -198,11 +201,11 @@ function flow!(tmpv, ddm, θ, sidx, ichars, dograd)
 
     @threads for dp1 in dp1space(statespace(ddm), sidx)
 
-        @inbounds for (i, (z,ψ)) in zψpdct
-            obs = ObservationDrill(model, ichars, z, dp1-1, sidx)
-            grad = view(dubvvw, :, i, dp1)
+        @inbounds for (i, (z,ψ)) in enumerate(zψpdct)
+            obs = ObservationDrill(ddm, ichars, z, dp1-1, sidx)
+            grad = view(dubv, :, i, dp1)
             ubv[i,dp1] = flow!(grad, obs, θ, ψ, dograd)
         end
-        
+
     end
 end

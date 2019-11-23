@@ -9,6 +9,7 @@ using Dates
 using Calculus
 using Distributions
 using Test
+using SparseArrays
 
 using LoopVectorization
 
@@ -22,7 +23,7 @@ import Base: length, size, iterate,
 using Distributions: _F1
 using StatsBase: countmap, sample
 using Base: OneTo
-using Base.Iterators: flatten
+using Base.Iterators: flatten, product
 using Dates: Month
 using LinearAlgebra: checksquare
 
@@ -40,7 +41,7 @@ abstract type AbstractTmpVars end
 # models
 #---------------------
 
-export AbstractModel, NoModel, AbstractDrillModel, AbstractProductionModel, AbstractRoyaltyModel
+export AbstractModel, NoModel, AbstractDrillModel, AbstractProductionModel, AbstractRoyaltyModel, _nparm
 
 # for modeling
 abstract type AbstractModel end
@@ -101,7 +102,7 @@ include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 
 # dynamic model
-# include("drilling-model/dynamic-drilling-model.jl")
+include("drilling-model/dynamic-drilling-model.jl")
 # include("drilling-model/dcdp-components/learning_transition.jl")
 
 # ------------------------------------

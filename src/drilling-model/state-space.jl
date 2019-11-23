@@ -359,7 +359,7 @@ end
 @inline actionspace(wp::AbstractUnitProblem) = 0:_dmax(wp)
 @inline actionspace(wp::AbstractUnitProblem, sidx::Integer) = 0:_dmax(wp,sidx)
 @inline dp1space(   wp::AbstractUnitProblem, sidx::Integer) = actionspace(wp,sidx) .+ 1
-
+@inline num_choices(wp::AbstractUnitProblem, args... ) = _dmax(wp, args...) + 1
 
 # ----------------------------------
 # states

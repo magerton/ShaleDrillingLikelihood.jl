@@ -80,14 +80,16 @@ statespace(m::AbstractDrillModel) = NotDefinedError(m)
 # Payoffs...
 # -------------------------------------------
 
-@inline flow(        d, obs, theta, s) = flow(  reward(_model(obs)),           d,   obs, theta, s)
-@inline dflow!(grad, d, obs, theta, s) = dflow!(reward(_model(obs)), grad,     d,   obs, theta, s)
-@inline flowdψ(grad, d, obs, theta, s) = flowdψ(reward(_model(obs)), grad,     d,   obs, theta, s)
-@inline flow(           obs, theta, s) = flow(  reward(_model(obs)),       _y(obs), obs, theta, s)
-@inline dflow!(grad,    obs, theta, s) = dflow!(reward(_model(obs)), grad, _y(obs), obs, theta, s)
-@inline flowdψ(grad,    obs, theta, s) = flowdψ(reward(_model(obs)), grad, _y(obs), obs, theta, s)
-
+# @inline flow(        d, obs, theta, s) = flow(  reward(_model(obs)),           d,   obs, theta, s)
+# @inline dflow!(grad, d, obs, theta, s) = dflow!(reward(_model(obs)), grad,     d,   obs, theta, s)
+# @inline flowdψ(grad, d, obs, theta, s) = flowdψ(reward(_model(obs)), grad,     d,   obs, theta, s)
+# @inline flow(           obs, theta, s) = flow(  reward(_model(obs)),       _y(obs), obs, theta, s)
+# @inline dflow!(grad,    obs, theta, s) = dflow!(reward(_model(obs)), grad, _y(obs), obs, theta, s)
+# @inline flowdψ(grad,    obs, theta, s) = flowdψ(reward(_model(obs)), grad, _y(obs), obs, theta, s)
 # @deprecate dflowdψ(args...) flowdψ(args...)
+
+
+@inline flow!(grad, obs, θ, s, dograd) = flow!(grad, reward(_model(obs)), _y(obs), obs, θ, s, dograd)
 
 function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
     length(theta) == _nparm(x) || throw(DimensionMismatch())
