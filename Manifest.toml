@@ -12,6 +12,12 @@ git-tree-sha1 = "981354dab938901c2b607a213e62d9defa50b698"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 version = "1.2.1"
 
+[[AxisAlgorithms]]
+deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
+git-tree-sha1 = "a4d07a1c313392a77042855df46c5f534076fab9"
+uuid = "13072b0f-2c55-5437-9ae7-d433b7a33950"
+version = "1.0.0"
+
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
@@ -369,3 +375,9 @@ repo-rev = "master"
 repo-url = "https://github.com/chriselrod/VectorizationBase.jl"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.1.0"
+
+[[WoodburyMatrices]]
+deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]
+git-tree-sha1 = "21772c33b447757ec7d3e61fcdfb9ea5c47eedcf"
+uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
+version = "0.4.1"
