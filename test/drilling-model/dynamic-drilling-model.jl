@@ -3,6 +3,7 @@ module ShaleDrillingLikelihood_DynamicDrillingModelTest
 using ShaleDrillingLikelihood
 using Test
 using SparseArrays
+using BenchmarkTools
 
 using Base.Iterators: product, OneTo
 
@@ -91,6 +92,8 @@ using ShaleDrillingLikelihood: DynamicDrillingModel,
 
         @test fd ≈ _dubVfull(tmpv)
     end
+
+    @btime flow!($tmpv, $ddm, $theta, 2, (2.0, 0.25,), true)
 
 end # testset
 end # module
