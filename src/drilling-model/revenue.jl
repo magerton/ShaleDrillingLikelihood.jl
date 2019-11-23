@@ -115,7 +115,7 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline _ρ(x::AbstractLearningType, σ::Number) = _ρ(σ)
 @inline _ρ(x::PerfectInfo         , σ::Number) = 1
 @inline _ρ(x::MaxLearning         , σ::Number) = 0
-@inline _ρ(x::DrillingRevenue     , σ::Number) = _ρ(σ, learn(x))
+@inline _ρ(x::DrillingRevenue     , σ::Number) = _ρ(learn(x), σ)
 
 # @deprecate _ρ(σ::Number, x::AbstractLearningType) _ρ(x,σ)
 # @deprecate _ρ(σ::Number, x::PerfectInfo) _ρ(x,σ)
@@ -144,6 +144,8 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
 @inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
+
+@inline theta_ρ(x::DrillReward, θ) = theta_ρ(revenue(x), vw_revenue(x,θ))
 
 # @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
 # @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)

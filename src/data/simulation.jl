@@ -4,7 +4,7 @@
 @inline _ρ(θρ) = logistic(θρ)
 @inline _dρdθρ(θρ) = (z = logistic(θρ); z*(1-z) )
 @inline _ρsq(θρ) = _ρ(θρ)^2
-# @deprecate _dρdσ(θρ) _dρdθρ(θρ)
+@deprecate _dρdσ(θρ) _dρdθρ(θρ)
 # @deprecate _ρ2(θρ) _ρsq(θρ)
 
 # go from iid normal u,v to correlated shocks

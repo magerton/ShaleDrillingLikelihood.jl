@@ -17,13 +17,13 @@ using LoopVectorization
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
     view, ==, eltype, +, -, isless,
-    fill!,string, show, convert, eltype
+    fill!,string, show, convert, eltype,
+    step
 
 # specific functions
 using Distributions: _F1
 using StatsBase: countmap, sample
-using Base: OneTo
-using Base.Iterators: flatten, product
+using Base.Iterators: flatten, product, OneTo
 using Dates: Month
 using LinearAlgebra: checksquare, stride1
 
@@ -61,7 +61,7 @@ abstract type AbstractModelVariations end
 aone(x) = one(eltype(x))
 azero(x) = zero(eltype(x))
 
-
+peturb(x::T) where {T<:Real} = max( abs(x), one(T) ) * cbrt(eps(T))
 
 function showtypetree(T, level=0)
     println("\t" ^ level, T)
@@ -104,7 +104,7 @@ include("drilling-model/revenue.jl")
 # dynamic model
 include("drilling-model/dynamic-drilling-model.jl")
 include("drilling-model/dcdp-components/makeIminusTVp.jl")
-# include("drilling-model/dcdp-components/learning_transition.jl")
+include("drilling-model/dcdp-components/learning_transition.jl")
 
 # ------------------------------------
 
