@@ -64,7 +64,6 @@ println("printme")
     x = x0
     q = q0
 
-
     tmpmax = zeros(ni,nj)
     lse = similar(tmpmax)
 
@@ -84,6 +83,8 @@ println("printme")
     logsumexp_and_softmax!(lse, q, tmpmax, x, 1)
     @test lse ≈ lsetest
     @test all(q[:,:,1] .< 1)
+    @test q[:,:,1] ≈ qcopy[:,:,1]
+    @test !(q ≈ qcopy)
 
     @btime softmax3!($q, $lse, $tmpmax, $x)
     @btime softmax3test!($q, $x)
