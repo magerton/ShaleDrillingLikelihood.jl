@@ -11,6 +11,7 @@ function solve_vf_terminal!(evs, ddm, dograd)
          dev[:, :, :, end    ] .= 0
          dev[:, :, :, exp_trm] .= 0
     end
+    return nothing
 end
 
 # ---------------------------------------------
@@ -54,6 +55,7 @@ function solve_vf_infill!(evs::DCDPEmax, t::DCDPTmpVars, ddm::DynamicDrillingMod
             throw(error("i = $i, horzn = $horzn but must be :Finite or :Infinite"))
         end
     end
+    return nothing
 end
 
 
@@ -85,6 +87,7 @@ function learningUpdate!(evs::dcdp_Emax, t::DCDPTmpVars, ddm::DynamicDrillingMod
         _βΠψdθρ!(t, ddm, θ)
         A_mul_B_md!(dEVσ, Πψtmp(t), EV1, 2)
     end
+    return nothing
 end
 
 
@@ -147,6 +150,7 @@ function solve_vf_explore!(evs::dcdp_Emax, t::DCDPTmpVars, ddm::DynamicDrillingM
             throw(error("i = $i, horzn = $horzn but must be :Finite or :Infinite"))
         end
     end
+    return nothing
 end
 
 # ---------------------------------------------
@@ -156,12 +160,11 @@ function solve_vf_all!(evs, t, ddm, θ, ichar, dograd; kwargs...)
     solve_vf_infill!(  evs, t, ddm, θ, ichar, dograd; kwargs...)
     learningUpdate!(   evs, t, ddm, θ, ichar, dograd; kwargs...)
     solve_vf_explore!( evs, t, ddm, θ, ichar, dograd; kwargs...)
+    return nothing
 end
 
-function solve_vf_all_timing!(evs, t, ddm, θ, ichar, dograd; kwargs...)
+function solve_vf_all_timing!(evs, args...)
     fill!(evs, 0)
-    solve_vf_terminal!(evs,    ddm,           dograd; kwargs...)
-    solve_vf_infill!(  evs, t, ddm, θ, ichar, dograd; kwargs...)
-    learningUpdate!(   evs, t, ddm, θ, ichar, dograd; kwargs...)
-    solve_vf_explore!( evs, t, ddm, θ, ichar, dograd; kwargs...)
+    solve_vf_all!(evs, args...)
+    return nothing
 end
