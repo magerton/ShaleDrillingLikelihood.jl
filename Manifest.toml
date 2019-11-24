@@ -186,7 +186,9 @@ version = "0.2.1"
 
 [[Halton]]
 deps = ["Distributions", "Primes"]
-path = "D:\\software_libraries\\julia\\dev\\Halton"
+git-tree-sha1 = "279f1c58e86bb4dd04eaa24c9c7874dabc49276a"
+repo-rev = "master"
+repo-url = "https://github.com/magerton/Halton"
 uuid = "05a64641-4d1a-5311-8c01-b9b6c96c7c05"
 version = "0.0.1"
 
