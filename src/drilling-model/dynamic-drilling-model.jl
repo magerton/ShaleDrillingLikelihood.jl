@@ -85,8 +85,8 @@ function DCDPEmax(ddm::DynamicDrillingModel{T}) where {T}
     nK = _nparm(reward(ddm))
     nS = length(statespace(ddm))
 
-    dev = Array{T,4}(undef, nz, nψ, nK, nS)
-     ev = Array{T,3}(undef, nz, nψ,     nS)
+    dev = zeros(T, nz, nψ, nK, nS)
+     ev = zeros(T, nz, nψ,     nS)
     return DCDPEmax(ev, dev)
 end
 
