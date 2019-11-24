@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelTest
+module ShaleDrillingLikelihood_DynamicDrillingModel_Test_LearningVersions
 
 using ShaleDrillingLikelihood
 using Test
