@@ -1,5 +1,9 @@
 module ShaleDrillingLikelihood_DynamicDrillingModelTest
 
+DOBTIME = false
+PRINTSTUFF = false
+DOPROFILE = false
+
 using ShaleDrillingLikelihood
 using Test
 using SparseArrays
@@ -7,14 +11,10 @@ using BenchmarkTools
 using Calculus
 using Random
 using Profile
-using ProfileView
+# using ProfileView
 using InteractiveUtils
 
 using Base.Iterators: product, OneTo
-
-const DOBTIME = false
-const PRINTSTUFF = false
-const DOPROFILE = false
 
 using ShaleDrillingLikelihood: DCDPEmax,
     DCDPTmpVars,
@@ -557,7 +557,7 @@ println("print to keep from blowing up")
                 # Juno.profiletree()
                 # Juno.profiler()
                 Profile.print(format=:flat)
-                ProfileView.view()
+                # ProfileView.view()
                 # pprof()
             end
 

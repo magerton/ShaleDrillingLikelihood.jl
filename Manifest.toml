@@ -136,9 +136,9 @@ version = "0.21.8"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "351f001a78aa1b7ad2696e386e110b5abd071c71"
+git-tree-sha1 = "6c976460b85527d22d979682222d36767d95e27f"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.0.7"
+version = "1.1.0"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -186,7 +186,7 @@ version = "0.2.1"
 
 [[Halton]]
 deps = ["Distributions", "Primes"]
-path = "D:\\libraries\\julia\\dev\\Halton"
+path = "D:\\software_libraries\\julia\\dev\\Halton"
 uuid = "05a64641-4d1a-5311-8c01-b9b6c96c7c05"
 version = "0.0.1"
 

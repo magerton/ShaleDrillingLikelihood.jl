@@ -3,6 +3,7 @@ module ShaleDrillingLikelihood_NEWFlow_Test
 using ShaleDrillingLikelihood
 using Test
 using Calculus
+using Random
 
 using InteractiveUtils
 
@@ -26,6 +27,8 @@ const DOPRINT = false
         DrillingCost_constant(),
         ExtensionCost_Constant()
     )
+
+    Random.seed!(1234)
 
     DOPRINT && showtypetree(AbstractPayoffFunction)
     @test true == true
