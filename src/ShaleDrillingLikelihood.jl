@@ -11,7 +11,7 @@ using Distributions
 using Test
 using SparseArrays
 using AxisAlgorithms
-
+using Interpolations
 using LoopVectorization
 
 # extend these methods
