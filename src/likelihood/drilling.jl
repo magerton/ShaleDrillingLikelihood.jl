@@ -14,7 +14,7 @@ function loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
     for obs in lease
         actions = actionspace(obs)
         n = length(actions)
-        resize!(ubv, n)
+        ubv_vw = view(ubv, OneTo(n))
         dubv_vw = view(dubv, :, OneTo(n))
 
         @inbounds @simd for d in actions
@@ -24,11 +24,11 @@ function loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
         end
 
         dp1 = _y(obs)+1
-        LL += ubv[dp1] - logsumexp!(ubv)
+        LL += ubv[dp1] - logsumexp!(ubv_vw)
 
         if dograd
             ubv[dp1] -= 1
-            BLAS.gemv!('N', -1.0, dubv_vw, ubv, 1.0, grad)
+            BLAS.gemv!('N', -1.0, dubv_vw, ubv_vw, 1.0, grad)
         end
     end
 
@@ -47,8 +47,7 @@ function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
 
     nJ    = num_initial_leases(unit)
     gradJ = view(_gradJ(dtv), :, OneTo(nJ))
-    LLj = _llj(dtv)
-    resize!(LLj, nJ)
+    LLj   = view(_llj(dtv),      OneTo(nJ))
 
     fill!(gradJ, 0)
 
