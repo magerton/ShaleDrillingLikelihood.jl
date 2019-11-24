@@ -107,6 +107,7 @@ include("drilling-model/dynamic-drilling-model.jl")
 include("drilling-model/dcdp-components/makeIminusTVp.jl")
 include("drilling-model/dcdp-components/learning_transition.jl")
 include("drilling-model/dcdp-components/vfit.jl")
+include("drilling-model/dcdp-components/solve-all-vfit.jl")
 
 # ------------------------------------
 

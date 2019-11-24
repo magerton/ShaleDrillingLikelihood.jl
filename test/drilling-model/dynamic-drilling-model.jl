@@ -6,11 +6,13 @@ using SparseArrays
 using BenchmarkTools
 using Calculus
 using Random
-
 using Base.Iterators: product, OneTo
 
-using ShaleDrillingLikelihood: DynamicDrillingModel,
-    DCDPEmax,
+const DOBTIME = false
+const PRINTSTUFF = false
+const DOPROFILE = true
+
+using ShaleDrillingLikelihood: DCDPEmax,
     DCDPTmpVars,
     ubVfull    ,
     dubVfull   ,
@@ -52,11 +54,15 @@ using ShaleDrillingLikelihood: DynamicDrillingModel,
     solve_inf_vfit!,
     solve_inf_pfit!,
     solve_inf_vfit_pfit!,
-    gradinf!
+    gradinf!,
+    solve_vf_terminal!,
+    solve_vf_infill!,
+    learningUpdate!,
+    solve_vf_explore!,
+    solve_vf_all!,
+    _nSexp
 
-const DOBTIME = false
-
-println("print")
+println("print to keep from blowing up")
 
 @testset "Dynamic Drilling Model" begin
 
@@ -130,11 +136,13 @@ println("print")
             fdnosig = fd[1:end-1,:,:,:] .- dubVfull(tmpv)[1:end-1,:,:,:]
             fdsig = fd[end,:,:,:] .- dubVfull(tmpv)[end,:,:,:]
 
-            # @views maxv, idx = findmax(abs.(fdnosig))
-            # println("worst value is $maxv at $(CartesianIndices(fdnosig)[idx])")
-            #
-            # @views maxv, idx = findmax(abs.(fdsig))
-            # println("worst value is $maxv at $(CartesianIndices(fdsig)[idx])")
+            if PRINTSTUFF
+                @views maxv, idx = findmax(abs.(fdnosig))
+                println("worst value is $maxv at $(CartesianIndices(fdnosig)[idx])")
+
+                @views maxv, idx = findmax(abs.(fdsig))
+                println("worst value is $maxv at $(CartesianIndices(fdsig)[idx])")
+            end
 
             @test fd ≈ dubVfull(tmpv)
         end
@@ -201,7 +209,7 @@ println("print")
 
             @views maxv, idx = findmax(abs.(pipsi .- fdpi))
             sub = CartesianIndices(fdpi)[idx]
-            # @show "worst value is $maxv at $sub for β dΠ/dσ"
+            PRINTSTUFF && println("worst value is $maxv at $sub for β dΠ/dσ")
 
             @test 0.0 < maxv < 1e-5
             @test fdpi ≈ pipsi
@@ -221,7 +229,7 @@ println("print")
 
             @testset "Finite horizon VF gradient with anticipate_e = $(anticipate_t1ev(ddm))" begin
                 for i in 1:length(statespace(ddm))
-                    # println("state $i of $(length(statespace(ddm)))")
+                    PRINTSTUFF && println("state $i of $(length(statespace(ddm)))")
                     idxd  = dp1space(wp,i)
                     idxs  = collect(sprimes(statespace(ddm),i))
                     horzn = _horizon(wp,i)
@@ -265,19 +273,19 @@ println("print")
                     dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                     vfit!(EV0, dEV0, tmp_vw, ddm)
 
-                    # println("\textrema(dEV0) = $(extrema(dEV0))")
-                    # println("\textrema(fdEV0) = $(extrema(fdEV0))")
+                    PRINTSTUFF && println("\textrema(dEV0) = $(extrema(dEV0))")
+                    PRINTSTUFF && println("\textrema(fdEV0) = $(extrema(fdEV0))")
 
                     @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
                     @views sub = CartesianIndices(fdEV0)[idx]
-                    # println("\tworst value is $maxv at $sub for dθ")
+                    PRINTSTUFF && println("\tworst value is $maxv at $sub for dθ")
 
                     @test 0.0 <= maxv < 1.0
                     @test all(isfinite.(dEV0))
                     @test all(isfinite.(fdEV0))
                     @test fdEV0 ≈ dEV0
                 end
-            end # teest finite horizon
+            end # test finite horizon
 
             @testset "Check vfit/pfit for infinite horizon, anticipate_e = $(anticipate_t1ev(ddm))" begin
                 i = length(statespace(ddm))-1
@@ -304,7 +312,7 @@ println("print")
                 ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterv, bnds = solve_inf_vfit!(EV0, tmp_vw, ddm; maxit=1000, vftol=1e-10)
-                # println("vfit done. converged = $converged after $iterv iterations. error bounds are $bnds")
+                PRINTSTUFF && println("vfit done. converged = $converged after $iterv iterations. error bounds are $bnds")
                 vfEV0 .= EV0
 
                 fill!(evs, 0)
@@ -312,13 +320,13 @@ println("print")
                 ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterp, bnds = solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-10, maxit0=20, maxit1=40)
-                # println("pfit done. converged = $converged after $iterp iterations. error bounds are $bnds")
+                PRINTSTUFF && println("pfit done. converged = $converged after $iterp iterations. error bounds are $bnds")
 
                 @test iterv > iterp
 
                 @views maxv, idx = findmax(abs.(vfEV0 .- EV0))
                 @views sub = CartesianIndices(EV0)[idx]
-                # println("worst value is $maxv at $sub for vfit vs pfit")
+                PRINTSTUFF &&  println("worst value is $maxv at $sub for vfit vs pfit")
                 @test EV0 ≈ vfEV0
 
             end # test infinite horizon
@@ -381,11 +389,11 @@ println("print")
                 gradinf!(dEV0, tmp_vw, ddm)   # note: destroys ubV & dubV
                 @test any(dEV0 .!= 0)
 
-                # println("extrema(dEV0) = $(extrema(dEV0))")
-                # println("extrema(fdEV0) = $(extrema(fdEV0))")
+                PRINTSTUFF && println("extrema(dEV0) = $(extrema(dEV0))")
+                PRINTSTUFF && println("extrema(fdEV0) = $(extrema(fdEV0))")
                 @views maxv, idx = findmax(abs.(fdEV0 .- dEV0))
                 @views sub = CartesianIndices(fdEV0)[idx]
-                # println("worst value is $maxv at $sub for dθ")
+                PRINTSTUFF && println("worst value is $maxv at $sub for dθ")
 
                 @test 0.0 < maxv < 1.0
                 @test all(isfinite.(dEV0))
@@ -395,17 +403,131 @@ println("print")
             end
 
 
+            # ---------------- Regime 1 VFI and PFI - test gradient ------------------
+
+            @testset "Gradient of EV for infill, anticipate_e = $(anticipate_t1ev(ddm))" begin
+                θ1 = similar(theta)
+                θ2 = similar(theta)
+                fdEV = similar(dEV(evs))
+                itype = (4.7, 0.25,)
+
+                nk = length(theta)
+
+                for k = 1:nk
+                    h = peturb(theta[k])
+                    θ1 .= theta
+                    θ2 .= theta
+                    θ1[k] -= h
+                    θ2[k] += h
+                    hh = θ2[k] - θ1[k]
+
+                    fill!(evs, 0)
+                    solve_vf_terminal!(evs, ddm, false)
+                    @test all(EV(evs) .== 0)
+                    @test all(dEV(evs) .== 0)
+                    solve_vf_infill!(evs, tmpv, ddm, θ1, itype, false)
+                    fdEV[:,:,k,:] .= -EV(evs)
+
+                    @test any( EV(evs) .!= 0)
+                    @test all(dEV(evs) .== 0)
+
+                    solve_vf_terminal!(evs, ddm, false)
+                    solve_vf_infill!(evs, tmpv, ddm, θ2, itype, false)
+                    fdEV[:,:,k,:] .+= EV(evs)
+                    fdEV[:,:,k,:] ./= hh
+                end
+
+                solve_vf_terminal!(evs, ddm, true)
+                solve_vf_infill!(evs, tmpv, ddm, theta, itype, true)
+                @test any(dEV(evs) .!= 0)
+
+
+                @views maxv, idx = findmax(abs.(fdEV[:,:,2:end,:].-dEV(evs)[:,:,2:end,:]))
+                @views sub = CartesianIndices(fdEV[:,:,2:end,:])[idx]
+                PRINTSTUFF && println("worst value is $maxv at $sub for dθ[2:end]")
+
+                maxv, idx = findmax(abs.(fdEV.-dEV(evs)))
+                sub = CartesianIndices(fdEV)[idx]
+                PRINTSTUFF && println("worst value is $maxv at $sub")
+                @test 0.0 < maxv < 1.0
+                @test all(isfinite.(evs.dEV))
+                @test all(isfinite.(fdEV))
+                @test fdEV ≈ evs.dEV
+            end
 
 
 
 
+            @testset "Gradient of EV for Exploratory + learning, anticipate_e = $(anticipate_t1ev(ddm))" begin
 
+                θ1 = similar(theta)
+                θ2 = similar(theta)
+                fdEV = similar(dEV(evs))
+                itype = (4.7, 0.25,)
 
+                nsexp = _nSexp(statespace(ddm))
+                nk = length(theta)
 
+                for k = 1:nk
+                    h = peturb(theta[k])
+                    θ1 .= theta
+                    θ2 .= theta
+                    θ1[k] -= h
+                    θ2[k] += h
+                    hh = θ2[k] - θ1[k]
 
+                    fill!(evs, 0)
 
+                    solve_vf_all!(evs, tmpv, ddm, θ1, itype, false)
+                    fdEV[:,:,k,:] .= -EV(evs)
 
+                    solve_vf_all!(evs, tmpv, ddm, θ2, itype, false)
+                    fdEV[:,:,k,:] .+= EV(evs)
 
+                    fdEV[:,:,k,:] ./= hh
+                end
+
+                # ----------------- analytic -----------------
+
+                solve_vf_all!(evs, tmpv, ddm, theta, itype, true)
+
+                # check infill + learning portion gradient
+                @views a =     fdEV[:,:, :, nsexp+1:end]
+                @views b = dEV(evs)[:,:, :, nsexp+1:end]
+                maxv, idx = findmax(abs.(a .- b))
+                PRINTSTUFF && println("worst value is $maxv at $(CartesianIndices(a)[idx]) for infill")
+
+                # check exploration portion of gradient
+                @views a =     fdEV[:,:, 1:end-1, 1:nsexp]
+                @views b = dEV(evs)[:,:, 1:end-1, 1:nsexp]
+                maxv, idx = findmax(abs.(a .- b))
+                PRINTSTUFF && println("worst value is $maxv at $(CartesianIndices(a)[idx]) for infill")
+
+                # check exploration portion of gradient
+                @views a =     fdEV[:,:, end, 1:nsexp]
+                @views b = dEV(evs)[:,:, end, 1:nsexp]
+                maxv, idx = findmax(abs.(a .- b))
+                PRINTSTUFF && println("worst value is $maxv at $(CartesianIndices(a)[idx]) for infill")
+
+                @test 0.0 < maxv < 0.1
+                @test all(isfinite.(dEV(evs)))
+                @test all(isfinite.(fdEV))
+
+                @test fdEV ≈ dEV(evs)
+                # println("dEV/dθ looks ok! :)")
+            end
+
+            if DOBTIME
+                itype = (4.7, 0.25,)
+                println("Timing solve_vf_all! with anticipate_e = $(anticipate_t1ev(ddm))")
+                fill!(evs, 0)
+                @btime solve_vf_terminal!($evs,        $ddm,                 true)
+                @btime solve_vf_infill!(  $evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime learningUpdate!(   $evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime solve_vf_explore!( $evs, $tmpv, $ddm, $theta, $itype, true)
+                fill!(evs, 0)
+                @btime solve_vf_all!(     $evs, $tmpv, $ddm, $theta, $itype, true)
+            end
 
         end # ddm
     end # VF Iteration

@@ -1,3 +1,6 @@
+const VFTOL = 1e-10
+
+
 "Value function iteration for 1 period"
 function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
     if anticipate_t1ev(ddm)
@@ -29,7 +32,7 @@ end
 # --------------------------- VFIT until conv ----------------------------
 
 
-function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit::Integer=60, vftol::Real=1e-11)
+function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=60, vftol=VFTOL, kwargs...)
 
     iter = zero(maxit)
     while true
@@ -47,7 +50,7 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
-function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; vftol::Real=1e-11)
+function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; vftol=VFTOL, kwargs...)
 
     ΔEV = lse(t)
     q0 = ubV(t)
@@ -84,7 +87,7 @@ end
 # --------------------------- pfit until convergence ----------------------------
 
 
-function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit::Integer=30, vftol::Real=1e-11)
+function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=30, vftol=VFTOL, kwargs...)
     iter = zero(maxit)
     while true
         bnds = pfit!(EV0, t, ddm; vftol=vftol)
@@ -145,15 +148,15 @@ end
 
 # # --------------------------- double vfit/pfit loop -----------------------
 
-function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol::Real=1e-9, maxit0::Integer=40, maxit1::Integer=20)
+function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol=VFTOL, maxit0=40, maxit1=20, kwargs...)
     solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
 
     # try-catch loop in case we have insane parameters that have Pr(no action) = 0, producing a singular IminusTEVp matrix.
-    converged, iter, bnds = # try
+    converged, iter, bnds = try
         solve_inf_pfit!(EV0, t, prim; maxit=maxit1, vftol=vftol)
-    # catch
-    #     @warn "pfit threw error. trying vfit."
-    #     converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
-    # end
+    catch
+        @warn "pfit threw error. trying vfit."
+        converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
+    end
     return converged, iter, bnds
 end

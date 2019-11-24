@@ -139,13 +139,13 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
 @inline theta_t(x::DrillingRevenue, θ) = θ[idx_t(x)]
-@inline theta_ρ(x::DrillingRevenue, θ) = θ[idx_ρ(x)]
+@inline theta_ρ(x, θ) = θ[idx_ρ(x)]
 
 @inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
 @inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
 
-@inline theta_ρ(x::DrillReward, θ) = theta_ρ(revenue(x), vw_revenue(x,θ))
+
 
 # @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
 # @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
