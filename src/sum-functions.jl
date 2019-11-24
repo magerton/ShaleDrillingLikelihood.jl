@@ -106,8 +106,6 @@ end
 
 logsumexp!(x) = logsumexp!(x,x)
 
-# @deprecate logsumexp_and_softmax!(x) logsumexp!(x)
-
 add_1_dim(x::AbstractArray) = reshape(x, size(x)..., 1)
 
 """
@@ -119,8 +117,9 @@ Sets `lse = ∑_k exp(x[i,j,k])`
 
 Uses temporary array `tmp`
 """
-@generated function softmax3!(q::AA, lse::Array{T}, tmpmax::Array{T}, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, AA<:AbstractArray{T}}
+@generated function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, A<:Array{T}, AA<:AbstractArray{T}}
     quote
+        ndims(q) == 1+ndims(lse) || throw(DimensionMismatch())
         xsizes = size(x)
         xsizes == size(q) || throw(DimensionMismatch("size(x) = $(size(x)) but size(q) = $(size(q))"))
         nk = last(xsizes)
