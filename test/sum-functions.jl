@@ -29,7 +29,7 @@ end
 @testset "Custom logsumexp functions" begin
 
     for n in (1,2,3,4,10,100,1000,10_000)
-        println("test logsumexp! for $n elements")
+        # println("test logsumexp! for $n elements")
         y = randn(n)
         x = view(y, 1:n)
         z1 = similar(y)

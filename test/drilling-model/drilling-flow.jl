@@ -18,6 +18,8 @@ using ShaleDrillingLikelihood: showtypetree,
 
 using Calculus: finite_difference!
 
+const DOPRINT = false
+
 @testset "Flow gradients" begin
     problem = DrillReward(
         DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()),
@@ -25,7 +27,7 @@ using Calculus: finite_difference!
         ExtensionCost_Constant()
     )
 
-    showtypetree(AbstractPayoffFunction)
+    DOPRINT && showtypetree(AbstractPayoffFunction)
     @test true == true
 
     println("")
@@ -64,7 +66,7 @@ using Calculus: finite_difference!
     for f in payoff_functions_to_test
         strout = "Testing $f"
         strout = replace(strout, "ShaleDrillingLikelihood." => "")
-        println(strout)
+        DOPRINT && println(strout)
         let z = (2.5, 2.0, 2010), ichars = (4.5, 0.25)
 
             n = _nparm(f)
