@@ -32,10 +32,6 @@ using InteractiveUtils: subtypes
 
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
-const AbstractArray3{T} = AbstractArray{T,3}
-const AbstractArray4{T} = AbstractArray{T,4}
-const AbstractArray5{T} = AbstractArray{T,5}
-
 
 abstract type AbstractTmpVars end
 
