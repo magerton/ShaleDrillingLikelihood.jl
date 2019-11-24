@@ -207,7 +207,7 @@ struct NoRoyalty   <: AbstractRoyaltyType end
 # base functions
 # -------------------------------------------
 
-@inline function Eexpψ(x::DrillingRevenue, d, obs, θ, sim)
+@inline function Eexpψ(x::DrillingRevenueLearn, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
     θ4 = theta_ψ(x,θ)
 
@@ -220,7 +220,7 @@ struct NoRoyalty   <: AbstractRoyaltyType end
     end
 end
 
-@inline function dEexpψdα_ψ(x::DrillingRevenue, d, obs, θ, sim)
+@inline function dEexpψdα_ψ(x::DrillingRevenueLearn, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
     if _Dgt0(obs)
         return ψ
@@ -234,7 +234,8 @@ end
 @inline function Eexpψ(x::DrillingRevenueNoLearn, d, obs, θ, sim)
     ψ = _ψ(obs, sim)
     θ4= theta_ψ(x,θ)
-    ρ = _ρ(theta_ρ(x,θ))
+    σ = theta_ρ(x,θ)
+    ρ = _ρ(σ)
     return θ4*(ψ*ρ + θ4*0.5*(1-ρ^2))
 end
 
@@ -247,7 +248,7 @@ end
     end
 end
 
-@inline Eexpψ(::DrillingRevenuePerfectInfo, d, obs, θ, sim) = α_ψ(x,θ) * _ψ(obs, sim)
+@inline Eexpψ(x::DrillingRevenuePerfectInfo, d, obs, θ, sim) = theta_ψ(x,θ) * _ψ(obs, sim)
 
 @inline function dEexpψdσ(x::DrillingRevenueLearn, d, obs, θ, sim)
     T = eltype(θ)
