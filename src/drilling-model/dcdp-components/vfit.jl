@@ -148,7 +148,7 @@ end
 
 # # --------------------------- double vfit/pfit loop -----------------------
 
-function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol=VFTOL, maxit0=40, maxit1=20, kwargs...)
+function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol=VFTOL, maxit0=45, maxit1=20, kwargs...)
     solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
 
     # try-catch loop in case we have insane parameters that have Pr(no action) = 0, producing a singular IminusTEVp matrix.
