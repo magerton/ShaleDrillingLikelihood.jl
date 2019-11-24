@@ -9,7 +9,7 @@ using Test
 using SparseArrays
 using BenchmarkTools
 using Random
-using ProfileView
+# using ProfileView
 using InteractiveUtils
 
 using Base.Iterators: product, OneTo
