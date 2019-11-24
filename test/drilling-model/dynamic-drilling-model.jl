@@ -6,11 +6,15 @@ using SparseArrays
 using BenchmarkTools
 using Calculus
 using Random
+using Profile
+using ProfileView
+using InteractiveUtils
+
 using Base.Iterators: product, OneTo
 
 const DOBTIME = false
 const PRINTSTUFF = false
-const DOPROFILE = true
+const DOPROFILE = false
 
 using ShaleDrillingLikelihood: DCDPEmax,
     DCDPTmpVars,
@@ -60,6 +64,7 @@ using ShaleDrillingLikelihood: DCDPEmax,
     learningUpdate!,
     solve_vf_explore!,
     solve_vf_all!,
+    solve_vf_all_timing!,
     _nSexp
 
 println("print to keep from blowing up")
@@ -521,12 +526,39 @@ println("print to keep from blowing up")
                 itype = (4.7, 0.25,)
                 println("Timing solve_vf_all! with anticipate_e = $(anticipate_t1ev(ddm))")
                 fill!(evs, 0)
-                @btime solve_vf_terminal!($evs,        $ddm,                 true)
-                @btime solve_vf_infill!(  $evs, $tmpv, $ddm, $theta, $itype, true)
-                @btime learningUpdate!(   $evs, $tmpv, $ddm, $theta, $itype, true)
-                @btime solve_vf_explore!( $evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime solve_vf_terminal!(  $evs,        $ddm,                 true)
+                @btime solve_vf_infill!(    $evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime learningUpdate!(     $evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime solve_vf_explore!(   $evs, $tmpv, $ddm, $theta, $itype, true)
+
+                @btime solve_vf_all_timing!($evs, $tmpv, $ddm, $theta, $itype, true)
+            end
+
+            if DOPROFILE
+                println("Profiling solve_vf_all_timing! with anticipate_e = $(anticipate_t1ev(ddm))")
+                itype = (4.7, 0.25,)
+
+                # @code_warntype solve_vf_terminal!(evs,       ddm,               true)
+                # @code_warntype solve_vf_infill!(  evs, tmpv, ddm, theta, itype, true)
+                # @code_warntype learningUpdate!(   evs, tmpv, ddm, theta, itype, true)
+                # @code_warntype solve_vf_explore!( evs, tmpv, ddm, theta, itype, true)
+                # fill!(evs, 0)
+                # @code_warntype solve_vf_all!(     evs, tmpv, ddm, theta, itype, true)
+
                 fill!(evs, 0)
-                @btime solve_vf_all!(     $evs, $tmpv, $ddm, $theta, $itype, true)
+                solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                Profile.clear()
+                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                # Juno.profiletree()
+                # Juno.profiler()
+                Profile.print(format=:flat)
+                ProfileView.view()
+                # pprof()
             end
 
         end # ddm
