@@ -97,7 +97,14 @@ println("print to keep from blowing up")
     ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
     ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
 
-    evs = DCDPEmax(ddm_no_t1ev)
+    @testset "VF Structs" begin
+        vfao = ValueFunctionArrayOnly(ddm_no_t1ev)
+        vf = ValueFunction(ddm_no_t1ev)
+        @test EV(vfao) == EV(vf)
+        @test dEV(vfao) == dEV(vf)
+    end
+
+    evs = ValueFunction(ddm_no_t1ev)
     tmpv = DCDPTmpVars(ddm_no_t1ev)
 
     fd = similar(dubVfull(tmpv))
@@ -455,9 +462,9 @@ println("print to keep from blowing up")
                 sub = CartesianIndices(fdEV)[idx]
                 PRINTSTUFF && println("worst value is $maxv at $sub")
                 @test 0.0 < maxv < 1.0
-                @test all(isfinite.(evs.dEV))
+                @test all(isfinite.(dEV(evs)))
                 @test all(isfinite.(fdEV))
-                @test fdEV ≈ evs.dEV
+                @test fdEV ≈ dEV(evs)
             end
 
 

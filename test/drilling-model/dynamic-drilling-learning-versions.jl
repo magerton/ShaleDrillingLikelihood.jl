@@ -70,7 +70,7 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        evs = ValueFunctionArrayOnly(ddm1)
         tmpv = DCDPTmpVars(ddm1)
 
         EV0 = similar(EV(evs))
@@ -101,7 +101,7 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        evs = ValueFunctionArrayOnly(ddm1)
         tmpv = DCDPTmpVars(ddm1)
 
         EV0 = similar(EV(evs))
@@ -127,7 +127,7 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        evs = ValueFunctionArrayOnly(ddm1)
         tmpv = DCDPTmpVars(ddm1)
 
         EV0 = similar(EV(evs))
@@ -186,7 +186,7 @@ println("print to keep from blowing up")
 
             @test ff0 ≈ ff1
         end
-        evs = DCDPEmax(ddm0)
+        evs = ValueFunctionArrayOnly(ddm0)
         tmpv = DCDPTmpVars(ddm0)
 
         EV0 = similar(EV(evs))

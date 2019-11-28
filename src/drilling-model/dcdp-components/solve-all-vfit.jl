@@ -16,7 +16,7 @@ end
 
 # ---------------------------------------------
 
-function solve_vf_infill!(evs::DCDPEmax, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
+function solve_vf_infill!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
 
     wp = statespace(ddm)
 
@@ -62,7 +62,7 @@ end
 # ---------------------------------------------
 
 
-function learningUpdate!(evs::dcdp_Emax, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd)
+function learningUpdate!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd)
 
     wp = statespace(ddm)
     lrn2inf = inf_fm_lrn(wp)
@@ -94,7 +94,7 @@ end
 # ---------------------------------------------
 
 
-function solve_vf_explore!(evs::dcdp_Emax, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
+function solve_vf_explore!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
 
     wp = statespace(ddm)
     dmaxp1 = _dmax(wp)+1

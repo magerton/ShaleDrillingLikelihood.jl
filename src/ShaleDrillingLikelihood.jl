@@ -71,6 +71,7 @@ function showtypetree(T, level=0)
    end
 end
 
+@inline drop_second_to_last(x::Tuple) = (x[1:end-2]..., x[end])
 
 # Overall structure
 #----------------------------

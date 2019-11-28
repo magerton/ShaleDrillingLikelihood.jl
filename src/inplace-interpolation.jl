@@ -18,7 +18,7 @@ struct InPlaceInterp{T, TC, N, A<:AbstractArray{T,N}, TCoefs<:AbstractArray{TC,N
         TC = Interpolations.tcoef(x)
         coef = padded_coefs(TC, x, it)
         TCoefs = typeof(coef)
-        new{T, TC, N, A, TCoefs, IT, RT}(x, coef, it, ranges)
+        return new{T, TC, N, A, TCoefs, IT, RT}(x, coef, it, ranges)
     end
 end
 
@@ -26,6 +26,7 @@ data(x::InPlaceInterp) = x.x
 coefficients(x::InPlaceInterp) = x.coef
 itpflag(x::InPlaceInterp) = x.it
 ranges(x::InPlaceInterp) = x.ranges
+size(x::InPlaceInterp) = size(data(x))
 
 
 function update_interpolation!(x::InPlaceInterp)
