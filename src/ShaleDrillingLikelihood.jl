@@ -77,7 +77,7 @@ end
 
 include("threadutils.jl")
 include("sum-functions.jl")
-
+include("inplace-interpolation.jl")
 
 # data structures
 include("data/abstract.jl")
@@ -93,7 +93,6 @@ include("data/overall.jl")
 # ------------------------------------
 include("drilling-model/abstract.jl")
 include("drilling-model/test-reward-and-model.jl")
-
 include("drilling-model/state-space.jl")
 
 # reward function and components

@@ -9,6 +9,7 @@ end
 
 include("sum-functions.jl")
 include("threadutils.jl")
+include("inplace-interpolation.jl")
 
 include("data/data-structure.jl")
 include("data/drilling.jl")
