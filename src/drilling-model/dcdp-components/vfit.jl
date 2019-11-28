@@ -117,8 +117,6 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingMode
     ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
     dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
 
-    qq =
-
     if anticipate_t1ev(ddm)
         softmax3!(ubV(t), lse(t), tmp(t), ubV(t))
         # softmax3!(q, lse, tmp)
