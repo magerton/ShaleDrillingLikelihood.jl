@@ -27,7 +27,7 @@ function solve_vf_infill!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ic
         @views EV0  = view( EV(evs), :, :,    i)
         @views dEV0 = view(dEV(evs), :, :, :, i)
 
-        flow!(tvw, ddm, θ, i, ichar, dograd)
+        update_static_payoffs!(tvw, ddm, θ, i, ichar, dograd)
         ubV(tvw) .+= discount(ddm) .* view(EV(evs), :, :, idxs)
 
         if dograd
@@ -119,7 +119,7 @@ function solve_vf_explore!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, i
         dEV0_ip = view(dEV(evs), :, :, :, ip0)
 
         # compute u + βEV(d) ∀ d ∈ actionspace(wp,i)
-        flow!(tvw, ddm, θ, i, ichar, dograd)
+        update_static_payoffs!(tvw, ddm, θ, i, ichar, dograd)
         ubV0 .+= discount(ddm) .* EV0_ip
         ubV1 .+= βEV1 # β already baked in
 

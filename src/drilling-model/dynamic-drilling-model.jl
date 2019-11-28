@@ -302,7 +302,7 @@ end
 # Fill reward matrices
 # --------------------------------------------------------
 
-function flow!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
+function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
     ψspace = psispace(ddm)
     zs = product(zspace(ddm)...)
     zψpdct = product(zs, ψspace)
@@ -325,3 +325,5 @@ function flow!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector,
     end
     permutedims!(dubvp, dubv, [2,1,3])
 end
+
+@deprecate flow!(t::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool) update_static_payoffs!(t,ddm,θ,sidx,ichars,dograd)

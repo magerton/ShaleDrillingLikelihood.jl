@@ -65,7 +65,8 @@ using ShaleDrillingLikelihood: DCDPEmax,
     solve_vf_explore!,
     solve_vf_all!,
     solve_vf_all_timing!,
-    _nSexp
+    _nSexp,
+    update_static_payoffs!
 
 println("print to keep from blowing up")
 
@@ -136,14 +137,14 @@ println("print to keep from blowing up")
                 fill!(ubVfull(tmpvminus), 0)
                 fill!(ubVfull(tmpvplus), 0)
 
-                flow!(view(tmpvminus, idxd), ddm, thetaminus, sidx, ichar, false)
-                flow!(view(tmpvplus , idxd), ddm, thetaplus, sidx, ichar, false)
+                update_static_payoffs!(view(tmpvminus, idxd), ddm, thetaminus, sidx, ichar, false)
+                update_static_payoffs!(view(tmpvplus , idxd), ddm, thetaplus, sidx, ichar, false)
                 @test all(dubVfull(tmpv) .== 0)
 
                 fd[i,:,:,:] .= (ubVfull(tmpvplus) .- ubVfull(tmpvminus))./ twoh
             end
 
-            flow!(view(tmpv, idxd), ddm, theta, sidx, ichar, true)
+            update_static_payoffs!(view(tmpv, idxd), ddm, theta, sidx, ichar, true)
 
             fdnosig = fd[1:end-1,:,:,:] .- dubVfull(tmpv)[1:end-1,:,:,:]
             fdsig = fd[end,:,:,:] .- dubVfull(tmpv)[end,:,:,:]
@@ -265,13 +266,13 @@ println("print to keep from blowing up")
                         hh = thetaplus[k] - thetaminus[k]
 
                         fill!(evs, 0)
-                        flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
+                        update_static_payoffs!(tmp_vw, ddm, thetaminus, i, ichar, false)
                         vfit!(EV0, tmp_vw, ddm)
                         ubV(tmp_vw) .+= discount(ddm) .* EV1
                         fdEV0[:,:,k] .-= EV0
 
                         fill!(evs, 0)
-                        flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
+                        update_static_payoffs!(tmp_vw, ddm, thetaplus, i, ichar, false)
                         vfit!(EV0, tmp_vw, ddm)
                         ubV(tmp_vw) .+= discount(ddm) .* EV1
                         fdEV0[:,:,k] .+= EV0
@@ -280,7 +281,7 @@ println("print to keep from blowing up")
                     end
 
                     fill!(evs, 0)
-                    flow!(tmp_vw, ddm, theta, i, ichar, true)
+                    update_static_payoffs!(tmp_vw, ddm, theta, i, ichar, true)
                     ubV(tmp_vw)  .+= discount(ddm) .* EV1
                     dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                     vfit!(EV0, dEV0, tmp_vw, ddm)
@@ -320,7 +321,7 @@ println("print to keep from blowing up")
                 vfEV0 = zeros(size(EV0))
 
                 fill!(evs, 0)
-                flow!(tmp_vw, ddm, theta, i, ichar, true)
+                update_static_payoffs!(tmp_vw, ddm, theta, i, ichar, true)
                 ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterv, bnds = solve_inf_vfit!(EV0, tmp_vw, ddm; maxit=1000, vftol=1e-10)
@@ -328,7 +329,7 @@ println("print to keep from blowing up")
                 vfEV0 .= EV0
 
                 fill!(evs, 0)
-                flow!(tmp_vw, ddm, theta, i, ichar, true)
+                update_static_payoffs!(tmp_vw, ddm, theta, i, ichar, true)
                 ubV(tmp_vw)  .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
                 converged, iterp, bnds = solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-10, maxit0=20, maxit1=40)
@@ -375,13 +376,13 @@ println("print to keep from blowing up")
                     hh = thetaplus[k] - thetaminus[k]
 
                     fill!(evs, 0)
-                    flow!(tmp_vw, ddm, thetaminus, i, ichar, false)
+                    update_static_payoffs!(tmp_vw, ddm, thetaminus, i, ichar, false)
                     ubV(tmp_vw) .+= discount(ddm) .* EV1
                     solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-11, maxit0=10, maxit1=40)
                     fdEV0[:,:,k] .-= EV0
 
                     fill!(evs, 0)
-                    flow!(tmp_vw, ddm, thetaplus, i, ichar, false)
+                    update_static_payoffs!(tmp_vw, ddm, thetaplus, i, ichar, false)
                     ubV(tmp_vw) .+= discount(ddm) .* EV1
                     solve_inf_vfit_pfit!(EV0, tmp_vw, ddm; vftol=1e-11, maxit0=10, maxit1=40)
                     fdEV0[:,:,k] .+= EV0
@@ -392,7 +393,7 @@ println("print to keep from blowing up")
 
 
                 fill!(evs, 0.0)
-                flow!(tmp_vw, ddm, theta, i, ichar, true)
+                update_static_payoffs!(tmp_vw, ddm, theta, i, ichar, true)
                 ubV(tmp_vw)      .+= discount(ddm) .* EV1
                 dubVperm(tmp_vw) .+= discount(ddm) .* dEV1
 
