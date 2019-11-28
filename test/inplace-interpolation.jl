@@ -4,6 +4,7 @@ using ShaleDrillingLikelihood
 using Interpolations
 using InteractiveUtils
 using Test
+using BenchmarkTools
 
 using ShaleDrillingLikelihood:
     update_interpolation!, interpolation, scaled_interpolation,
@@ -56,23 +57,26 @@ if SHOW_CODE_WARNTYPE
     @code_warntype Interpolations.gradient(mysitp, 1.25, 1.25, 1)
 end
 
+vec = A_x2[2:end-1] .+ 0.1
+jnk = zero(vec)
 
+@inline function f1(grad, itp, vec)
+    broadcast!(v -> itp(1,v,2), grad, vec)
+end
 
+@inline function f2(grad, itp, vec)
+    grad .= itp(1,vec,2)
+end
 
+if SHOW_CODE_WARNTYPE
+    @code_warntype f1(jnk, mysitp, vec)
+    @code_warntype f2(jnk, mysitp, vec)
+end
 
+@btime f1($jnk, $mysitp, $vec)
+@btime f2($jnk, $mysitp, $vec)
 
-
-
-
-
-
-
-
-
-
-
-
-
+# @code_typed optimize=true  f(jnk, mysitp, vec)
 
 
 end
