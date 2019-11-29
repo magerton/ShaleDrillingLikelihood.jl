@@ -1,7 +1,11 @@
 const VFTOL = 1e-10
 
 
-"Value function iteration for 1 period"
+"""
+    vfit!(EV0, t, ddm)
+
+Given `ubV(t) ≡ u + βV(x')`, update `EV0 ← E[max u + β V(x')]`
+"""
 function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(lse(t), q(t), tmp(t), ubV(t))
@@ -87,7 +91,7 @@ end
 # --------------------------- pfit until convergence ----------------------------
 
 
-function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=30, vftol=VFTOL, kwargs...)
+function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=40, vftol=VFTOL, kwargs...)
     iter = zero(maxit)
     while true
         bnds = pfit!(EV0, t, ddm; vftol=vftol)

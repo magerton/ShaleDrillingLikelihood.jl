@@ -70,20 +70,18 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = ValueFunctionArrayOnly(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        solve_vf_all!(tmpv, ddm2, theta2, ichar, false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, ichar, false)
-
-        @test EV(evs) ≈ EV0
-        @test EV(evs) != EV0
+        @test EV(ev1) ≈ EV(ev2)
+        @test EV(ev1) != EV(ev2)
     end # perfect info
 
 
@@ -101,21 +99,19 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = ValueFunctionArrayOnly(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        solve_vf_all!(tmpv, ddm2, theta2, ichar, false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, ichar, false)
-
-        @test EV(evs) ≈ EV0
-        @test EV(evs) != EV0
-    end
+        @test EV(ev1) ≈ EV(ev2)
+        @test EV(ev1) != EV(ev2)
+    end # max learning
 
     @testset "NoRoyalty" begin
         f1 = DrillReward(DrillingRevenue(Constrained(), NoTrend(), NoTaxes(), Learn(), WithRoyalty()), DrillingCost_constant(), ExtensionCost_Constant())
@@ -127,19 +123,17 @@ println("print to keep from blowing up")
         ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
         ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = ValueFunctionArrayOnly(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, (2.0, 0.0), false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, (2.0, 0.0), false)
+        solve_vf_all!(tmpv, ddm2, theta2, (2.0, 0.25), false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, (2.0, 0.25), false)
-
-        @test EV(evs) == EV0
+        @test EV(ev1) == EV(ev2)
     end
 
 
@@ -186,21 +180,20 @@ println("print to keep from blowing up")
 
             @test ff0 ≈ ff1
         end
-        evs = ValueFunctionArrayOnly(ddm0)
+        ev0 = ValueFunctionArrayOnly(ddm0)
+        ev1 = ValueFunctionArrayOnly(ddm1)
         tmpv = DCDPTmpVars(ddm0)
 
-        EV0 = similar(EV(evs))
+        fill!(ev0, 0)
+        fill!(ev1,0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm0, theta0, ichar, false)
-        @test all(isfinite.(EV(evs)))
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm0, theta0, ichar, false)
+        @test all(isfinite.(EV(ev0)))
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        @test all(isfinite.(EV(evs)))
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        @test all(isfinite.(EV(ev1)))
 
-        @test EV(evs) ≈ EV0
+        @test EV(ev0) ≈ EV(ev1)
     end
 
 

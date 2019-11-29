@@ -1,4 +1,5 @@
-function solve_vf_terminal!(evs, ddm, dograd)
+function solve_vf_terminal!(ddm::DDM_AbstractVF, dograd)
+    evs = value_function(ddm)
     ev = EV(evs)
     dev = dEV(evs)
 
@@ -16,8 +17,9 @@ end
 
 # ---------------------------------------------
 
-function solve_vf_infill!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
+function solve_vf_infill!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
 
+    evs = value_function(ddm)
     wp = statespace(ddm)
 
     for i in ind_inf(wp)
@@ -58,12 +60,11 @@ function solve_vf_infill!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ic
     return nothing
 end
 
-
 # ---------------------------------------------
 
 
-function learningUpdate!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd)
-
+function learningUpdate!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dograd)
+    evs = value_function(ddm)
     wp = statespace(ddm)
     lrn2inf = inf_fm_lrn(wp)
     exp2lrn = exploratory_learning(wp)
@@ -90,12 +91,12 @@ function learningUpdate!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ich
     return nothing
 end
 
-
 # ---------------------------------------------
 
 
-function solve_vf_explore!(evs, t::DCDPTmpVars, ddm::DynamicDrillingModel, θ, ichar, dograd; kwargs...)
+function solve_vf_explore!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
 
+    evs = value_function(ddm)
     wp = statespace(ddm)
     dmaxp1 = _dmax(wp)+1
     exp2lrn = exploratory_learning(wp)
@@ -155,16 +156,29 @@ end
 
 # ---------------------------------------------
 
-function solve_vf_all!(evs, t, ddm, θ, ichar, dograd; kwargs...)
-    solve_vf_terminal!(evs,    ddm,           dograd; kwargs...)
-    solve_vf_infill!(  evs, t, ddm, θ, ichar, dograd; kwargs...)
-    learningUpdate!(   evs, t, ddm, θ, ichar, dograd; kwargs...)
-    solve_vf_explore!( evs, t, ddm, θ, ichar, dograd; kwargs...)
+function solve_vf_all!(t, ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
+    solve_vf_terminal!(   ddm,           dograd; kwargs...)
+    solve_vf_infill!(  t, ddm, θ, ichar, dograd; kwargs...)
+    learningUpdate!(   t, ddm, θ, ichar, dograd; kwargs...)
+    solve_vf_explore!( t, ddm, θ, ichar, dograd; kwargs...)
     return nothing
 end
 
-function solve_vf_all_timing!(evs, args...)
-    fill!(evs, 0)
-    solve_vf_all!(evs, args...)
+@deprecate solve_vf_terminal!(evs,    ddm,           dograd)             solve_vf_terminal!(  ddm,           dograd)
+@deprecate solve_vf_infill!(  evs, t, ddm, θ, ichar, dograd; kwargs...)  solve_vf_infill!( t, ddm, θ, ichar, dograd; kwargs...)
+@deprecate learningUpdate!(   evs, t, ddm, θ, ichar, dograd)             learningUpdate!(  t, ddm, θ, ichar, dograd)
+@deprecate solve_vf_explore!( evs, t, ddm, θ, ichar, dograd; kwargs...)  solve_vf_explore!(t, ddm, θ, ichar, dograd; kwargs...)
+@deprecate solve_vf_all!(     evs, t, ddm, θ, ichar, dograd; kwargs...)  solve_vf_all!(    t, ddm, θ, ichar, dograd; kwargs...)
+
+# need to reset VF to 0 for benchmarking
+function solve_vf_all_timing!(t, ddm, θ, ichar, dograd; kwargs...)
+    fill!(value_function(ddm), 0)
+    solve_vf_all!(t, ddm, θ, ichar, dograd; kwargs...)
+    return nothing
+end
+
+function solve_vf_infill_timing!(t, ddm, θ, ichar, dograd; kwargs...)
+    fill!(value_function(ddm), 0)
+    solve_vf_infill!(t, ddm, θ, ichar, dograd; kwargs...)
     return nothing
 end

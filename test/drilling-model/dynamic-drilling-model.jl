@@ -65,11 +65,13 @@ using ShaleDrillingLikelihood: DCDPEmax,
     solve_vf_explore!,
     solve_vf_all!,
     solve_vf_all_timing!,
+    solve_vf_infill_timing!,
     _nSexp,
     update_static_payoffs!,
     NoValueFunction,
     ValueFunction,
-    ValueFunctionArrayOnly
+    ValueFunctionArrayOnly,
+    value_function
 
 println("print to keep from blowing up")
 
@@ -101,7 +103,7 @@ println("print to keep from blowing up")
     ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
     ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
 
-    if PRINTSTUFF
+    if false
         @code_warntype ValueFunction(f, 0.9, wp, zs, ztrans, ψs)
         @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunction)
         @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunctionArrayOnly)
@@ -115,7 +117,6 @@ println("print to keep from blowing up")
         @test dEV(vfao) == dEV(vf)
     end
 
-    evs = ValueFunction(ddm_no_t1ev)
     tmpv = DCDPTmpVars(ddm_no_t1ev)
 
     fd = similar(dubVfull(tmpv))
@@ -171,7 +172,7 @@ println("print to keep from blowing up")
         end
 
         if DOBTIME
-            @btime flow!($tmpv, $ddm, $theta, 2, (2.0, 0.25,), true)
+            @btime update_static_payoffs!($tmpv, $ddm, $theta, 2, (2.0, 0.25,), true)
         end
     end
 
@@ -248,11 +249,13 @@ println("print to keep from blowing up")
 
     @testset "VF Iteration" begin
 
-        fdEV = zero(dEV(evs))
         thetaminus = similar(theta)
         thetaplus = similar(theta)
 
         for ddm in (ddm_with_t1ev, ddm_no_t1ev)
+
+            evs = ValueFunction(ddm)
+            fdEV = zero(dEV(evs))
 
             # println("\n-----------------------\nanticipate_e = $(anticipate_t1ev(ddm))\n---------------------------------------")
 
@@ -451,23 +454,23 @@ println("print to keep from blowing up")
                     hh = θ2[k] - θ1[k]
 
                     fill!(evs, 0)
-                    solve_vf_terminal!(evs, ddm, false)
+                    solve_vf_terminal!(ddm, false)
                     @test all(EV(evs) .== 0)
                     @test all(dEV(evs) .== 0)
-                    solve_vf_infill!(evs, tmpv, ddm, θ1, itype, false)
+                    solve_vf_infill!(tmpv, ddm, θ1, itype, false)
                     fdEV[:,:,k,:] .= -EV(evs)
 
                     @test any( EV(evs) .!= 0)
                     @test all(dEV(evs) .== 0)
 
-                    solve_vf_terminal!(evs, ddm, false)
-                    solve_vf_infill!(evs, tmpv, ddm, θ2, itype, false)
+                    solve_vf_terminal!(ddm, false)
+                    solve_vf_infill!(tmpv, ddm, θ2, itype, false)
                     fdEV[:,:,k,:] .+= EV(evs)
                     fdEV[:,:,k,:] ./= hh
                 end
 
-                solve_vf_terminal!(evs, ddm, true)
-                solve_vf_infill!(evs, tmpv, ddm, theta, itype, true)
+                solve_vf_terminal!(ddm, true)
+                solve_vf_infill!(tmpv, ddm, theta, itype, true)
                 @test any(dEV(evs) .!= 0)
 
 
@@ -507,10 +510,10 @@ println("print to keep from blowing up")
 
                     fill!(evs, 0)
 
-                    solve_vf_all!(evs, tmpv, ddm, θ1, itype, false)
+                    solve_vf_all!(tmpv, ddm, θ1, itype, false)
                     fdEV[:,:,k,:] .= -EV(evs)
 
-                    solve_vf_all!(evs, tmpv, ddm, θ2, itype, false)
+                    solve_vf_all!(tmpv, ddm, θ2, itype, false)
                     fdEV[:,:,k,:] .+= EV(evs)
 
                     fdEV[:,:,k,:] ./= hh
@@ -518,7 +521,7 @@ println("print to keep from blowing up")
 
                 # ----------------- analytic -----------------
 
-                solve_vf_all!(evs, tmpv, ddm, theta, itype, true)
+                solve_vf_all!(tmpv, ddm, theta, itype, true)
 
                 # check infill + learning portion gradient
                 @views a =     fdEV[:,:, :, nsexp+1:end]
@@ -549,38 +552,38 @@ println("print to keep from blowing up")
             if DOBTIME
                 itype = (4.7, 0.25,)
                 println("Timing solve_vf_all! with anticipate_e = $(anticipate_t1ev(ddm))")
-                fill!(evs, 0)
-                @btime solve_vf_terminal!(  $evs,        $ddm,                 true)
-                @btime solve_vf_infill!(    $evs, $tmpv, $ddm, $theta, $itype, true)
-                @btime learningUpdate!(     $evs, $tmpv, $ddm, $theta, $itype, true)
-                @btime solve_vf_explore!(   $evs, $tmpv, $ddm, $theta, $itype, true)
+                fill!(value_function(ddm), 0)
+                @btime solve_vf_terminal!(            $ddm,                 true)
+                @btime solve_vf_infill_timing!($tmpv, $ddm, $theta, $itype, true)
+                @btime learningUpdate!(        $tmpv, $ddm, $theta, $itype, true)
+                @btime solve_vf_explore!(      $tmpv, $ddm, $theta, $itype, true)
 
-                @btime solve_vf_all_timing!($evs, $tmpv, $ddm, $theta, $itype, true)
+                @btime solve_vf_all_timing!($tmpv, $ddm, $theta, $itype, true)
             end
 
             if DOPROFILE
                 println("Profiling solve_vf_all_timing! with anticipate_e = $(anticipate_t1ev(ddm))")
                 itype = (4.7, 0.25,)
 
-                # @code_warntype solve_vf_terminal!(evs,       ddm,               true)
-                # @code_warntype solve_vf_infill!(  evs, tmpv, ddm, theta, itype, true)
-                # @code_warntype learningUpdate!(   evs, tmpv, ddm, theta, itype, true)
-                # @code_warntype solve_vf_explore!( evs, tmpv, ddm, theta, itype, true)
-                # fill!(evs, 0)
-                # @code_warntype solve_vf_all!(     evs, tmpv, ddm, theta, itype, true)
-
+                @code_warntype solve_vf_terminal!(      ddm,               true)
+                @code_warntype solve_vf_infill!(    tmpv, ddm, theta, itype, true)
+                @code_warntype learningUpdate!(     tmpv, ddm, theta, itype, true)
+                @code_warntype solve_vf_explore!(   tmpv, ddm, theta, itype, true)
                 fill!(evs, 0)
-                solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                Profile.clear()
-                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
-                @profile solve_vf_all_timing!(evs, tmpv, ddm, theta, itype, true)
+                @code_warntype solve_vf_all!(       tmpv, ddm, theta, itype, true)
+                @code_warntype solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                fill!(evs, 0)
+                # solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # Profile.clear()
+                # @profile solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # @profile solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # @profile solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # @profile solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
+                # @profile solve_vf_all_timing!(tmpv, ddm, theta, itype, true)
                 # Juno.profiletree()
                 # Juno.profiler()
-                Profile.print(format=:flat)
+                # Profile.print(format=:flat)
                 # ProfileView.view()
                 # pprof()
             end
