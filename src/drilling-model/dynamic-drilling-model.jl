@@ -113,7 +113,7 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T}, AUP
 
     function DynamicDrillingModel(
       reward::APF, discount::T, statespace::AUP, zspace::TT, ztransition::AM,
-      psispace::AR, anticipate_t1ev, vf::Function=ValueFunction
+      psispace::AR, anticipate_t1ev, vf::Union{Type,Function}=ValueFunction
     ) where {
         T,N, APF, AUP, TT<:NTuple{N,AbstractRange},
         AM, AR
