@@ -66,7 +66,10 @@ using ShaleDrillingLikelihood: DCDPEmax,
     solve_vf_all!,
     solve_vf_all_timing!,
     _nSexp,
-    update_static_payoffs!
+    update_static_payoffs!,
+    NoValueFunction,
+    ValueFunction,
+    ValueFunctionArrayOnly
 
 println("print to keep from blowing up")
 
@@ -97,6 +100,13 @@ println("print to keep from blowing up")
     # ddm object
     ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
     ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
+
+    if PRINTSTUFF
+        @code_warntype ValueFunction(f, 0.9, wp, zs, ztrans, ψs)
+        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunction)
+        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunctionArrayOnly)
+        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, NoValueFunction)
+    end
 
     @testset "VF Structs" begin
         vfao = ValueFunctionArrayOnly(ddm_no_t1ev)
@@ -228,6 +238,12 @@ println("print to keep from blowing up")
             @test fdpi ≈ pipsi
 
         end
+    end
+
+    @testset "VF interpolation" begin
+
+
+
     end
 
     @testset "VF Iteration" begin

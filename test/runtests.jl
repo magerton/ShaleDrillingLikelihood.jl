@@ -23,4 +23,6 @@ include("drilling-model/dynamic-drilling-model.jl")
 include("drilling-model/dynamic-drilling-learning-versions.jl")
 
 include("likelihood/drilling.jl")
-include("likelihood/overall.jl")
+# include("likelihood/overall.jl")
+
+# include("teststuff.jl")
