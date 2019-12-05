@@ -248,13 +248,15 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
     sp = sprime(statespace(mod), _x(obs), d)
     z = zchars(obs)
 
+    idxrho = idx_ρ(rwrd)
+
     if dograd
         dvf_sitp = dEV_scaled_itp(vf)
         @inbounds @simd for k in OneTo(nk)
             grad[k] += beta * dvf_sitp(z..., psi, k, sp)
         end
-        dpsi = last(Interpolations.gradient(vf_sitp, z..., psi, k, sp)) # FIXME
-        grad[idx_ρ(rwrd)] += dpsi * beta * _dψdθρ(obs, sim)
+        dpsi = last(Interpolations.gradient(vf_sitp, z..., psi, sp)) # FIXME
+        grad[idxrho] += dpsi * beta * _dψdθρ(obs, sim)
     end
 
     return beta * vf_sitp(z..., psi, sp)
@@ -264,6 +266,6 @@ end
 function full_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, theta, sim, dograd)
     rwrd = reward(_model(obs))
     static_payoff  = flow!(grad, rwrd, d, obs, theta, sim, dograd)
-    dynamic_payoff = discounted_dynamic_payoff!(grad, obs, sim, dograd)
+    dynamic_payoff = discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
     return static_payoff + dynamic_payoff
 end
