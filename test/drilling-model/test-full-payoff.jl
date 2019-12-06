@@ -80,29 +80,45 @@ println("print to keep from blowing up")
     @testset "VF interpolation" begin
 
 
-        tmpgrad = similar(theta)
+        gradtmp = similar(theta)
         fdgrad = similar(theta)
 
-        for ddm in (ddm_with_t1ev, ddm_no_t1ev)
+        function solve_vf_and_fullpayoff!(gradtmp, tmpv, ddm, d, obs, theta, uv, ichars, dograd=false)
+            # θρ = theta[idx_ρ(reward(ddm))]
+            # sim = SimulationDraw(uv..., θρ)
+            sim=uv
+            solve_vf_all!(tmpv, ddm, theta, ichars, dograd)
+            update_interpolation!(value_function(ddm), dograd)
+            return full_payoff!(gradtmp, d, obs, theta, sim, dograd)
+        end
 
-            θρ = theta[idx_ρ(reward(ddm))]
+        for ddm in (ddm_with_t1ev,)#  ddm_no_t1ev)
+
             solve_vf_all!(tmpv, ddm, theta, ichar, true)
             update_interpolation!(value_function(ddm), true)
 
             wp = statespace(ddm)
-            for i in OneTo(length(wp))
+            for i in 1:2 # OneTo(length(wp))
                 for d in actionspace(wp, i)
                     z = clamp(randn(), minimum(zs[1]), maximum(zs[1]))
-                    zchars = (z,)
-                    obs = ObservationDrill(ddm, ichar, zchars, d, i)
-                    uv = randn(2)
-                    sim = SimulationDraw(uv..., θρ)
+                    obs = ObservationDrill(ddm, ichar, (z,), d, i)
+                    # uv = randn(2)
+                    θρ = theta[idx_ρ(reward(ddm))]
+                    uv = SimulationDraw(randn(2)..., θρ)
+
 
                     check_flow_grad(reward(ddm), d, obs, theta)
-                    discounted_dynamic_payoff!(tmpgrad, d, obs, sim, false)
-                    discounted_dynamic_payoff!(tmpgrad, d, obs, sim, true)
-                    full_payoff!(tmpgrad, d, obs, theta, sim, false)
-                    full_payoff!(tmpgrad, d, obs, theta, sim, true)
+
+                    fill!(gradtmp, 0)
+                    f(θ) = solve_vf_and_fullpayoff!(gradtmp, tmpv, ddm, d, obs, θ, uv, ichar, false)
+                    fd = Calculus.gradient(f, theta)
+                    @test all(gradtmp .== 0)
+
+                    solve_vf_and_fullpayoff!(gradtmp, tmpv, ddm, d, obs, theta, uv, ichar, true)
+                    @test all(isfinite.(gradtmp))
+                    d > 0 && @test any(gradtmp .!= 0)
+                    fd ≈ gradtmp || @show fd .- gradtmp, i, d, z  # prefilter???
+                    @test fd ≈ gradtmp
                 end
             end
         end
