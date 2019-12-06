@@ -264,6 +264,9 @@ end
 function full_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, theta, sim, dograd)
     rwrd = reward(_model(obs))
     static_payoff  = flow!(grad, rwrd, d, obs, theta, sim, dograd)
-    dynamic_payoff = 0 # discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
+    if dograd
+        grad[idx_ρ(rwrd)] += flowdψ(rwrd, d, obs, theta, sim) * _dψdθρ(obs, sim)
+    end
+    dynamic_payoff = discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
     return static_payoff + dynamic_payoff
 end

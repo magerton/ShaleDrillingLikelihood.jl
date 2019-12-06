@@ -157,9 +157,9 @@ end
 # ---------------------------------------------
 
 function solve_vf_all!(t, ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
-    solve_vf_terminal!(   ddm,           dograd; kwargs...)
+    solve_vf_terminal!(   ddm,           dograd)
     solve_vf_infill!(  t, ddm, θ, ichar, dograd; kwargs...)
-    learningUpdate!(   t, ddm, θ, ichar, dograd; kwargs...)
+    learningUpdate!(   t, ddm, θ, ichar, dograd)
     solve_vf_explore!( t, ddm, θ, ichar, dograd; kwargs...)
     return nothing
 end
