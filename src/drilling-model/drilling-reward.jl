@@ -23,6 +23,8 @@ end
 @inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(drill(x)) + _nparm(extend(x)))
 @inline idx_ρ(x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
+idx_drill_ρ(x::DrillReward) = idx_ρ(x)
+
 @inline vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
 @inline vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
 @inline vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))

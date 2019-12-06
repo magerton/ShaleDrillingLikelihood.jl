@@ -248,15 +248,13 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
     sp = sprime(statespace(mod), _x(obs), d)
     z = zchars(obs)
 
-    idxrho = idx_ρ(rwrd)
-
     if dograd
         dvf_sitp = dEV_scaled_itp(vf)
         @inbounds @simd for k in OneTo(nk)
             grad[k] += beta * dvf_sitp(z..., psi, k, sp)
         end
         dpsi = last(Interpolations.gradient(vf_sitp, z..., psi, sp)) # FIXME
-        grad[idxrho] += dpsi * beta * _dψdθρ(obs, sim)
+        grad[idx_ρ(rwrd)] += dpsi * beta * _dψdθρ(obs, sim)
     end
 
     return beta * vf_sitp(z..., psi, sp)
