@@ -17,7 +17,8 @@ end
 #
 # include("drilling-model/test-flow.jl")
 #
-# include("drilling-model/state-space.jl") # include("drilling-model/drilling-flow.jl")
+# include("drilling-model/state-space.jl")
+# include("drilling-model/drilling-flow.jl")
 # include("drilling-model/dynamic-drilling-model.jl")
 # include("drilling-model/test-full-payoff.jl")
 # include("drilling-model/dynamic-drilling-learning-versions.jl")
