@@ -15,12 +15,12 @@ end
 # lengths
 # -----------------------------------------
 
-@inline _nparms(x::DrillReward) = (_nparm(drill(x)), _nparm(extend(x)), _nparm(revenue(x)))
+@inline _nparms(x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(revenue(x)))
 @inline _nparm( x::DrillReward) = sum(_nparms(x))
 
-@inline idx_cost(   x::DrillReward) = OneTo(_nparm(drill(x)))
-@inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+ _nparm(drill(x))
-@inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(drill(x)) + _nparm(extend(x)))
+@inline idx_cost(   x::DrillReward) = OneTo(_nparm(cost(x)))
+@inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+  _nparm(cost(x))
+@inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(cost(x)) + _nparm(extend(x)))
 @inline idx_ρ(x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
 idx_drill_ρ(x::DrillReward) = idx_ρ(x)
