@@ -1,3 +1,5 @@
+export DCDPTmpVars
+
 """"
     ensure_diagonal(x)
 
