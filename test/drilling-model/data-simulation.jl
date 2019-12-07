@@ -24,7 +24,8 @@ using ShaleDrillingLikelihood: ObservationDrill,
     zchars,
     ztrange,
     InitialDrilling,
-    _i
+    _i,
+    j1_sample
 
 println("print to keep from blowing up")
 
@@ -94,10 +95,14 @@ println("print to keep from blowing up")
     @test j == length(j1chars(data))
     @test sum(leaselen) == length(data.x) == last(tptr(data))-1
 
-    @show lease_states[:,1]
-    @show lease_decisions[:,1]
+    # @show lease_states[:,1]
+    # @show lease_decisions[:,1]
 
-    j_draws
+    @show selected_initial_leases = collect(j1_sample(unit) for unit in data)
+    @show data.j1ptr, data.j2ptr, data.tptr
+
+
+
 
 end # simulate ddm
 

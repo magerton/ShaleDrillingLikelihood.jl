@@ -201,6 +201,8 @@ j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
 j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
 uniti(    g::DrillUnit) = _i(g)
 
+j1_sample(g::DrillUnit) = first(sample(j1_range(g), 1))
+
 firstindex(grp::DrillUnit) = InitialDrilling()
 lastindex( grp::DrillUnit) = DevelopmentDrilling()
 length(    grp::DrillUnit) = DevelopmentDrilling()
