@@ -93,6 +93,10 @@ function update_interpolation!(x::ValueFunction, dograd)
     update_interpolation!(EVobj(x))
 end
 
+update_interpolation!(x...) = nothing
+value_function(x...) = nothing
+
+
  EV_scaled_itp(x::ValueFunction) = scaled_interpolation( EVobj(x))
 dEV_scaled_itp(x::ValueFunction) = scaled_interpolation(dEVobj(x))
 

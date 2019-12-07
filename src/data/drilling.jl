@@ -272,6 +272,22 @@ function randsumtoone(n)
     return x
 end
 
+
+function initialize_x!(x, m, lease)
+    x .= (2*is_development(lease)-1) .* abs.(x)
+end
+update_x!(x, m, state, d) = nothing
+
+function initialize_x!(x, m::DynamicDrillingModel, lease)
+    x[1] = 1
+end
+
+function update_x!(x, m::DynamicDrillingModel, state, d)
+    if t+1 <= length(x)
+        x[t+1] = sprime(statespace(m), state, d)
+    end
+end
+
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
     length(theta) == _nparm(m) || throw(DimensionMismatch())
@@ -287,19 +303,21 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
         i = uniti(lease)
         ubv = Vector{Float64}(undef, length(actionspace(m)))
 
-        # x[1] = initial_state(m) + is_development(lease) # FIXME
+        initialize_x!(x, m, lease)
 
-        x .= (2*is_development(lease)-1) .* abs.(x)
+        update_interpolation!(value_function(m), false)
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
-            f(d) = flow(reward(m), d,obs,theta,sim)
-            ubv .= f.(actionspace(obs))
+            f(d) = full_payoff(d, obs, theta, sim)
+            actions = actionspace(obs)
+            resize!(ubv, length(actions))
+            ubv .= f.(actions)
             logsumexp!(ubv)
             cumsum!(ubv, ubv)
             choice = searchsortedfirst(ubv, rand())-1
             y[t] = choice
-            # t < nper && (x[t+1] = next_state(m,x[t],choice))
+            update_x!(x, m, x[t], choice)
         end
     end
 end
