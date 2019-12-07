@@ -280,15 +280,6 @@ function initialize_x!(x, m, lease)
 end
 update_x!(x, t, m, state, d) = nothing
 
-function initialize_x!(x, m::DynamicDrillingModel, lease)
-    x[1] = 1
-end
-
-function update_x!(x, t, m::DynamicDrillingModel, state, d)
-    if t+1 <= length(x)
-        x[t+1] = ssprime(statespace(m), state, d)
-    end
-end
 
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
@@ -336,15 +327,6 @@ end
 # ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
 function ichars_sample(m::AbstractDrillModel, num_i)
     [(x,) for x in sample(0:1, num_i)]
-end
-
-function ichars_sample(m::DynamicDrillingModel, num_i)
-    # geo, roy
-    dist_geo = Normal(4.67, 0.33)
-    dist_roy = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]
-    geos = rand(dist_geo, num_i)
-    roys = sample(dist_roy, num_i)
-    return [(g,r) for (g,r) in zip(geos, roys)]
 end
 
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)

@@ -25,7 +25,10 @@ using ShaleDrillingLikelihood: ObservationDrill,
     ztrange,
     InitialDrilling,
     _i,
-    j1_sample
+    j1_sample,
+    j1_range,
+    jtstart,
+    exploratory_terminal
 
 println("print to keep from blowing up")
 
@@ -64,7 +67,7 @@ println("print to keep from blowing up")
     theta = [-4.0, -1.0, -3.0, 0.7]
     @test length(theta) == num_parms
 
-    num_zt = 200
+    num_zt = 30
 
     data = DataDrill(ddm, theta;
         minmaxleases=2:5,
@@ -72,12 +75,17 @@ println("print to keep from blowing up")
         nper_initial=10:15,
         nper_development=0:0,
         num_zt=num_zt,
-        tstart=1:24,
+        tstart=1:10,
         xdomain=0:0
     )
 
     lease_states    = zeros(Int, num_zt, length(j1chars(data)))
     lease_decisions = zeros(Int, num_zt, length(j1chars(data)))
+    tdrill          = zeros(Int,         length(j1chars(data)))
+    tend            = fill( num_zt,      length(j1chars(data)))
+
+    wp = statespace(ddm)
+    terminal_states = (exploratory_terminal(wp), length(wp) )
 
     j = 0
     leaselen = zeros(Int,0)
@@ -88,8 +96,20 @@ println("print to keep from blowing up")
             ztrng = ztrange(lease)
             @test length(ztrng) > 0
             @test _i(lease) == j
-            lease_states[ztrng, _i(lease)] .= _x(lease)
+
+            lease_states[   ztrng, _i(lease)] .= _x(lease)
             lease_decisions[ztrng, _i(lease)] .= _y(lease)
+
+            if sum(_y(lease)) > 0
+                obs_drilled_first = findfirst(ii -> ii > 0, _y(lease))
+                tdrill[_i(lease)] = ztrng[obs_drilled_first]
+            end
+
+            if exploratory_terminal(wp) in _x(lease) || length(wp) in _x(lease)
+                ending_obs = findfirst(ii -> ii ∈ terminal_states, _x(lease))
+                tend[_i(lease)] = ztrng[ending_obs]
+            end
+
         end
     end
     @test j == length(j1chars(data))
@@ -98,9 +118,36 @@ println("print to keep from blowing up")
     # @show lease_states[:,1]
     # @show lease_decisions[:,1]
 
-    @show selected_initial_leases = collect(j1_sample(unit) for unit in data)
-    @show data.j1ptr, data.j2ptr, data.tptr
+    @show typeof(_x(data))
 
+    # FIXME: fix up j1_sample!!
+    @show selected_initial_leases = collect(j1_sample(unit) for unit in data)
+    # @show data.j1ptr, data.j2ptr, data.tptr
+    #
+    @show tdrill
+    @show tend
+    @show data.jtstart
+    @show lease_states[:,3]
+
+    # @show lease_states[:,1]
+    for unit in data
+        i = _i(unit) # unit number
+
+        jselect = selected_initial_leases[i]    # pick this lease
+        y_jselect = lease_decisions[:,jselect]  # pick these decisions
+        x_jselect = lease_states[   :,jselect]  # pick this set of states
+
+        for j in j1_range(unit)
+            lease_decisions[:,j] .= y_jselect   # update other decisions
+            for t in jtstart(data,j):
+            td = tdrill[j]
+            if td > 0
+                @show j, td, lease_decisions[td, j]
+            end
+        end
+    end
+    @show lease_decisions[:,1]
+    @show lease_states[:,1]
 
 
 

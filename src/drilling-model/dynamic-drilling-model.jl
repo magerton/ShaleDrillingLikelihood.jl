@@ -274,3 +274,31 @@ function full_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, theta, sim
     dynamic_payoff = discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
     return static_payoff + dynamic_payoff
 end
+
+
+# -----------------------------------------
+# for data generation
+# -----------------------------------------
+
+
+
+function initialize_x!(x, m::DynamicDrillingModel, lease)
+    x[1] = 1
+end
+
+function update_x!(x, t, m::DynamicDrillingModel, state, d)
+    if t+1 <= length(x)
+        x[t+1] = ssprime(statespace(m), state, d)
+    end
+end
+
+
+
+function ichars_sample(m::DynamicDrillingModel, num_i)
+    # geo, roy
+    dist_geo = Normal(4.67, 0.33)
+    dist_roy = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]
+    geos = rand(dist_geo, num_i)
+    roys = sample(dist_roy, num_i)
+    return [(g,r) for (g,r) in zip(geos, roys)]
+end
