@@ -276,21 +276,23 @@ end
 function initialize_x!(x, m, lease)
     x .= (2*is_development(lease)-1) .* abs.(x)
 end
-update_x!(x, m, state, d) = nothing
+update_x!(x, t, m, state, d) = nothing
 
 function initialize_x!(x, m::DynamicDrillingModel, lease)
     x[1] = 1
 end
 
-function update_x!(x, m::DynamicDrillingModel, state, d)
+function update_x!(x, t, m::DynamicDrillingModel, state, d)
     if t+1 <= length(x)
-        x[t+1] = sprime(statespace(m), state, d)
+        x[t+1] = ssprime(statespace(m), state, d)
     end
 end
 
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
     length(theta) == _nparm(m) || throw(DimensionMismatch())
+
+    tmpgrad = similar(theta)
 
     nper = length(lease)
     if nper > 0
@@ -309,7 +311,7 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
-            f(d) = full_payoff(d, obs, theta, sim)
+            f(d) = full_payoff!(tmpgrad, d, obs, theta, sim, false)
             actions = actionspace(obs)
             resize!(ubv, length(actions))
             ubv .= f.(actions)
@@ -317,7 +319,7 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
             cumsum!(ubv, ubv)
             choice = searchsortedfirst(ubv, rand())-1
             y[t] = choice
-            update_x!(x, m, x[t], choice)
+            update_x!(x, t, m, x[t], choice)
         end
     end
 end
@@ -332,6 +334,15 @@ end
 # ichars_sample(m::AbstractDrillModel, num_i) = throw(error("not defined for $(m)"))
 function ichars_sample(m::AbstractDrillModel, num_i)
     [(x,) for x in sample(0:1, num_i)]
+end
+
+function ichars_sample(m::DynamicDrillingModel, num_i)
+    # geo, roy
+    dist_geo = Normal(4.67, 0.33)
+    dist_roy = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]
+    geos = rand(dist_geo, num_i)
+    roys = sample(dist_roy, num_i)
+    return [(g,r) for (g,r) in zip(geos, roys)]
 end
 
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
@@ -359,8 +370,8 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
 
     # observations per lease
     obs_per_lease = vcat(
-        sample(nper_development, num_initial_leases),
-        sample(nper_initial, num_i)
+        sample(nper_initial, num_initial_leases),
+        sample(nper_development, num_i)
     )
 
     # pointers to observations
