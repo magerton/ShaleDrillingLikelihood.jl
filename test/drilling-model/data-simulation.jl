@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
+# module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
 
 
 using ShaleDrillingLikelihood
@@ -28,11 +28,12 @@ using ShaleDrillingLikelihood: ObservationDrill,
     j1_sample,
     j1_range,
     jtstart,
-    exploratory_terminal
+    exploratory_terminal,
+    ssprime
 
 println("print to keep from blowing up")
 
-@testset "Simulate Dynamic Drilling Model" begin
+# @testset "Simulate Dynamic Drilling Model" begin
 
     Random.seed!(1234)
     f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
@@ -83,26 +84,26 @@ println("print to keep from blowing up")
     lease_decisions = zeros(Int, num_zt, length(j1chars(data)))
     tdrill          = zeros(Int,         length(j1chars(data)))
     tend            = fill( num_zt,      length(j1chars(data)))
+    texplore_term   = fill(typemax(Int), length(j1chars(data)))
 
     wp = statespace(ddm)
     terminal_states = (exploratory_terminal(wp), length(wp) )
 
-    j = 0
-    leaselen = zeros(Int,0)
+    # create balance "panel"
     for unit in data
         for lease in InitialDrilling(unit)
-            j+= 1
-            push!(leaselen, length(lease))
             ztrng = ztrange(lease)
-            @test length(ztrng) > 0
-            @test _i(lease) == j
-
             lease_states[   ztrng, _i(lease)] .= _x(lease)
             lease_decisions[ztrng, _i(lease)] .= _y(lease)
 
             if sum(_y(lease)) > 0
                 obs_drilled_first = findfirst(ii -> ii > 0, _y(lease))
                 tdrill[_i(lease)] = ztrng[obs_drilled_first]
+            end
+
+            if exploratory_terminal(wp) in _x(lease)
+                explore_terminal_obs = findfirst(ii -> ii == exploratory_terminal(wp), _x(lease))
+                texplore_term[_i(lease)] = ztrng[explore_terminal_obs]
             end
 
             if exploratory_terminal(wp) in _x(lease) || length(wp) in _x(lease)
@@ -112,47 +113,62 @@ println("print to keep from blowing up")
 
         end
     end
-    @test j == length(j1chars(data))
-    @test sum(leaselen) == length(data.x) == last(tptr(data))-1
 
-    # @show lease_states[:,1]
-    # @show lease_decisions[:,1]
+    selected_initial_leases = collect(j1_sample(unit) for unit in data)
 
-    @show typeof(_x(data))
+    lease_states[:,selected_initial_leases[2]]
+    jtstart(data,6)
+    tdrill[6]
+    texplore_term[6]
 
-    # FIXME: fix up j1_sample!!
-    @show selected_initial_leases = collect(j1_sample(unit) for unit in data)
-    # @show data.j1ptr, data.j2ptr, data.tptr
-    #
-    @show tdrill
-    @show tend
-    @show data.jtstart
-    @show lease_states[:,3]
-
-    # @show lease_states[:,1]
+    # now replace decisions with those from 1 particular lease in each unit
     for unit in data
         i = _i(unit) # unit number
 
         jselect = selected_initial_leases[i]    # pick this lease
+
         y_jselect = lease_decisions[:,jselect]  # pick these decisions
         x_jselect = lease_states[   :,jselect]  # pick this set of states
+        tend_jselect = tend[jselect]            # ending obs
+        tdrill_jselect = tdrill[jselect]
 
-        for j in j1_range(unit)
-            lease_decisions[:,j] .= y_jselect   # update other decisions
-            for t in jtstart(data,j):
-            td = tdrill[j]
-            if td > 0
-                @show j, td, lease_decisions[td, j]
+        for lease in InitialDrilling(unit)
+            j = _i(lease)
+
+            date_j_leased = jtstart(data,j)
+
+            # if lease_j starts AFTER first drill, we drop
+            if tdrill_jselect > 0 && jtstart(data,j) > tdrill_jselect
+                lease_states[:,j] .= -1
+
+            # if lease_j expires BEFORE we first drill
+            elseif tdrill_jselect >  texplore_term[j]
+                lease_states[:,j] .= -1
+
+            else
+                lease_decisions[:,j] .= y_jselect   # update other decisions
+                for t in jtstart(data,j):size(lease_states,1)-1
+                    st = lease_states[t,j]
+                    d = lease_decisions[t,j]
+                    lease_states[t+1,j] = ssprime(wp, st, d)
+                end
             end
         end
     end
-    @show lease_decisions[:,1]
-    @show lease_states[:,1]
 
+lease_states[:,selected_initial_leases[2]]
 
+lease_states[:,1:3], lease_decisions[:, 1:3]
 
-end # simulate ddm
+lease_decisions[6:11, 1:3]
+lease_states[6:11, 1:3]
 
+tdrill[1:3]
 
+[ShaleDrillingLikelihood.state(wp,i) for i in 1:length(wp)]
 
-end # module
+# end # simulate ddm
+#
+#
+#
+# end # module
