@@ -142,7 +142,7 @@ println("print to keep from blowing up")
                 lease_states[:,j] .= -1
 
             # if lease_j expires BEFORE we first drill
-            elseif tdrill_jselect >  texplore_term[j]
+            elseif tdrill_jselect >=  texplore_term[j]
                 lease_states[:,j] .= -1
 
             else
@@ -158,14 +158,18 @@ println("print to keep from blowing up")
 
 lease_states[:,selected_initial_leases[2]]
 
-lease_states[:,1:3], lease_decisions[:, 1:3]
+hcat(lease_states[6:12,1:3], lease_decisions[6:12, 1:3])
 
-lease_decisions[6:11, 1:3]
-lease_states[6:11, 1:3]
+exploratory_terminal(wp)
 
-tdrill[1:3]
+ShaleDrillingLikelihood.state(wp,11)
 
-[ShaleDrillingLikelihood.state(wp,i) for i in 1:length(wp)]
+# lease_decisions[6:11, 1:3]
+# lease_states[6:11, 1:3]
+#
+# tdrill[1:3]
+#
+# [ShaleDrillingLikelihood.state(wp,i) for i in 1:length(wp)]
 
 # end # simulate ddm
 #
