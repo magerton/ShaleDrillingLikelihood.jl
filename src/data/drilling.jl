@@ -154,6 +154,7 @@ hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = _nparm(_model(d))
+total_leases(d::AbstractDataDrill) = length(j1chars(d))
 
 # getindex in fields of AbstractDataDrill
 ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
