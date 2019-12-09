@@ -84,7 +84,6 @@ println("print to keep from blowing up")
     # for balanced panel of states + decisions
     lease_states    = zeros(Int, num_zt, total_leases(data))
     lease_decisions = zeros(Int, num_zt, total_leases(data))
-    lease_outcome   = Vector{Symbol}(undef, total_leases(data))
 
     # for start/end times of each lease
     tdrill          = zeros(Int,      total_leases(data))
@@ -94,7 +93,7 @@ println("print to keep from blowing up")
     wp = statespace(ddm)
     terminal_states = (exploratory_terminal(wp), length(wp) )
 
-    # create balance "panel"
+    # create balanced "panel"
     for unit in data
         for lease in InitialDrilling(unit)
             ztrng = ztrange(lease)
@@ -104,13 +103,13 @@ println("print to keep from blowing up")
 
             # if ever drilled
             if sum(_y(lease)) > 0
-                obs_drilled_first = findfirst(ii -> ii > 0, _y(lease))
+                obs_drilled_first = findfirst(d -> d > 0, _y(lease))
                 tdrill[j] = ztrng[obs_drilled_first]
             end
 
             # if ever expired
             if exploratory_terminal(wp) in _x(lease)
-                explore_terminal_obs = findfirst(ii -> ii == exploratory_terminal(wp), _x(lease))
+                explore_terminal_obs = findfirst(s -> s == exploratory_terminal(wp), _x(lease))
                 texplore_term[j] = ztrng[explore_terminal_obs]
             end
 
@@ -267,24 +266,36 @@ for i = 1:num_i
 
     keeps = keep_lease[j1_range(data,i)]
     joldrng = collect(j1_range(data,i))[keeps]
-    tstop1s = tstop1[joldrng]
+    ttimes1_jold = ttimes1[joldrng]
 
     for (jidx, jnew) in enumerate(jnewrng)
         tnewrng = _tptr[jnew]:_tptr[jnew+1]-1
-        toldrng = tstop1s[jidx]
+        toldrng = ttimes1_jold[jidx]
+        length(tnewrng) == length(toldrng) || throw(error("i=$i, jnew=$jnew, jidx=$jidx, tnew=$tnewrng vs $toldrng"))
         jolddidx = joldrng[jidx]
         xnew[tnewrng] .= lease_states[toldrng, jolddidx]
         ynew[tnewrng] .= lease_decisions[toldrng, jolddidx]
     end
+
+    let tnewrng = _tptr[_j2ptr[i]]:_tptr[_j2ptr[i]+1]-1
+        tinfill_i = ttimes2[selected_initial_leases[i]]
+        xnew[tnewrng] = lease_states[   tinfill_i, selected_initial_leases[i]]
+        ynew[tnewrng] = lease_decisions[tinfill_i, selected_initial_leases[i]]
+    end
 end
 
-ynew
+xnew[71:77], ynew[71:77]
 
+xnew, ynew
 
-unitids = zeros(Int, total_leases(data))
-for i in 1:length(data)
-    unitids[j1_range(data,i)] .= i
-end
+_tptr[last(_j1ptr)-1]:_tptr[last(_j1ptr)]-1
+
+lease_states
+
+_tptr, _j1ptr
+
+ttimes1[[4,6]]
+
 
 (unitids[keep_lease], ttimes1[keep_lease], ttimes2[keep_lease])
 (unitids, vec(mapslices(sum, lease_decisions; dims=1)), ttimes1, ttimes2)
