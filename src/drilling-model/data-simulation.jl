@@ -185,6 +185,9 @@ function DataDynamicDrill(u,v,ddm::DynamicDrillingModel,theta;
     _jtstart = vcat(first.(ttimes1[keep_lease]), first.(ttimes2[selected_initial_leases]))
     _j1chars = j1chars(data)[keep_lease]
 
+    _jtend = vcat(last.(ttimes1[keep_lease]), last.(ttimes2[selected_initial_leases]))
+    @assert all(_jtend .<= num_zt)
+
     nobs = last(_tptr)-1
     xnew = zeros(Int, nobs)
     ynew = zeros(Int, nobs)

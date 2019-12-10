@@ -77,7 +77,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
         # time vars are OK
         for j in 1:length(tptr)-1
             0 < jtstart[j] || throw(DomainError())
-            jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
+            jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
 
