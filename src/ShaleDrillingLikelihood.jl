@@ -78,6 +78,9 @@ include("threadutils.jl")
 include("sum-functions.jl")
 include("inplace-interpolation.jl")
 
+include("time-variables/tvpack.jl")
+include("time-variables/tauchen.jl")
+
 # data structures
 include("data/abstract.jl")
 include("data/simulation.jl")
