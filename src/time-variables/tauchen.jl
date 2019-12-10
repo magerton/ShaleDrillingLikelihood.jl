@@ -112,6 +112,11 @@ function approxgrid(x::AR1process, n; m=3)
     return lrmean(x) .+ centered
 end
 
+
+function tauchen_1d(x::AbstractAR1Process, xgrid::AbstractRange)
+    return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
+end
+
 function tauchen_1d(x::AR1process, n; kwargs...)
     xgrid = approxgrid(x, n; kwargs...)
     return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
@@ -120,12 +125,10 @@ end
 starting_dist(ar1::AR1process) = Normal(lrmean(ar1), lrstd(ar1))
 starting_dist(ar1::RandomWalkProcess) = Normal(0, condstd(ar1))
 
-function simulate(ar1::AbstractAR1Process{T}, n::Integer) where {T}
-    dist_uncond = starting_dist(ar1)
+function simulate(ar1::AbstractAR1Process{T}, y0::Real, n::Integer) where {T}
     dist_cond   = Normal(zero(T), condstd(ar1))
-
     y = Vector{T}(undef,n)
-    y[1] = rand(dist_uncond)
+    y[1] = y0
     Distributions.rand!(dist_cond, view(y, 2:n))
     for t in 2:n
         y[t] += condmean(ar1, y[t-1])
@@ -133,6 +136,11 @@ function simulate(ar1::AbstractAR1Process{T}, n::Integer) where {T}
     return y
 end
 
+function simulate(ar1::AbstractAR1Process, n::Integer)
+    dist_uncond = starting_dist(ar1)
+    y0 = rand(dist_uncond)
+    simulate(ar1, y0, n)
+end
 
 
 function zero_out_small_probs(P::AbstractMatrix, minp::Real)

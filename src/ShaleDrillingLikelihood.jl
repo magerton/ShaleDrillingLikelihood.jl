@@ -80,13 +80,13 @@ include("inplace-interpolation.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
+include("time-variables/time-variable-type.jl")
 
 # data structures
 include("data/abstract.jl")
 include("data/simulation.jl")
 include("data/royalty.jl")
 include("data/production.jl")
-include("data/time-variable-type.jl")
 include("likelihood/drilling-tmpvars.jl")
 include("data/drilling.jl")
 include("data/overall.jl")
