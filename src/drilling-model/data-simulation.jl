@@ -7,9 +7,12 @@ function DataDynamicDrill(u,v,ddm::DynamicDrillingModel,theta;
         tstart=5:15
     )
 
+    num_i = length(u)
+    @assert length(v) == num_i
 
-    data = DataDrill(u,v,ddm, theta;
-        num_zt=num_zt,
+    _zchars = ExogTimeVarsSample(ddm, num_zt)
+
+    data = DataDrill(u, v, _zchars, ddm, theta;
         minmaxleases=minmaxleases,
         nper_initial=nper_initial,
         nper_development=0:0,
@@ -17,7 +20,6 @@ function DataDynamicDrill(u,v,ddm::DynamicDrillingModel,theta;
         xdomain=0:0
     )
 
-    num_i = length(u)
     @assert num_i == length(data)
 
     # for balanced panel of states + decisions

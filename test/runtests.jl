@@ -7,6 +7,9 @@ module CompileShaleDrillingLikelihood
     using ShaleDrillingLikelihood
 end
 
+include("time-variables/tvpack.jl")
+include("time-variables/tauchen.jl")
+
 include("sum-functions.jl")
 include("threadutils.jl")
 include("inplace-interpolation.jl")
