@@ -117,7 +117,7 @@ function tauchen_1d(x::AbstractAR1Process, xgrid::AbstractRange)
     return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
 end
 
-function tauchen_1d(x::AR1process, n; kwargs...)
+function tauchen_1d(x::AR1process, n::Integer; kwargs...)
     xgrid = approxgrid(x, n; kwargs...)
     return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
 end
