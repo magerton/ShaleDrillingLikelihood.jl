@@ -1,4 +1,4 @@
-# module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
 
 
 using ShaleDrillingLikelihood
@@ -34,7 +34,7 @@ using ShaleDrillingLikelihood: ObservationDrill,
 
 println("print to keep from blowing up")
 
-# @testset "Simulate Dynamic Drilling Model" begin
+@testset "Simulate Dynamic Drilling Model" begin
 
     Random.seed!(1234)
     f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
@@ -70,10 +70,11 @@ println("print to keep from blowing up")
     @test length(theta) == num_parms
 
     num_zt = 30
+    num_i = 5
 
     data = DataDrill(ddm, theta;
         minmaxleases=2:5,
-        num_i=5,
+        num_i=num_i,
         nper_initial=10:15,
         nper_development=0:0,
         num_zt=num_zt,
@@ -86,12 +87,19 @@ println("print to keep from blowing up")
     lease_decisions = zeros(Int, num_zt, total_leases(data))
 
     # for start/end times of each lease
-    tdrill          = zeros(Int,      total_leases(data))
-    tend            = fill( num_zt,   total_leases(data))
-    texplore_term   = fill( num_zt+1, total_leases(data))
+    tdrill  = zeros(Int,      total_leases(data))
+    tend    = fill( num_zt,   total_leases(data))
+    texpire = fill( num_zt+1, total_leases(data))
 
+    # state space
     wp = statespace(ddm)
-    terminal_states = (exploratory_terminal(wp), length(wp) )
+    last_state = length(wp)
+    expired_state = exploratory_terminal(wp)
+
+    # one lease per unit
+    selected_initial_leases = [j1_sample(unit) for unit in data]
+
+    all_same_value(x) = all(x .== x[1])
 
     # create balanced "panel"
     for unit in data
@@ -103,20 +111,18 @@ println("print to keep from blowing up")
 
             # if ever drilled
             if sum(_y(lease)) > 0
-                obs_drilled_first = findfirst(d -> d > 0, _y(lease))
-                tdrill[j] = ztrng[obs_drilled_first]
+                obs_drill_first = findfirst(d -> d > 0, _y(lease))
+                tdrill[j] = ztrng[obs_drill_first]
             end
 
             # if ever expired
             if exploratory_terminal(wp) in _x(lease)
-                explore_terminal_obs = findfirst(s -> s == exploratory_terminal(wp), _x(lease))
-                texplore_term[j] = ztrng[explore_terminal_obs]
+                obs_expire = findfirst(s -> s == exploratory_terminal(wp), _x(lease))
+                texpire[j] = ztrng[obs_expire]
             end
 
         end
     end
-
-    selected_initial_leases = [j1_sample(unit) for unit in data]
 
     # now replace decisions with those from 1 particular lease in each unit
     for unit in data
@@ -127,15 +133,15 @@ println("print to keep from blowing up")
         y_jselect      = lease_decisions[:,jselect]  # pick these decisions
         x_jselect      = lease_states[:,jselect]     # pick this set of states
         tend_jselect   = tend[jselect]               # ending obs
-        tdrill_jselect = tdrill[jselect]
+        tdrill_jselect = tdrill[jselect]             # 1st drilling
 
         for lease in InitialDrilling(unit)
             j = _i(lease)
-            date_j_leased = jtstart(data,j)
 
-            drilled = 0 < tdrill_jselect
+            # Boolean vars to test for events
+            drilled  = 0 < tdrill_jselect
             drilled_b4_j_leased = tdrill_jselect < jtstart(data,j)
-            expired_b4_j_drilled = texplore_term[j] <= tdrill_jselect
+            expired_b4_j_drilled = texpire[j] <= tdrill_jselect
 
             # if lease_j starts AFTER first drill, we drop
             if drilled && drilled_b4_j_leased
@@ -158,10 +164,9 @@ println("print to keep from blowing up")
                 end
             end
 
-            # if unit is drilled and lease_j is expired at 1st drill, dorp
-            if drilled
-                exp_term = exploratory_terminal(wp)
-                expire_b4_drill_jsel = lease_states[tdrill_jselect, j] == exp_term
+            # unit drilled but lease_j has expired at 1st drill. then drop
+            if tdrill_jselect > 0
+                expire_b4_drill_jsel = lease_states[tdrill_jselect, j] == expired_state
                 if expire_b4_drill_jsel
                     lease_states[:,j] .= -1
                     lease_decisions[:,j] .= -1
@@ -171,175 +176,120 @@ println("print to keep from blowing up")
         end
     end
 
-# remake sample...
-# 1. drop invalid leases
-# 2. fix probabilitities in j1chars
-# 3. push lease_states[jtstart(data,j):tdrill] to tchars
-#      also update tptr, j1ptr
-# 4. for selected lease, push to tptr, tchars
+    # remake sample...
+    # 1. drop invalid leases
+    # 2. fix probabilitities in j1chars
+    # 3. push lease_states[jtstart(data,j):tdrill] to tchars
+    #      also update tptr, j1ptr
+    # 4. for selected lease, push to tptr, tchars
 
-@test vec(mapslices( x -> all(x.==-1), lease_decisions; dims=1)) == vec(mapslices( x -> any(x.<0), lease_decisions; dims=1))
-@test vec(mapslices( x -> all(x.==-1), lease_states; dims=1)) == vec(mapslices( x -> any(x.<0), lease_states; dims=1))
-@test vec(mapslices( x -> all(x.==-1), lease_states; dims=1)) == vec(mapslices( x -> any(x.<0), lease_decisions; dims=1))
-
-
-keep_lease = vec(mapslices( x -> all(x.>=0), lease_decisions; dims=1))
-num_wells  = vec(mapslices(sum, lease_decisions; dims=1))
-tstop1 = zeros(Int, total_leases(data))
-tstop2 = zeros(Int, total_leases(data))
-all(keep_lease[selected_initial_leases]) || throw(error("not keeping selected leases. boo!"))
+    @test vec(mapslices( x -> all(x.==-1), lease_decisions; dims=1)) == vec(mapslices( x -> any(x.<0), lease_decisions; dims=1))
+    @test vec(mapslices( x -> all(x.==-1), lease_states; dims=1)) == vec(mapslices( x -> any(x.<0), lease_states; dims=1))
+    @test vec(mapslices( x -> all(x.==-1), lease_states; dims=1)) == vec(mapslices( x -> any(x.<0), lease_decisions; dims=1))
 
 
-tdrill_first    = fill(num_zt+1, total_leases(data))
-tdrill_complete = fill(num_zt+1, total_leases(data))
-texpire         = zeros(Int, total_leases(data))
+    keep_lease = vec(mapslices( x -> all(x.>=0), lease_decisions; dims=1))
+    num_wells  = vec(mapslices(sum, lease_decisions; dims=1))
+    tstop1 = zeros(Int, total_leases(data))
+    tstop2 = zeros(Int, total_leases(data))
+    all(keep_lease[selected_initial_leases]) || throw(error("not keeping selected leases. boo!"))
 
-# create balance "panel"
-last_state = length(wp)
-expired_state = exploratory_terminal(wp)
 
-for unit in data
-    for lease in InitialDrilling(unit)
-        j = _i(lease)
-        decisions = view(lease_decisions, :, j)
-        states = view(lease_states, :, j)
+    # Find stop times for each lease / regime
+    for unit in data
+        for lease in InitialDrilling(unit)
+            j = _i(lease)
+            decisions = view(lease_decisions, :, j)
+            states = view(lease_states, :, j)
 
-        # if ever drilled
-        if sum(decisions) > 0
-            tstop1[j] = findfirst(d -> d > 0, decisions)
+            # if ever drilled
+            if sum(decisions) > 0
+                tstop1[j] = findfirst(d -> d > 0, decisions)
 
-            # totally drilled
-            if last_state in states
-                tstop2[j] = findfirst(s -> s == last_state, states)-1
+                # totally drilled
+                if last_state in states
+                    tstop2[j] = findfirst(s -> s == last_state, states)-1
 
-            # not totally drilled
+                # not totally drilled
+                else
+                    tstop2[j] = length(states)
+                end
+
+            # else never drilled
             else
-                tstop2[j] = length(states)
+                # lease expires
+                if expired_state in states
+                    tstop1[j] = findfirst(s -> s == expired_state, states)
+                # or not
+                else
+                    tstop1[j] = length(states)
+                end
+                tstop2[j] = tstop1[j]
             end
-
-        # else never drilled
-        else
-            # lease expires
-            if expired_state in states
-                tstop1[j] = findfirst(s -> s == expired_state, states)
-            # or not
-            else
-                tstop1[j] = length(states)
-            end
-            tstop2[j] = tstop1[j]
         end
     end
-end
 
-ttimes1 = [a:b for (a,b) in zip(jtstart(data)[1:total_leases(data)], tstop1)]
-ttimes2 = [a+1:b for (a,b) in zip(tstop1, tstop2)]
-
-all_same_value(x) = all(x .== x[1])
-
-for unit in data
-    i = _i(unit) # unit number
-    jrng = j1_range(data, i)
-
-    tstop1s = tstop1[jrng]
-    keeps = keep_lease[jrng]
-    drilled = num_wells[jrng] .> 0
-    if any(drilled[keeps])
-        @test all_same_value(tstop1s[keeps])
-    else
-        @test all(length.( ttimes2[jrng][keeps] ) .== 0)
-    end
-end
+    ttimes1 = [a:b for (a,b) in zip(jtstart(data)[1:total_leases(data)], tstop1)]
+    ttimes2 = [a+1:b for (a,b) in zip(tstop1, tstop2)]
 
 
-num_i = length(data)
-_tptr  = 1 .+ cumsum(vcat(0, length.(ttimes1[keep_lease]), length.(ttimes2[selected_initial_leases])))
-_j1ptr = 1 .+ cumsum(vcat(0, [sum(keep_lease[j1_range(data,i)]) for i in 1:num_i]))
-_j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
-nobs = last(_tptr)-1
-_jtstart = vcat(first.(ttimes1[keep_lease]), first.(ttimes2[selected_initial_leases]))
+    for unit in data
+        i = _i(unit) # unit number
+        jrng = j1_range(data, i)
 
-xnew = zeros(Int, nobs)
-ynew = zeros(Int, nobs)
-
-for i = 1:num_i
-    jnewrng = _j1ptr[i]:_j1ptr[i+1]-1
-
-    keeps = keep_lease[j1_range(data,i)]
-    joldrng = collect(j1_range(data,i))[keeps]
-    ttimes1_jold = ttimes1[joldrng]
-
-    for (jidx, jnew) in enumerate(jnewrng)
-        tnewrng = _tptr[jnew]:_tptr[jnew+1]-1
-        toldrng = ttimes1_jold[jidx]
-        length(tnewrng) == length(toldrng) || throw(error("i=$i, jnew=$jnew, jidx=$jidx, tnew=$tnewrng vs $toldrng"))
-        jolddidx = joldrng[jidx]
-        xnew[tnewrng] .= lease_states[toldrng, jolddidx]
-        ynew[tnewrng] .= lease_decisions[toldrng, jolddidx]
+        tstop1s = tstop1[jrng]
+        keeps = keep_lease[jrng]
+        drilled = num_wells[jrng] .> 0
+        if any(drilled[keeps])
+            @test all_same_value(tstop1s[keeps])
+        else
+            @test all(length.( ttimes2[jrng][keeps] ) .== 0)
+        end
     end
 
-    let tnewrng = _tptr[_j2ptr[i]]:_tptr[_j2ptr[i]+1]-1
-        tinfill_i = ttimes2[selected_initial_leases[i]]
-        xnew[tnewrng] = lease_states[   tinfill_i, selected_initial_leases[i]]
-        ynew[tnewrng] = lease_decisions[tinfill_i, selected_initial_leases[i]]
+
+    num_i = length(data)
+    _tptr  = 1 .+ cumsum(vcat(0, length.(ttimes1[keep_lease]), length.(ttimes2[selected_initial_leases])))
+    _j1ptr = 1 .+ cumsum(vcat(0, [sum(keep_lease[j1_range(data,i)]) for i in 1:num_i]))
+    _j2ptr = (last(_j1ptr)-1) .+ (1:num_i)
+    nobs = last(_tptr)-1
+    _jtstart = vcat(first.(ttimes1[keep_lease]), first.(ttimes2[selected_initial_leases]))
+
+    xnew = zeros(Int, nobs)
+    ynew = zeros(Int, nobs)
+
+    for i = 1:num_i
+        jnewrng = _j1ptr[i]:_j1ptr[i+1]-1
+
+        keeps = keep_lease[j1_range(data,i)]
+        joldrng = collect(j1_range(data,i))[keeps]
+        ttimes1_jold = ttimes1[joldrng]
+
+        for (jidx, jnew) in enumerate(jnewrng)
+            tnewrng = _tptr[jnew]:_tptr[jnew+1]-1
+            toldrng = ttimes1_jold[jidx]
+            length(tnewrng) == length(toldrng) || throw(error("i=$i, jnew=$jnew, jidx=$jidx, tnew=$tnewrng vs $toldrng"))
+            jolddidx = joldrng[jidx]
+            xnew[tnewrng] .= lease_states[toldrng, jolddidx]
+            ynew[tnewrng] .= lease_decisions[toldrng, jolddidx]
+        end
+
+        let tnewrng = _tptr[_j2ptr[i]]:_tptr[_j2ptr[i]+1]-1
+            tinfill_i = ttimes2[selected_initial_leases[i]]
+            xnew[tnewrng] = lease_states[   tinfill_i, selected_initial_leases[i]]
+            ynew[tnewrng] = lease_decisions[tinfill_i, selected_initial_leases[i]]
+        end
     end
-end
-
-xnew[71:77], ynew[71:77]
-
-xnew, ynew
-
-_tptr[last(_j1ptr)-1]:_tptr[last(_j1ptr)]-1
-
-lease_states
-
-_tptr, _j1ptr
-
-ttimes1[[4,6]]
 
 
-(unitids[keep_lease], ttimes1[keep_lease], ttimes2[keep_lease])
-(unitids, vec(mapslices(sum, lease_decisions; dims=1)), ttimes1, ttimes2)
-
-
-
-    jselect = selected_initial_leases[i] # pick this lease
-
-
-
-    y_jselect      = lease_decisions[:,jselect]  # pick these decisions
-    x_jselect      = lease_states[:,jselect]     # pick this set of states
-    tend_jselect   = tend[jselect]               # ending obs
-    tdrill_jselect = tdrill[jselect]
-
-
+    datanew = ShaleDrillingLikelihood.DataDynamicDrill(
+        randn(num_i),randn(num_i), ddm, theta;
+        num_zt=num_zt,
+        minmaxleases=2:5,
+        nper_initial=10:15,
+        tstart=1:10
+    )
 
 end
 
-
-
-for j in 1:total_leases(data)
-    if any(lease_decisions[:,j] .< 0 )
-        all(lease_decisions[:,j] .== -1) || throw(error())
-    end
-end
-
-lease_states[:,selected_initial_leases[2]]
-
-hcat(lease_states[6:12,1:3], lease_decisions[6:12, 1:3])
-
-exploratory_terminal(wp)
-
-ShaleDrillingLikelihood.state(wp,11) # terminal
-
-# lease_decisions[6:11, 1:3]
-# lease_states[6:11, 1:3]
-#
-# tdrill[1:3]
-#
-# [ShaleDrillingLikelihood.state(wp,i) for i in 1:length(wp)]
-
-# end # simulate ddm
-#
-#
-#
-# end # module
+end # module

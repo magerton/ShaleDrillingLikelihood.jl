@@ -108,6 +108,8 @@ include("drilling-model/dcdp-components/learning_transition.jl")
 include("drilling-model/dcdp-components/vfit.jl")
 include("drilling-model/dcdp-components/solve-all-vfit.jl")
 
+include("drilling-model/data-simulation.jl")
+
 # ------------------------------------
 
 # likelihoods
