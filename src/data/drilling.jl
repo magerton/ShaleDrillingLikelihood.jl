@@ -258,6 +258,15 @@ j1chars(g::DrillLease) = j1chars(DataDrill(g), _i(g))
 _j(g::DrillLease) = _i(g)
 _regime(g::DrillLease) = _i(_data(g))
 
+lease_ever_drilled(g::DrillLease) = sum(_y(g)) > 0
+
+function lease_expired(g::DrillLease)
+    m = _model(_data(g))
+    wp = statespace(m)
+    return exploratory_terminal(wp) in _x(g)
+end
+
+
 
 function getindex(g::DrillLease, t)
     Observation(DataDrill(g), uniti(g), _regime(g) ,_j(g), t)
