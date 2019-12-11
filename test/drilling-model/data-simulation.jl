@@ -53,7 +53,8 @@ using ShaleDrillingLikelihood: ObservationDrill,
     _D,
     simloglik!,
     simloglik_drill_data!,
-    SimulationDraws
+    SimulationDraws,
+    DCDPTmpVars
 
 println("print to keep from blowing up")
 
@@ -209,6 +210,10 @@ end
     ddm_with_t1ev   = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
     ddm_c_no_t1ev   = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
     ddm_c_with_t1ev = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
+    fill!(DCDPTmpVars(ddm_no_t1ev), 0)
+    fill!(DCDPTmpVars(ddm_with_t1ev), 0)
+    fill!(DCDPTmpVars(ddm_c_no_t1ev), 0)
+    fill!(DCDPTmpVars(ddm_c_with_t1ev), 0)
 
     # tests about royalty coef
     @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
@@ -264,23 +269,26 @@ end
         println("simloglik, with grad")
         simloglik_drill_data!(grad, hess, data, theta, sim, true)
 
-        println("simloglik finite diff")
-        fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
+        # println("simloglik finite diff")
+        # fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
 
         fill!(grad,0)
         fill!(hess,0)
         println("simloglik gradient")
         simloglik_drill_data!(grad, hess, data, theta, sim, true)
         @test !all(grad.==0)
-        @test_broken isapprox(fd, grad; rtol=2e-5)
-        println("done")
-
-        if DOBTIME
-            print("")
-            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false)
-            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true)
-            print("")
-        end
+        @show grad
+        @test all(isfinite.(grad))
+        # @show fd, grad
+        # @test_broken isapprox(fd, grad; rtol=2e-5)
+        # println("done")
+        #
+        # if DOBTIME
+        #     print("")
+        #     @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false)
+        #     @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true)
+        #     print("")
+        # end
 
 
     end

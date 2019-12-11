@@ -206,6 +206,7 @@ j1_range( g::DrillUnit) = j1_range(_data(g), _i(g))
 j1start(  g::DrillUnit) = j1start( _data(g), _i(g))
 j1stop(   g::DrillUnit) = j1stop(  _data(g), _i(g))
 j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
+ichars(   g::DrillUnit) = ichars(  _data(g), _i(g))
 j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
 uniti(    g::DrillUnit) = _i(g)
 

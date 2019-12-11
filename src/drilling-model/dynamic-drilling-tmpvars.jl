@@ -73,7 +73,7 @@ function fill!(t::DCDPTmpVars, x)
     fill!(q(           t), x)
     fill!(lse(         t), x)
     fill!(tmp(         t), x)
-    fill!(tmp_cart(    t), x)
+    # fill!(tmp_cart(    t), x)
     fill!(Πψtmp(       t), x)
 end
 

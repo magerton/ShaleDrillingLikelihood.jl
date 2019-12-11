@@ -90,6 +90,13 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
 
     mapper = Mapper(M, 10)
 
+
+    #FIXME: add update VF
+    ddm = _model(_data(unit))
+    tmpv = DCDPTmpVars(ddm)
+    solve_vf_all!(tmpv, ddm, theta, ichars(unit), dograd)
+    update_interpolation!(value_function(ddm), dograd)
+
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
         @threads for j in OneTo(nthreads())
             local dtvi = dtv[threadid()]  # thread-specific tmpvars
