@@ -6,6 +6,8 @@ module ShaleDrillingLikelihood_OverallLikelihood_Test
 # using ProfileView
 # using PProf
 
+const DOBTIME=false
+
 using ShaleDrillingLikelihood
 using Test
 using StatsFuns
@@ -80,10 +82,12 @@ println("testing overall likelihood")
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
 
-        print("")
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-        print("")
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+            print("")
+        end
 
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
         # println("\n\n\n----------------------------\n\n\n")
@@ -123,11 +127,12 @@ println("testing overall likelihood")
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
 
-        print("")
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-        print("")
-
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+            print("")
+        end
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
         # println("\n\n\n----------------------------\n\n\n")
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
