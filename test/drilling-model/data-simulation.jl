@@ -275,30 +275,27 @@ end
         simloglik_drill_data!(grad, hess, data, theta, sim, true)
         @test all(isfinite.(EV(vf)))
         @test all(isfinite.(dEV(vf)))
-        @show extrema(dEV(vf))
         @test all(isfinite.(grad))
-        @show grad
+
         println("simloglik finite diff")
         fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
-        @show fd
 
         fill!(grad,0)
         fill!(hess,0)
         println("simloglik gradient")
         simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
-        @show grad
         @test !all(grad.==0)
         @test all(isfinite.(grad))
-        # @show fd, grad
-        # @test_broken isapprox(fd, grad; rtol=2e-5)
-        # println("done")
-        #
-        # if DOBTIME
-        #     print("")
-        #     @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false)
-        #     @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true)
-        #     print("")
-        # end
+        @test all(isfinite.(hess))
+        @test isapprox(fd, grad; rtol=2e-5)
+        println("done")
+
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false)
+            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true)
+            print("")
+        end
 
 
     end
