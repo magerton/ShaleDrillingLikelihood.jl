@@ -118,6 +118,8 @@ println("print to keep from blowing up")
     end
 
     tmpv = DCDPTmpVars(ddm_no_t1ev)
+    @test tmpv isa ShaleDrillingLikelihood.DCDPTmpVarsArray
+    @test view(tmpv, 1:2) isa ShaleDrillingLikelihood.DCDPTmpVarsView
 
     fd = similar(dubVfull(tmpv))
     ubvminus = zero(ubVfull(tmpv))

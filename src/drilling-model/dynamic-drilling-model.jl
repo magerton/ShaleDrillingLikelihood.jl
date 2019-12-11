@@ -114,6 +114,7 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T}, AUP
     psispace::AR          # ψspace = (u, ρu + sqrt(1-ρ²)*v)
     anticipate_t1ev::Bool # do we anticipate the ϵ shocks assoc w/ each choice?
     vf::VF                # value function
+    tmpv::DCDPTmpVarsArray{T,AM}
 
     function DynamicDrillingModel(
       reward::APF, discount::T, statespace::AUP, zspace::TT, ztransition::AM,
@@ -134,7 +135,9 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T}, AUP
         vfout = vf(reward, discount, statespace, zspace, ztransition, psispace)
         VF = typeof(vfout)
 
-        return new{T,APF,AM,AUP,TT,AR,VF}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev, vfout)
+        tmpv = DCDPTmpVars(ntheta, nz, npsi, nd, ztransition)
+
+        return new{T,APF,AM,AUP,TT,AR,VF}(reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev, vfout, tmpv)
     end
 end
 
@@ -150,6 +153,7 @@ ztransition(    x::DynamicDrillingModel) = x.ztransition
 psispace(       x::DynamicDrillingModel) = x.psispace
 anticipate_t1ev(x::DynamicDrillingModel) = x.anticipate_t1ev
 value_function( x::DynamicDrillingModel) = x.vf
+DCDPTmpVars(    x::DynamicDrillingModel) = x.tmpv
 
 beta_1minusbeta(ddm::DynamicDrillingModel) = discount(ddm) / (1-discount(ddm))
 

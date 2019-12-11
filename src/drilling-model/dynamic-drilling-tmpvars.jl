@@ -48,6 +48,8 @@ struct DCDPTmpVars{T<:Real, SM<:AbstractMatrix{T}, AA3<:AbstractArray3{T}, AA3b<
 end
 
 const dcdp_tmpvars = DCDPTmpVars
+const DCDPTmpVarsArray{T,SM} = DCDPTmpVars{T,SM,Array{T,3},Array{T,3},Array{T,4}}
+const DCDPTmpVarsView = DCDPTmpVars{T,SM,AA3} where {T,SM,AA3<:SubArray}
 
 ubVfull(     x::DCDPTmpVars) = x.ubVfull
 dubVfull(    x::DCDPTmpVars) = x.dubVfull
@@ -90,15 +92,6 @@ function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T
     return DCDPTmpVars(ubVfull, dubVfull, dubVperm, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp)
 end
 
-function DCDPTmpVars(x::DynamicDrillingModel)
-    piz = ztransition(x)
-    nθt = _nparm(reward(x))
-    nz = size(piz, 1)
-    nψ = length(psispace(x))
-    nd = num_choices(statespace(x))
-    DCDPTmpVars(nθt, nz, nψ, nd, piz)
-end
-
 function view(t::DCDPTmpVars, idxd::AbstractVector)
     first(idxd) == 1 || throw(DomainError())
     last(idxd) <= size(ubVfull(t),3) || throw(DomainError())
@@ -114,7 +107,7 @@ end
 # Fill reward matrices
 # --------------------------------------------------------
 
-function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
+function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::AbstractDrillModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool)
     ψspace = psispace(ddm)
     zs = product(zspace(ddm)...)
     zψpdct = product(zs, ψspace)
@@ -138,4 +131,4 @@ function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ
     dograd && permutedims!(dubvp, dubv, [2,1,3])
 end
 
-@deprecate flow!(t::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool) update_static_payoffs!(t,ddm,θ,sidx,ichars,dograd)
+@deprecate flow!(t::DCDPTmpVars, ddm::AbstractDrillModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool) update_static_payoffs!(t,ddm,θ,sidx,ichars,dograd)

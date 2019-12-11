@@ -90,7 +90,8 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
 
     mapper = Mapper(M, 10)
 
-    solve_vf_and_update_itp!(_model(_data(unit)), theta, ichars(unit), dograd; kwargs...)
+    model = _model(_data(unit))
+    solve_vf_and_update_itp!(model, theta, ichars(unit), dograd; kwargs...)
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
         @threads for j in OneTo(nthreads())
