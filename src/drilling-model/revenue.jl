@@ -295,8 +295,13 @@ end
 # Gradient
 # ------------------------------
 
+@inline function flowzero!(grad, θ, dograd)
+    dograd && fill!(grad, 0)
+    return azero(θ)
+end
+
 function flow!(grad, x::DrillingRevenue{Unconstrained, NoTrend}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
+    d == 0 && return flowzero!(grad,θ,dograd)
     rev = flow(x, d, obs, θ, sim)
     if dograd
         grad[idx_0(x)] = rev
@@ -308,7 +313,7 @@ function flow!(grad, x::DrillingRevenue{Unconstrained, NoTrend}, d, obs, θ, sim
 end
 
 function flow!(grad, x::DrillingRevenue{Unconstrained, TimeTrend}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
+    d == 0 && return flowzero!(grad,θ,dograd)
     z = zchars(obs)
     rev = flow(x, d, obs, θ, sim)
     if dograd
@@ -325,7 +330,7 @@ end
 # ------------------------------
 
 function flow!(grad, x::DrillingRevenue{Constrained}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
+    d == 0 && return flowzero!(grad,θ,dograd)
     rev = flow(x, d, obs, θ, sim)
     if dograd
         grad[idx_0(x)] = rev
