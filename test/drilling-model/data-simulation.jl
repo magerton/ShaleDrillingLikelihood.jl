@@ -1,6 +1,7 @@
 module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
 
-DOBTIME=false
+DOBTIME = false
+const DOPROFILE = true
 
 using ShaleDrillingLikelihood
 using Test
@@ -8,12 +9,16 @@ using SparseArrays
 using BenchmarkTools
 using Calculus
 using Random
-using Profile
-# using ProfileView
 using InteractiveUtils
 using Distributions
 using Dates
 using StatsBase
+using Profile
+using PProf
+using Juno
+# if DOPROFILE
+#     using ProfileView
+# end
 
 using Base.Iterators: product, OneTo
 
@@ -254,7 +259,7 @@ end
     @test sum(nwells_w .> 0) == length(Set(view(_x(data_produce_w), 1, :)))
     @test sum(nwells_n .> 0) == length(Set(view(_x(data_produce_n), 1, :)))
 
-    @testset "Test dynamic Drilling model only" begin
+    @testset "Test dynamic Drilling model gradients" begin
         data = data_drill_w_con
         theta = θ_drill_c
         ddm = _model(data)
@@ -297,8 +302,27 @@ end
             print("")
         end
 
+        if DOPROFILE
+            Profile.clear()
+            @profile simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
+            Juno.profiletree()
+            Juno.profiler()
+            # Profile.print()
+            # ProfileView.view()
+            # pprof()
+
+        end
 
     end
+
+    
+    # @testset "Dynamic Drilling Model optimize" begin
+    #     @testset "Test dynamic Drilling model gradients" begin
+    #         data = data_drill_w_con
+    #         theta = θ_drill_c
+    #         sim = SimulationDraws(1_000, data)
+    #         simloglik_drill_data!(grad, hess, data, theta, sim, false)
+    # end
 
 
 end
