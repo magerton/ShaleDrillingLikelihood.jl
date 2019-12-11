@@ -1,17 +1,17 @@
 all_same_value(x) = all(x .== first(x))
 range_i_to_ip1(x,i) = x[i] : (x[i+1]-1)
 
-function DataDynamicDrill(u,v,_zchars::ExogTimeVars,_ichars::Vector{<:Tuple}, ddm::DynamicDrillingModel,theta;
-        # num_zt=30,
-        minmaxleases=0:3, nper_initial=50:50,
+function DataDynamicDrill(
+        u, v, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
+        ddm::DynamicDrillingModel, theta;
+        minmaxleases=0:3,
+        nper_initial=50:50,
         tstart=5:15
     )
 
     num_i = length(u)
     @assert length(v) == num_i
     num_zt = length(_zchars)
-
-    # _zchars = ExogTimeVarsSample(ddm, num_zt)
 
     data = DataDrill(u, v, _zchars, _ichars, ddm, theta;
         minmaxleases=minmaxleases,
