@@ -10,7 +10,9 @@ using Random
 using Profile
 # using ProfileView
 using InteractiveUtils
+using Distributions
 using Dates
+using StatsBase
 
 using Base.Iterators: product, OneTo
 
@@ -36,7 +38,15 @@ using ShaleDrillingLikelihood: ObservationDrill,
     lrvar,
     lrstd,
     lrmean,
-    simulate
+    simulate,
+    theta_royalty_ρ,
+    revenue,
+    cost,
+    extend,
+    theta_ρ,
+    vw_revenue,
+    vw_cost,
+    vw_extend
 
 println("print to keep from blowing up")
 
@@ -96,9 +106,11 @@ println("print to keep from blowing up")
 
     u,v = randn(num_i), randn(num_i)
 
+
     for ddm in (ddm_with_t1ev, ddm_with_t1ev,)
+        _ichars = ichars_sample(ddm, num_i)
         datanew = ShaleDrillingLikelihood.DataDynamicDrill(
-            u, v, _zchars, ddm, theta;
+            u, v, _zchars, _ichars, ddm, theta;
             minmaxleases=2:5,
             nper_initial=10:15,
             tstart=1:10
@@ -106,5 +118,56 @@ println("print to keep from blowing up")
     end
 
 end
+
+
+@testset "simulate all data" begin
+
+    Random.seed!(7)
+
+    num_i = 100
+
+    # set up coefs
+    θρ = 0.5
+    αψ = 0.33
+    αg = 0.56
+
+    # model
+    rwrd = DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
+
+    # parms
+    nk_royalty = 2
+    royalty_rates = [1/8, 3/16, 1/4,]
+    num_royalty_rates = length(royalty_rates)
+
+    # random vars
+    log_ogip = rand(Normal(4.68,0.31), num_i)
+    Xroyalty = vcat(log_ogip', randn(nk_royalty-1, num_i))
+    u,v = randn(num_i), randn(num_i)
+
+    # set up coefs
+    #            θρ  ψ        g    x_r     κ₁   κ₂
+    θ_royalty = [θρ, 1.0,    0.1, -0.3,  -0.6, 0.6]
+    #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
+    θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
+    #            drill  ext     α0  αg  αψ  θρ
+    θ_drill_u = [-6.0, -0.85, -2.7, αg, αψ, θρ]
+
+    @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
+    @test theta_ρ(rwrd, θ_drill_u) == θρ
+    @test theta_ρ(revenue(rwrd), vw_revenue(rwrd, θ_drill_u)) == θρ
+    @test θ_drill_u[1:1] == vw_cost(rwrd, θ_drill_u)
+    @test θ_drill_u[2:2] == vw_extend(rwrd, θ_drill_u)
+    @test θ_drill_u[3:end] == vw_revenue(rwrd, θ_drill_u)
+
+    data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
+
+    _ichars = [gr for gr in zip(log_ogip, royalty_rates[_y(data_roy)])]
+
+
+end
+
+
+
+
 
 end # module

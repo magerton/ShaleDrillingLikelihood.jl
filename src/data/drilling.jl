@@ -342,7 +342,8 @@ end
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
 xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
-function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, m::AbstractDrillModel, theta::AbstractVector;
+function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
+    m::AbstractDrillModel, theta::AbstractVector;
     minmaxleases::UnitRange=0:3, nper_initial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
@@ -354,7 +355,7 @@ function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, m::AbstractDrill
     num_zt = length(_zchars)
 
     # ichars
-    _ichars = ichars_sample(m,num_i)
+    # _ichars = ichars_sample(m,num_i)
 
     # initial leases per unit
     initial_leases_per_unit = sample(minmaxleases, num_i)
@@ -403,5 +404,7 @@ end
 
 function DataDrill(u, v, m, theta; num_zt=30, kwargs...)
     _zchars = ExogTimeVarsSample(m, num_zt)
-    return DataDrill(u,v,_zchars,m,theta;kwargs...)
+    num_i = length(u)
+    _ichars = ichars_sample(m,num_i)
+    return DataDrill(u,v,_zchars, _ichars,m,theta;kwargs...)
 end
