@@ -1,5 +1,6 @@
 module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
 
+DOBTIME=false
 
 using ShaleDrillingLikelihood
 using Test
@@ -49,7 +50,10 @@ using ShaleDrillingLikelihood: ObservationDrill,
     vw_extend,
     DataDynamicDrill,
     max_states,
-    _D
+    _D,
+    simloglik!,
+    simloglik_drill_data!,
+    SimulationDraws
 
 println("print to keep from blowing up")
 
@@ -151,12 +155,16 @@ end
     # parms
     num_i = 100
 
+    # grid sizes
     nψ =  13
-    num_zt = 100
     _dmax = 3
     nz = 21
 
+    # simulations
+    M = 1_000
+
     # observations
+    num_zt = 100
     obs_per_well = 10:20
     ddm_opts = (minmaxleases=2:5, nper_initial=40:50, tstart=1:20)
 
@@ -238,6 +246,44 @@ end
 
     @test sum(nwells_w .> 0) == length(Set(view(_x(data_produce_w), 1, :)))
     @test sum(nwells_n .> 0) == length(Set(view(_x(data_produce_n), 1, :)))
+
+    @testset "Test dynamic Drilling model only" begin
+        data = data_drill_w_con
+        theta = θ_drill_c
+
+        @test data isa DataDrill
+        sim = SimulationDraws(100, data)
+        nparm = _nparm(data)
+        @test nparm == length(theta)
+        grad = zeros(nparm)
+        hess = zeros(nparm, nparm)
+        tmpgrads = zeros(nparm, num_i)
+
+        println("simloglik, no grad")
+        simloglik_drill_data!(grad, hess, data, theta, sim, false)
+        println("simloglik, with grad")
+        simloglik_drill_data!(grad, hess, data, theta, sim, true)
+
+        println("simloglik finite diff")
+        fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
+
+        fill!(grad,0)
+        fill!(hess,0)
+        println("simloglik gradient")
+        simloglik_drill_data!(grad, hess, data, theta, sim, true)
+        @test !all(grad.==0)
+        @test_broken isapprox(fd, grad; rtol=2e-5)
+        println("done")
+
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false)
+            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true)
+            print("")
+        end
+
+
+    end
 
 
 end

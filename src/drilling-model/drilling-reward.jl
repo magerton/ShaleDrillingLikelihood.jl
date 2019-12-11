@@ -29,6 +29,8 @@ idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 @inline vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
 @inline vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
 
+@inline theta_drill_ρ(x::Union{<:DrillReward, <:DynamicDrillingModel}, theta) = last(theta)
+
 # -----------------------------------------
 # flow payoffs
 # -----------------------------------------
