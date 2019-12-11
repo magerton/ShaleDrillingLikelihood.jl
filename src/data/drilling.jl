@@ -92,6 +92,13 @@ end
 DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
+function DataDrill(m::AbstractDrillModel, d::DataDrill)
+    return DataDrill(
+        m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
+        j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
+    )
+end
+
 # What is an observation?
 #------------------------------------------
 
@@ -214,6 +221,17 @@ InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
 DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
 
 num_initial_leases(d::DrillUnit) = j1length(d)
+
+function max_state(grp::DrillUnit)
+    d = _data(grp)
+    _t1range = tstart(d, j1start(grp)) : tstop(d, j1stop(grp))
+    _t2range = trange(d, j2ptr(grp))
+    x1 = length(_t1range) > 0 ? maximum(view(_x(d), _t1range)) : 0
+    x2 = length(_t2range) > 0 ? maximum(view(_x(d), _t2range)) : 0
+    return max(x1,x2)
+end
+
+max_states(d::DataDrill) = [max_state(g) for g in d]
 
 # Regime (second layer of iteration)
 #------------------------------------------
