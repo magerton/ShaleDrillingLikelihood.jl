@@ -54,7 +54,12 @@ using ShaleDrillingLikelihood: ObservationDrill,
     simloglik!,
     simloglik_drill_data!,
     SimulationDraws,
-    DCDPTmpVars
+    DCDPTmpVars,
+    _model,
+    theta_drill_ρ,
+    update!,
+    value_function,
+    EV, dEV
 
 println("print to keep from blowing up")
 
@@ -199,6 +204,7 @@ end
     zs = tuple(zrng)
     @test prod(length.(zs)) == nz
     ztrans = sparse(zero_out_small_probs(tauchen_1d(zprocess, zrng), 1e-4))
+    @test all(isfinite.(ztrans))
 
     # random vars
     log_ogip = rand(ogip_dist, num_i)
@@ -255,9 +261,11 @@ end
     @testset "Test dynamic Drilling model only" begin
         data = data_drill_w_con
         theta = θ_drill_c
+        ddm = _model(data)
+        vf = value_function(ddm)
 
         @test data isa DataDrill
-        sim = SimulationDraws(100, data)
+        sim = SimulationDraws(1_000, data)
         nparm = _nparm(data)
         @test nparm == length(theta)
         grad = zeros(nparm)
@@ -266,18 +274,24 @@ end
 
         println("simloglik, no grad")
         simloglik_drill_data!(grad, hess, data, theta, sim, false)
+        @test all(grad .== 0)
         println("simloglik, with grad")
         simloglik_drill_data!(grad, hess, data, theta, sim, true)
-
-        # println("simloglik finite diff")
-        # fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
+        @test all(isfinite.(EV(vf)))
+        @test all(isfinite.(dEV(vf)))
+        @show extrema(dEV(vf))
+        @test all(isfinite.(grad))
+        @show grad
+        println("simloglik finite diff")
+        fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
+        @show fd
 
         fill!(grad,0)
         fill!(hess,0)
         println("simloglik gradient")
-        simloglik_drill_data!(grad, hess, data, theta, sim, true)
-        @test !all(grad.==0)
+        simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
         @show grad
+        @test !all(grad.==0)
         @test all(isfinite.(grad))
         # @show fd, grad
         # @test_broken isapprox(fd, grad; rtol=2e-5)

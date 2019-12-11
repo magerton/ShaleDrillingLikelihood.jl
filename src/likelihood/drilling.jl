@@ -94,6 +94,10 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     #FIXME: add update VF
     ddm = _model(_data(unit))
     tmpv = DCDPTmpVars(ddm)
+    vf = value_function(ddm)
+    fill!(EV(vf), 0)
+    fill!(dEV(vf), 0)
+
     solve_vf_all!(tmpv, ddm, theta, ichars(unit), dograd)
     update_interpolation!(value_function(ddm), dograd)
 
@@ -145,7 +149,8 @@ function simloglik_drill_data!(grad, hess, data, theta, sim::SimulationDrawsMatr
     checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
     update_theta!(DrillingTmpVars(data), theta)
-    update!(sim, theta_drill_ρ(_model(data), theta))
+    θρ = theta_drill_ρ(_model(data), theta)
+    update!(sim, θρ)
     g = dohess ? similar(grad) : grad
 
     LL = azero(theta)

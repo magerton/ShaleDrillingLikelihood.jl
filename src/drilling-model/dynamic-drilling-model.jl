@@ -153,6 +153,8 @@ value_function( x::DynamicDrillingModel) = x.vf
 
 beta_1minusbeta(ddm::DynamicDrillingModel) = discount(ddm) / (1-discount(ddm))
 
+theta_drill_ρ(d::DynamicDrillingModel, theta) = theta[_nparm(reward(d))]
+
 # -----------------------------------------
 # Outer constructors for VF
 # -----------------------------------------

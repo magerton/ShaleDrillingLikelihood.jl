@@ -135,7 +135,7 @@ function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::DynamicDrillingModel, θ
             ubv[i,dp1] = flow!(grad, obs, θ, ψ, dograd)
         end
     end
-    permutedims!(dubvp, dubv, [2,1,3])
+    dograd && permutedims!(dubvp, dubv, [2,1,3])
 end
 
 @deprecate flow!(t::DCDPTmpVars, ddm::DynamicDrillingModel, θ::AbstractVector, sidx::Integer, ichars::Tuple, dograd::Bool) update_static_payoffs!(t,ddm,θ,sidx,ichars,dograd)
