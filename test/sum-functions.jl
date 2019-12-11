@@ -1,5 +1,7 @@
 module ShaleDrillingLikelihood_SumFunctions_Test
 
+DOBTIME = false
+
 using ShaleDrillingLikelihood
 
 using Test
@@ -44,9 +46,11 @@ end
         @test sum(z2) ≈ 1
         @test z1 ≈ z2
 
-        # @btime logsumexp($x)
-        # @btime softmax!($z1,$y)
-        # @btime logsumexp!($z1,$y)
+        if DOBTIME
+            @btime logsumexp($x)
+            @btime softmax!($z1,$y)
+            @btime logsumexp!($z1,$y)
+        end
     end
 
 end
@@ -86,8 +90,10 @@ println("printme")
     @test q[:,:,1] ≈ qcopy[:,:,1]
     @test !(q ≈ qcopy)
 
-    @btime softmax3!($q, $lse, $tmpmax, $x)
-    @btime softmax3test!($q, $x)
+    if DOBTIME
+        @btime softmax3!($q, $lse, $tmpmax, $x)
+        @btime softmax3test!($q, $x)
+    end
 
 
 end
