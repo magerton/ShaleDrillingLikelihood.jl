@@ -46,7 +46,10 @@ using ShaleDrillingLikelihood: ObservationDrill,
     theta_ρ,
     vw_revenue,
     vw_cost,
-    vw_extend
+    vw_extend,
+    DataDynamicDrill,
+    max_states,
+    _D
 
 println("print to keep from blowing up")
 
@@ -106,8 +109,7 @@ println("print to keep from blowing up")
 
     u,v = randn(num_i), randn(num_i)
 
-
-    for ddm in (ddm_with_t1ev, ddm_with_t1ev,)
+    for ddm in (ddm_with_t1ev, ddm_no_t1ev,)
         _ichars = ichars_sample(ddm, num_i)
         datanew = ShaleDrillingLikelihood.DataDynamicDrill(
             u, v, _zchars, _ichars, ddm, theta;
@@ -124,25 +126,12 @@ end
 
     Random.seed!(7)
 
-    num_i = 100
+    discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
     θρ = 0.5
     αψ = 0.33
     αg = 0.56
-
-    # model
-    rwrd = DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
-
-    # parms
-    nk_royalty = 2
-    royalty_rates = [1/8, 3/16, 1/4,]
-    num_royalty_rates = length(royalty_rates)
-
-    # random vars
-    log_ogip = rand(Normal(4.68,0.31), num_i)
-    Xroyalty = vcat(log_ogip', randn(nk_royalty-1, num_i))
-    u,v = randn(num_i), randn(num_i)
 
     # set up coefs
     #            θρ  ψ        g    x_r     κ₁   κ₂
@@ -150,18 +139,105 @@ end
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
     #            drill  ext     α0  αg  αψ  θρ
-    θ_drill_u = [-6.0, -0.85, -2.7, αg, αψ, θρ]
+    θ_drill_u = [-5.0, -0.85, -2.7, αg, αψ, θρ]
+    θ_drill_c = vcat(θ_drill_u[1:3], θρ)
 
+    # model
+    rwrd_c = DrillReward(DrillingRevenue(Constrained(;log_ogip=αg, α_ψ=αψ),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
+    rwrd_u = UnconstrainedProblem(rwrd_c)
+    rwrd = rwrd_u
+    @test _nparm(rwrd) == length(θ_drill_u)
+
+    # parms
+    num_i = 100
+
+    nψ =  13
+    num_zt = 100
+    _dmax = 3
+    nz = 21
+
+    # observations
+    obs_per_well = 10:20
+    ddm_opts = (minmaxleases=2:5, nper_initial=40:50, tstart=1:20)
+
+    # roylaty
+    royalty_rates = [1/8, 3/16, 1/4,]
+    num_royalty_rates = length(royalty_rates)
+    nk_royalty = length(θ_royalty) - (length(royalty_rates)-1)-2
+
+    # geology
+    ogip_dist = Normal(4.68,0.31)
+
+    # price parameters
+    zrho = 0.8                # rho
+    zmean = 1.33*(1-zrho)     # mu
+    zvar = 0.265^2*(1-zrho^2) # sigsq
+
+    # state space, psi-space
+    wp = LeasedProblem(_dmax,4,5,3,2)
+    ψs = range(-4.5; stop=4.5, length=nψ)
+
+    # simulate price process
+    zprocess = AR1process(zmean, zrho, zvar)
+    zvec = simulate(zprocess, num_zt)
+    ztrng = range(Date(2003,10); step=Quarter(1), length=num_zt)
+    _zchars = ExogTimeVars(tuple.(zvec), ztrng)
+
+    # price grid2
+    zmin = min(minimum(zvec), lrmean(zprocess)-3*lrstd(zprocess))
+    zmax = max(maximum(zvec), lrmean(zprocess)+3*lrstd(zprocess))
+    zrng = range(zmin, zmax; length=nz)
+    zs = tuple(zrng)
+    @test prod(length.(zs)) == nz
+    ztrans = sparse(zero_out_small_probs(tauchen_1d(zprocess, zrng), 1e-4))
+
+    # random vars
+    log_ogip = rand(ogip_dist, num_i)
+    Xroyalty = vcat(log_ogip', randn(nk_royalty-1, num_i))
+    u,v = randn(num_i), randn(num_i)
+
+    # model
+    ddm_no_t1ev     = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev   = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
+    ddm_c_no_t1ev   = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
+    ddm_c_with_t1ev = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
+
+    # tests about royalty coef
     @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
+
+    # test drilling coef
     @test theta_ρ(rwrd, θ_drill_u) == θρ
     @test theta_ρ(revenue(rwrd), vw_revenue(rwrd, θ_drill_u)) == θρ
     @test θ_drill_u[1:1] == vw_cost(rwrd, θ_drill_u)
     @test θ_drill_u[2:2] == vw_extend(rwrd, θ_drill_u)
     @test θ_drill_u[3:end] == vw_revenue(rwrd, θ_drill_u)
 
+    # construct royalty data
     data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
 
+    # construct ichars for drilling
     _ichars = [gr for gr in zip(log_ogip, royalty_rates[_y(data_roy)])]
+
+    # construct drilling data
+    data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
+    data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
+
+    # constrained versions of above
+    data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
+    data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
+
+    # number of wells drilled
+    nwells_w = map(s -> _D(wp,s), max_states(data_drill_w))
+    nwells_n = map(s -> _D(wp,s), max_states(data_drill_n))
+
+    @show sort(countmap(nwells_w))
+    @show sort(countmap(nwells_n))
+
+    data_produce_w = DataProduce(u, nwells_w, obs_per_well, θ_produce, log_ogip)
+    data_produce_n = DataProduce(u, nwells_n, obs_per_well, θ_produce, log_ogip)
+
+    @test sum(nwells_w .> 0) == length(Set(view(_x(data_produce_w), 1, :)))
+    @test sum(nwells_n .> 0) == length(Set(view(_x(data_produce_n), 1, :)))
 
 
 end
