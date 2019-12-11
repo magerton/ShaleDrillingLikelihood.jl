@@ -182,3 +182,14 @@ function solve_vf_infill_timing!(t, ddm, θ, ichar, dograd; kwargs...)
     solve_vf_infill!(t, ddm, θ, ichar, dograd; kwargs...)
     return nothing
 end
+
+function solve_vf_and_update_itp!(ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
+    t = DCDPTmpVars(ddm)
+    fill!(t, 0)
+    solve_vf_all!(t, ddm, θ, ichar, dograd)
+    vf = value_function(ddm)
+    update_interpolation!(vf, dograd)
+    return nothing
+end
+
+solve_vf_and_update_itp!(args...; kwargs...) = nothing

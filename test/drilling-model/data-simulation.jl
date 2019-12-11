@@ -216,10 +216,6 @@ end
     ddm_with_t1ev   = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
     ddm_c_no_t1ev   = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
     ddm_c_with_t1ev = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
-    fill!(DCDPTmpVars(ddm_no_t1ev), 0)
-    fill!(DCDPTmpVars(ddm_with_t1ev), 0)
-    fill!(DCDPTmpVars(ddm_c_no_t1ev), 0)
-    fill!(DCDPTmpVars(ddm_c_with_t1ev), 0)
 
     # tests about royalty coef
     @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ

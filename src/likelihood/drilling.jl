@@ -77,7 +77,7 @@ end
 
 Threaded computation of `_llm(sims)[m] += log lik(DrillUnit, sims[m])`
 """
-function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dograd)
+function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dograd; kwargs...)
 
     dtv = DrillingTmpVars(unit)
     M = _num_sim(sims)
@@ -90,16 +90,7 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
 
     mapper = Mapper(M, 10)
 
-
-    #FIXME: add update VF
-    ddm = _model(_data(unit))
-    tmpv = DCDPTmpVars(ddm)
-    vf = value_function(ddm)
-    fill!(EV(vf), 0)
-    fill!(dEV(vf), 0)
-
-    solve_vf_all!(tmpv, ddm, theta, ichars(unit), dograd)
-    update_interpolation!(value_function(ddm), dograd)
+    solve_vf_and_update_itp!(_model(_data(unit)), theta, ichars(unit), dograd; kwargs...)
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
         @threads for j in OneTo(nthreads())
