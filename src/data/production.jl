@@ -195,9 +195,18 @@ Use `theta` to make random dataset with `ngroups` of wells that have
 a random number of wells in `0:maxwells` that each have
 a random draw of `ntrange` observations.
 """
-function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vector)
-
+function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vector, args...)
     ngroups = length(psi)
+    grouplens = vcat(collect(0:maxwells)..., sample(0:maxwells, ngroups-maxwells-1))
+    ncoef = length(theta)-3
+
+    return DataProduce(psi,grouplens,ntrange,theta, args...)
+end
+
+
+function DataProduce(psi::Vector, grouplens::Vector, ntrange::UnitRange, theta::Vector, ivars::Union{Number,Vector}=0)
+
+    length(psi) == length(grouplens) || throw(DimensionMismatch())
     length(theta) > 3 || throw(DimensionMismatch())
     alphapsi = theta[1]
     beta = theta[2:end-2]
@@ -206,11 +215,8 @@ function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vect
     ncoef = length(beta)
 
     # groups
-    grouplens = vcat(0, collect(0:maxwells)..., sample(0:maxwells, ngroups-maxwells-1))
-    groupptr = 1 .+ cumsum(grouplens)
-
-    # wells in each group
-    nwells = last(groupptr)-1
+    groupptr = 1 .+ cumsum(vcat(0, grouplens))
+    nwells = sum(grouplens)
 
     us = randn(nwells)
     obslens = vcat(0, sample(ntrange, nwells))
@@ -221,9 +227,21 @@ function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vect
 
     eta  = randn(nobs)
     x    = randn(ncoef,nobs)
-    y    = x'*beta .+ sigeta .* eta
+    y    = similar(eta)
 
     data = DataProduce(y,x,obsptr,groupptr)
+
+    if length(ivars) == length(psi)
+        for (i,g) in enumerate(data)
+            for (k,o) in enumerate(g)
+                j = getindex(grouprange(g), k)
+                xj = _x(o)
+                xj[1,:] .= ivars[i]
+            end
+        end
+    end
+
+    y .= x'*beta .+ sigeta .* eta
 
     for (i,g) in enumerate(data)
         for (k,o) in enumerate(g)
