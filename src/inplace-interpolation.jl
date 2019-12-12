@@ -7,18 +7,26 @@ end
 padded_coefs(A,it) = padded_coefs(Interpolations.tcoef(A), A, it)
 
 # padded coefs
-struct InPlaceInterp{T, TC, N, A<:AbstractArray{T,N}, TCoefs<:AbstractArray{TC,N}, IT<:Interpolations.DimSpec{BSpline}, RT<:NTuple{N,AbstractRange}}
+struct InPlaceInterp{T, TC, N, A<:AbstractArray{T,N}, TCoefs<:AbstractArray{TC,N}, IT<:Interpolations.DimSpec{BSpline}, RT<:NTuple{N,AbstractRange},ITP<:Interpolations.BSplineInterpolation,SITP<:ScaledInterpolation}
     x::A
     coef::TCoefs
     it::IT
     ranges::RT
+    itp::ITP
+    sitp::SITP
 
     function InPlaceInterp(x::A, it::IT, ranges::RT) where {T, N, A<:AbstractArray{T,N}, IT, RT}
         Interpolations.check_ranges(it, axes(x), ranges)
         TC = Interpolations.tcoef(x)
         coef = padded_coefs(TC, x, it)
         TCoefs = typeof(coef)
-        return new{T, TC, N, A, TCoefs, IT, RT}(x, coef, it, ranges)
+
+        tw = Interpolations.tweight(x)
+        itp = Interpolations.BSplineInterpolation(tw, coef, it, axes(x))
+        sitp = Interpolations.scale(itp, ranges...)
+        ITP = typeof(itp)
+        SITP = typeof(sitp)
+        return new{T, TC, N, A, TCoefs, IT, RT, ITP, SITP}(x, coef, it, ranges, itp, sitp)
     end
 end
 
@@ -48,13 +56,16 @@ function update_interpolation!(x::InPlaceInterp)
     Interpolations.prefilter!(tw, coefs, it)
 end
 
-function interpolation(x::InPlaceInterp)
-    A = data(x)
-    tw = Interpolations.tweight(A)
-    return Interpolations.BSplineInterpolation(tw, coefficients(x), itpflag(x), axes(A))
-end
+interpolation(x::InPlaceInterp) = x.itp
+scaled_interpolation(x::InPlaceInterp) = x.sitp
 
-function scaled_interpolation(x::InPlaceInterp)
-    itp = interpolation(x)
-    return Interpolations.scale(itp, ranges(x)...)
-end
+# function interpolation(x::InPlaceInterp)
+#     A = data(x)
+#     tw = Interpolations.tweight(A)
+#     return Interpolations.BSplineInterpolation(tw, coefficients(x), itpflag(x), axes(A))
+# end
+#
+# function scaled_interpolation(x::InPlaceInterp)
+#     itp = interpolation(x)
+#     return Interpolations.scale(itp, ranges(x)...)
+# end
