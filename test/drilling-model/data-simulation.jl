@@ -154,7 +154,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.0
+    θρ = -4.0
     αψ = 0.33
     αg = 0.56
 
@@ -164,11 +164,12 @@ end
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
     #            drill  ext    α0  αg  αψ  θρ
-    θ_drill_u = [-5.5, -2.0, -2.8, αg, αψ, θρ]
-    θ_drill_c = vcat(θ_drill_u[1:3], θρ)
+    # θ_drill_u = [-5.5, -2.0, -2.8, αg, αψ, θρ]
+    θ_drill_u = [-5.8,       -2.8, αg, αψ, θρ]
+    θ_drill_c = vcat(θ_drill_u[1:2], θρ)
 
     # model
-    rwrd_c = DrillReward(DrillingRevenue(Constrained(;log_ogip=αg, α_ψ=αψ),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
+    rwrd_c = DrillReward(DrillingRevenue(Constrained(;log_ogip=αg, α_ψ=αψ),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Zero())
     rwrd_u = UnconstrainedProblem(rwrd_c)
     rwrd = rwrd_u
     @test _nparm(rwrd) == length(θ_drill_u)
@@ -182,7 +183,7 @@ end
     nz = 15
 
     # simulations
-    M = 250
+    M = 500
 
     # observations
     num_zt = 150          # drilling
@@ -240,8 +241,8 @@ end
     @test theta_ρ(rwrd, θ_drill_u) == θρ
     @test theta_ρ(revenue(rwrd), vw_revenue(rwrd, θ_drill_u)) == θρ
     @test θ_drill_u[1:1] == vw_cost(rwrd, θ_drill_u)
-    @test θ_drill_u[2:2] == vw_extend(rwrd, θ_drill_u)
-    @test θ_drill_u[3:end] == vw_revenue(rwrd, θ_drill_u)
+    @test θ_drill_u[2:1] == vw_extend(rwrd, θ_drill_u)
+    @test θ_drill_u[end-3:end] == vw_revenue(rwrd, θ_drill_u)
 
     # construct royalty data
     data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
