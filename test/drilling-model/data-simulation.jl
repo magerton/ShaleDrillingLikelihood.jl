@@ -69,7 +69,12 @@ using ShaleDrillingLikelihood: ObservationDrill,
     theta_drill_ρ,
     update!,
     value_function,
-    EV, dEV
+    EV, dEV,
+    _x, _y,
+    end_ex0, end_ex1, end_lrn, end_inf,
+    state_idx,
+    j2ptr, tptr
+
 
 println("print to keep from blowing up")
 
@@ -149,8 +154,8 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.0
-    αψ = 1.0 # 0.33
+    θρ = 0.75
+    αψ = 0.33
     αg = 0.56
 
     # set up coefs
@@ -158,8 +163,8 @@ end
     θ_royalty = [θρ, 1.0,    0.1, -0.3,  -0.6, 0.6]
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
-    #            drill  ext     α0  αg  αψ  θρ
-    θ_drill_u = [-6.5, -0.85, -2.8, αg, αψ, θρ]
+    #            drill  ext    α0  αg  αψ  θρ
+    θ_drill_u = [-5.5, -2.0, -2.8, αg, αψ, θρ]
     θ_drill_c = vcat(θ_drill_u[1:3], θρ)
 
     # model
@@ -169,7 +174,7 @@ end
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parms
-    num_i = 500
+    num_i = 1_000
 
     # grid sizes
     nψ =  13
@@ -177,11 +182,11 @@ end
     nz = 15
 
     # simulations
-    M = 350
+    M = 250
 
     # observations
-    num_zt = 100
-    obs_per_well = 10:20
+    num_zt = 150          # drilling
+    obs_per_well = 10:20  # pdxn
 
     # roylaty
     royalty_rates = [1/8, 3/16, 1/4,]
@@ -198,7 +203,8 @@ end
 
     # state space, psi-space
     # wp = LeasedProblem(_dmax,4,5,3,2)
-    wp = LeasedProblem(8, 8, 30, 20, 8)
+    # wp = LeasedProblem(8, 8, 30, 20, 8)
+    wp = LeasedProblem(8, 8, 12, 12, 8)
     ψs = range(-4.5; stop=4.5, length=nψ)
 
     # simulate price process
@@ -247,13 +253,30 @@ end
     # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
     # data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
     # data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
-    ddm_opts = (minmaxleases=1:1, nper_initial=0:0, nper_development=40:40, tstart=1:50, xdomain=0:0)
+    ddm_opts = (minmaxleases=0:0, nper_initial=0:0, nper_development=60:60, tstart=1:75, xdomain=0:0)
     data_drill_w = DataDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
     data_drill_n = DataDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
 
     # constrained versions of above
     data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
     data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
+
+    # states
+    end_ex1(wp), end_ex0(wp)
+
+    sort(countmap(_x(data_drill_n_con)))
+    # count of where we are before dirlling first
+    # frequency of choices before expiration
+    sort(countmap([x for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x <= end_ex0(wp) && y > 0]))
+
+    sort(countmap(_x(data_drill_n_con)[tptr(data_drill_n_con)[j2ptr(data_drill_n_con)[2]:end].-1]))
+
+    # frequency of choices before expiration
+    sort(countmap([y for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x <= end_ex0(wp)]))
+    # infill drilling choices
+    sort(countmap([y for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x > end_lrn(wp)]))
+    # frequency of states just before where D==2 at end_lrn(wp)+2
+    sort(countmap(_x(data_drill_n_con)[findall(x -> x==end_lrn(wp)+2, _x(data_drill_n_con)).-1]))
 
     # number of wells drilled
     nwells_w = map(s -> _D(wp,s), max_states(data_drill_w))
@@ -275,7 +298,7 @@ end
         vf = value_function(ddm)
 
         @test data isa DataDrill
-        sim = SimulationDraws(1_000, data)
+        sim = SimulationDraws(M, data)
         nparm = _nparm(data)
         @test nparm == length(theta)
         grad = zeros(nparm)
