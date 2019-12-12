@@ -16,13 +16,19 @@ using ShaleDrillingLikelihood: DCDPEmax,
     revenue,
     _dψ1dρ,
     _dψ1dθρ,
-    _ψ1,
     _ρ,
     dp1space,
-    sprimes,
+    sprime,
     SimulationDraws,
     SimulationDraw,
-    _psi1, _psi2, _ψ1, _ψ2
+    _psi1, _psi2, _ψ1, _ψ2, _ψ,
+    end_ex0,
+    end_lrn,
+    _D,
+    ssprime,
+    _dmax,
+    end_inf,
+    sprime
 
 
 println("print to keep from blowing up")
@@ -54,10 +60,8 @@ println("print to keep from blowing up")
     ztrans[1,1] = ztrans[1,2] = ztrans[end,end-1] = ztrans[end,end] = 0.5
 
     # wp = LeasedProblemContsDrill(dmx,4,5,3,2)
-    wp = LeasedProblem(dmx,4,5,3,2)
-
-    # ichars
-    ichar = (2.0, 0.25,)
+    # wp = LeasedProblem(dmx,4,5,3,2)
+    wp = LeasedProblem(8, 8, 30, 20, 8)
 
     # ddm object
     ddm = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
@@ -73,7 +77,34 @@ println("print to keep from blowing up")
 
     for sidx in 1:length(wp)
         D = _D(wp,sidx)
-        
+        if sidx <= end_ex0(wp)+1
+            @test D == 0
+            @test _ψ(ddm, sidx, sim) == _ψ1(sim)
+            if sidx <= end_ex0(wp)
+                @test _dmax(wp,sidx) > 0
+                @test ssprime(wp, sidx, 1) > end_lrn(wp)
+                @test _D(wp,ssprime(wp, sidx, 1)) == 1
+            else
+                @test _dmax(wp,sidx) == 0
+            end
+        else
+            @test D > 0
+            if sidx > end_lrn(wp)
+                @test _ψ(ddm, sidx, sim) == _ψ2(sim)
+                if sidx < end_inf(wp)
+                    sp = ssprime(wp,sidx,1)
+                    @test _dmax(wp,sidx) > 0
+                    @test end_inf(wp) >= sp > sidx > end_lrn(wp)
+                    @test sp == sprime(wp,sidx,1)
+                    @test 1 <= _D(wp,sidx)
+                    @test _D(wp,sidx)+1 == _D(wp,sp)
+                else
+                    @test _dmax(wp,sidx) == 0
+                end
+            end
+        end
+
+
         # @inline _ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
         # @inline _dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? azero(s) : _dψ1dθρ(s)
 
