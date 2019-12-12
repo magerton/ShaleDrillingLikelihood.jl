@@ -83,9 +83,9 @@ version = "2.2.0"
 
 [[CountPlus]]
 deps = ["Test"]
-git-tree-sha1 = "4abeaf6059a9fb71f3faf4a28b3e5013617b0df5"
+git-tree-sha1 = "94d8cd03a5c1a3e81db697b0ed81bbacd9969399"
 repo-rev = "master"
-repo-url = "https://github.com/magerton/CountPlus"
+repo-url = "https://github.com/magerton/CountPlus.git"
 uuid = "fc19a607-4a1c-5e34-bf0d-7dd5ba9e7eda"
 version = "0.0.0"
 
@@ -167,6 +167,14 @@ deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "NaNMath", "Random",
 git-tree-sha1 = "da46ac97b17793eba44ff366dc6cb70f1238a738"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.7"
+
+[[GenGlobal]]
+deps = ["Distributed", "LinearAlgebra", "SharedArrays", "StatsFuns", "Test"]
+git-tree-sha1 = "76e00b37161a04c2077bb4c23f514bb5ce5fa96a"
+repo-rev = "master"
+repo-url = "https://github.com/magerton/GenGlobal.jl.git"
+uuid = "e61441de-b3fa-5384-98e4-d7fd5b91285f"
+version = "0.0.0"
 
 [[Graphics]]
 deps = ["Colors", "Compat", "NaNMath"]
