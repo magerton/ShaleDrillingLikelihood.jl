@@ -320,11 +320,8 @@ stateinfo(wp::AbstractUnitProblem, st::state) = (_d1(st), _Dgt0(st), _sgnext(st)
 
 @inline _sgnext(wp::AbstractUnitProblem, sidx::Integer) = sidx == end_ex1(wp)
 @inline _sgnext(wp::AbstractUnitProblem, sidx::Integer, d::Integer) = _sgnext(wp,sidx) && d == 0
-function _sign_lease_extension(sidx::Integer,wp::AbstractUnitProblem)
-    @warn "Deprecated. use `sgnext(wp,sidx)`"
-    return _sgnext(wp,sidx)
-end
 
+@deprecate _sign_lease_extension(sidx::Integer,wp::AbstractUnitProblem) _sgnext(wp,sidx)
 
 function _τrem(wp::AbstractUnitProblem, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
