@@ -149,7 +149,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.5
+    θρ = 0.0
     αψ = 0.33
     αg = 0.56
 
@@ -182,7 +182,6 @@ end
     # observations
     num_zt = 100
     obs_per_well = 10:20
-    ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
 
     # roylaty
     royalty_rates = [1/8, 3/16, 1/4,]
@@ -245,8 +244,12 @@ end
     _ichars = [gr for gr in zip(log_ogip, royalty_rates[_y(data_roy)])]
 
     # construct drilling data
-    data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
-    data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
+    # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
+    # data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
+    # data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
+    ddm_opts = (minmaxleases=1:1, nper_initial=0:0, nper_development=40:40, tstart=1:50, xdomain=0:0)
+    data_drill_w = DataDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
+    data_drill_n = DataDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
 
     # constrained versions of above
     data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
