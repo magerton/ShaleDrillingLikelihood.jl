@@ -149,7 +149,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.0
+    θρ = -10.0
     αψ = 0.33
     αg = 0.56
 
@@ -159,7 +159,7 @@ end
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
     #            drill  ext     α0  αg  αψ  θρ
-    θ_drill_u = [-6.5, -0.85, -2.2, αg, αψ, θρ]
+    θ_drill_u = [-6.5, -0.85, -2.4, αg, αψ, θρ]
     θ_drill_c = vcat(θ_drill_u[1:3], θρ)
 
     # model
@@ -269,7 +269,7 @@ end
     @test sum(nwells_n .> 0) == length(Set(view(_x(data_produce_n), 1, :)))
 
     @testset "Test dynamic Drilling model gradients" begin
-        data = data_drill_w_con
+        data = data_drill_n_con
         theta = θ_drill_c
         ddm = _model(data)
         vf = value_function(ddm)
