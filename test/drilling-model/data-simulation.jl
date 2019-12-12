@@ -177,7 +177,7 @@ end
     nz = 15
 
     # simulations
-    M = 250
+    M = 350
 
     # observations
     num_zt = 100
@@ -369,7 +369,7 @@ end
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
         startcount!([100, 200, 500, 100000,], [1, 5, 5, 5,])
         resetcount!()
-        max_time_sec = 4*60
+        max_time_sec = 30*60
         opts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=max_time_sec)
         res = optimize(tdfgh, theta, BFGS(;initial_invH = invH0), opts)
         # res = optimize(tdfgh, theta*0.9, BFGS(), opts)
@@ -382,6 +382,7 @@ end
         pvals = cdf.(Normal(), -2*abs.(tstats))
         coef_and_se = hcat(theta, minimizer(res), se, tstats, pvals)
 
+        # θ_drill_u = [-6.5, -0.85, -2.8, αg, αψ, θρ]
         # θ_drill_u = [-5.0, -0.85, -2.7, 0.56, 0.33, 0.5]
         # θ_drill_c = [-5.0, -0.85, -2.7, 0.5]
 
