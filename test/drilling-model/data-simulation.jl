@@ -149,7 +149,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = -0.7 # 0.5
+    θρ = 0.5
     αψ = 0.33
     αg = 0.56
 
@@ -159,7 +159,7 @@ end
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
     #            drill  ext     α0  αg  αψ  θρ
-    θ_drill_u = [-5.0, -0.85, -2.7, αg, αψ, θρ]
+    θ_drill_u = [-6.5, -0.85, -2.2, αg, αψ, θρ]
     θ_drill_c = vcat(θ_drill_u[1:3], θρ)
 
     # model
@@ -169,20 +169,20 @@ end
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parms
-    num_i = 1_000
+    num_i = 500
 
     # grid sizes
     nψ =  13
     _dmax = 3
-    nz = 21
+    nz = 15
 
     # simulations
-    M = 1_000
+    M = 250
 
     # observations
     num_zt = 100
     obs_per_well = 10:20
-    ddm_opts = (minmaxleases=2:5, nper_initial=40:50, tstart=1:20)
+    ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
 
     # roylaty
     royalty_rates = [1/8, 3/16, 1/4,]
@@ -198,7 +198,8 @@ end
     zvar = 0.265^2*(1-zrho^2) # sigsq
 
     # state space, psi-space
-    wp = LeasedProblem(_dmax,4,5,3,2)
+    # wp = LeasedProblem(_dmax,4,5,3,2)
+    wp = LeasedProblem(8, 8, 30, 20, 8)
     ψs = range(-4.5; stop=4.5, length=nψ)
 
     # simulate price process
@@ -322,9 +323,9 @@ end
 
 
     @testset "Dynamic Drilling Model optimize" begin
-        data = data_drill_w_con
+        data = data_drill_n_con
         theta = θ_drill_c
-        sim = SimulationDraws(500, data)
+        sim = SimulationDraws(M, data)
 
         nparm = _nparm(data)
         grad = zeros(nparm)
@@ -365,7 +366,7 @@ end
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
         startcount!([100, 200, 500, 100000,], [1, 5, 5, 5,])
         resetcount!()
-        max_time_sec = 1*60^2
+        max_time_sec = 4*60
         opts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=max_time_sec)
         res = optimize(tdfgh, theta, BFGS(;initial_invH = invH0), opts)
         # res = optimize(tdfgh, theta*0.9, BFGS(), opts)
