@@ -298,7 +298,7 @@ end
 function initialize_x!(x, m::DynamicDrillingModel, lease)
     s1 = 1
     s2 = end_ex1(statespace(m))+1
-    x[1] = sample([s1,s2])
+    x[1] = s1 # sample([s1,s2])
 end
 
 function update_x!(x, t, m::DynamicDrillingModel, state, d)
