@@ -9,6 +9,7 @@ using StatsFuns
 using Base.Iterators: product, OneTo
 
 using ShaleDrillingLikelihood: DCDPEmax,
+    ObservationDrill,
     DCDPTmpVars,
     flow!,
     end_ex0,
@@ -80,6 +81,10 @@ println("print to keep from blowing up")
     u,v = (0.3, -1.5)
     θρ = 0.5
     rho = _ρ(θρ)
+
+    _ichar = (4.7, 0.2)
+    _z = (0.5,)
+
     @test rho == logistic(θρ)
     sim = SimulationDraw(u,v, θρ)
     @test _psi1(sim) == _ψ1(sim)
@@ -89,9 +94,14 @@ println("print to keep from blowing up")
 
     for sidx in 1:length(wp)
         D = _D(wp,sidx)
+        obs = ObservationDrill(ddm, _ichar, _z, 0, sidx)
+
         if sidx <= end_ex0(wp)+1
             @test D == 0
             @test _ψ(ddm, sidx, sim) == _ψ1(sim)
+            @test _ψ(obs,sim) == _ψ1(sim)
+            @test _ψ(obs,sim) != u
+            @test _ψ(obs,sim) != v
 
             if sidx == end_ex1(wp)
                 @test _sgnext(wp,sidx) == true
@@ -113,6 +123,8 @@ println("print to keep from blowing up")
         else
             @test D > 0
             if sidx > end_lrn(wp)
+                @test _ψ(obs,sim) == _ψ2(sim)
+                @test _ψ(obs,sim) == u
                 @test _ψ(ddm, sidx, sim) == _ψ2(sim)
                 @test _sgnext(wp,sidx) == false
                 if sidx < end_inf(wp)
@@ -127,10 +139,6 @@ println("print to keep from blowing up")
                 end
             end
         end
-
-
-        # @inline _ψ(    m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? _ψ2(s) : _ψ1(s)
-        # @inline _dψdθρ(m::AbstractDrillModel, state, s::SimulationDraw) = _Dgt0(m, state) ? azero(s) : _dψ1dθρ(s)
 
     end
 
