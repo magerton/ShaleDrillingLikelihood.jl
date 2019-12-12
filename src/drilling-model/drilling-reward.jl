@@ -24,9 +24,9 @@ idx_ρ(      x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
 idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 
-vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
-vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
-vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
+vw_cost(   x::DrillReward, theta) = uview(theta, idx_cost(x))
+vw_extend( x::DrillReward, theta) = uview(theta, idx_extend(x))
+vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 
 # -----------------------------------------
 # flow payoffs

@@ -14,6 +14,8 @@ using AxisAlgorithms
 using Interpolations
 using LoopVectorization
 
+using UnsafeArrays
+
 # extend these methods
 import Base: length, size, iterate,
     firstindex, lastindex, eachindex, getindex, IndexStyle,
