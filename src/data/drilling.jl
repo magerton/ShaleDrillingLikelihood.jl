@@ -401,9 +401,11 @@ function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{
 
     data = DataDrill(m, _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
 
+    θρ = theta_drill_ρ(reward(m),theta)
+
     # update leases
     for (i,unit) in enumerate(data)
-        sim = SimulationDraw(u[i], v[i], theta_drill_ρ(reward(m),theta))
+        sim = SimulationDraw(u[i], v[i], θρ)
         for regimes in unit
             for lease in regimes
                 simulate_lease(lease, theta, sim)
