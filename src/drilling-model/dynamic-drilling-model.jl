@@ -296,12 +296,17 @@ end
 
 
 function initialize_x!(x, m::DynamicDrillingModel, lease)
-    x[1] = 1
+    s1 = 1
+    s2 = end_ex1(statespace(m))+1
+    x[1] = sample([s1,s2])
 end
 
 function update_x!(x, t, m::DynamicDrillingModel, state, d)
+    wp = statespace(m)
+    @assert d in actionspace(wp,state)
+    @assert state <= end_ex0(wp)+1 || state > end_lrn(wp)
     if t+1 <= length(x)
-        x[t+1] = ssprime(statespace(m), state, d)
+        x[t+1] = ssprime(wp, state, d)
     end
 end
 
