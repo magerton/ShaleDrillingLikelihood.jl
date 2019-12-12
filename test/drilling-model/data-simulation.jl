@@ -149,8 +149,8 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = -10.0
-    αψ = 0.33
+    θρ = 0.0
+    αψ = 1.0 # 0.33
     αg = 0.56
 
     # set up coefs
@@ -159,7 +159,7 @@ end
     #                αψ, αg, γx   σ2η, σ2u   # η is iwt, u is iw
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
     #            drill  ext     α0  αg  αψ  θρ
-    θ_drill_u = [-6.5, -0.85, -2.4, αg, αψ, θρ]
+    θ_drill_u = [-6.5, -0.85, -2.8, αg, αψ, θρ]
     θ_drill_c = vcat(θ_drill_u[1:3], θρ)
 
     # model
