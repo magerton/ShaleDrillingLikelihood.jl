@@ -28,7 +28,14 @@ using ShaleDrillingLikelihood: DCDPEmax,
     ssprime,
     _dmax,
     end_inf,
-    sprime
+    sprime,
+    end_ex1,
+    UnconstrainedProblem,
+    vw_cost,
+    vw_extend,
+    vw_revenue,
+    _sgnext
+
 
 
 println("print to keep from blowing up")
@@ -45,8 +52,13 @@ println("print to keep from blowing up")
 
     Random.seed!(1234)
     f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
+    fu = UnconstrainedProblem(f)
     theta = randn(_nparm(f))
     # @show theta
+
+    @test vw_cost(fu, θ_drill_u) == θ_drill_u[1:1]
+    @test vw_extend(fu, θ_drill_u) == θ_drill_u[2:2]
+    @test vw_revenue(fu, θ_drill_u) == θ_drill_u[3:end]
 
     nψ, dmx, nz =  13, 3, 11
 
@@ -80,6 +92,17 @@ println("print to keep from blowing up")
         if sidx <= end_ex0(wp)+1
             @test D == 0
             @test _ψ(ddm, sidx, sim) == _ψ1(sim)
+
+            if sidx == end_ex1(wp)
+                @test _sgnext(wp,sidx) == true
+                @test _sgnext(wp,sidx,0) == true
+                @test _sgnext(wp,sidx,1) == false
+            else
+                @test _sgnext(wp,sidx) == false
+                @test _sgnext(wp,sidx,0) == false
+                @test _sgnext(wp,sidx,1) == false
+            end
+
             if sidx <= end_ex0(wp)
                 @test _dmax(wp,sidx) > 0
                 @test ssprime(wp, sidx, 1) > end_lrn(wp)
@@ -91,6 +114,7 @@ println("print to keep from blowing up")
             @test D > 0
             if sidx > end_lrn(wp)
                 @test _ψ(ddm, sidx, sim) == _ψ2(sim)
+                @test _sgnext(wp,sidx) == false
                 if sidx < end_inf(wp)
                     sp = ssprime(wp,sidx,1)
                     @test _dmax(wp,sidx) > 0
