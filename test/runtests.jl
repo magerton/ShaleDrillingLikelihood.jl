@@ -1,4 +1,4 @@
-# using Revise
+using Revise
 using Base.Threads
 
 println("using $(nthreads()) threads")

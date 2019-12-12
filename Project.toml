@@ -5,6 +5,7 @@ version = "0.0.0"
 [deps]
 AxisAlgorithms = "13072b0f-2c55-5437-9ae7-d433b7a33950"
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+CountPlus = "fc19a607-4a1c-5e34-bf0d-7dd5ba9e7eda"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Halton = "05a64641-4d1a-5311-8c01-b9b6c96c7c05"

@@ -1,7 +1,7 @@
 module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
 
 DOBTIME = false
-const DOPROFILE = true
+const DOPROFILE = false
 
 using ShaleDrillingLikelihood
 using Test
@@ -13,12 +13,17 @@ using InteractiveUtils
 using Distributions
 using Dates
 using StatsBase
-using Profile
-using PProf
-using Juno
+using Optim
+using CountPlus
+using LinearAlgebra
+# using Profile
+# using PProf
+# using Juno
 # if DOPROFILE
 #     using ProfileView
 # end
+
+using Optim: minimizer, minimum, maximize, maximizer, maximum
 
 using Base.Iterators: product, OneTo
 
@@ -282,18 +287,18 @@ end
         @test all(isfinite.(dEV(vf)))
         @test all(isfinite.(grad))
 
-        println("simloglik finite diff")
-        fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
-
-        fill!(grad,0)
-        fill!(hess,0)
-        println("simloglik gradient")
-        simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
-        @test !all(grad.==0)
-        @test all(isfinite.(grad))
-        @test all(isfinite.(hess))
-        @test isapprox(fd, grad; rtol=2e-5)
-        println("done")
+        # println("simloglik finite diff")
+        # fd = Calculus.gradient(xx -> simloglik_drill_data!(grad, hess, data, xx, sim, false), theta, :central)
+        #
+        # fill!(grad,0)
+        # fill!(hess,0)
+        # println("simloglik gradient")
+        # simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
+        # @test !all(grad.==0)
+        # @test all(isfinite.(grad))
+        # @test all(isfinite.(hess))
+        # @test isapprox(fd, grad; rtol=2e-5)
+        # println("done")
 
         if DOBTIME
             print("")
@@ -302,27 +307,86 @@ end
             print("")
         end
 
-        if DOPROFILE
-            Profile.clear()
-            @profile simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
-            Juno.profiletree()
-            Juno.profiler()
-            # Profile.print()
-            # ProfileView.view()
-            # pprof()
-
-        end
+        # if DOPROFILE
+        #     Profile.clear()
+        #     @profile simloglik_drill_data!(grad, hess, data, theta, sim, true, true)
+        #     Juno.profiletree()
+        #     Juno.profiler()
+        #     # Profile.print()
+        #     # ProfileView.view()
+        #     # pprof()
+        #
+        # end
 
     end
 
-    
-    # @testset "Dynamic Drilling Model optimize" begin
-    #     @testset "Test dynamic Drilling model gradients" begin
-    #         data = data_drill_w_con
-    #         theta = θ_drill_c
-    #         sim = SimulationDraws(1_000, data)
-    #         simloglik_drill_data!(grad, hess, data, theta, sim, false)
-    # end
+
+    @testset "Dynamic Drilling Model optimize" begin
+        data = data_drill_w_con
+        theta = θ_drill_c
+        sim = SimulationDraws(500, data)
+
+        nparm = _nparm(data)
+        grad = zeros(nparm)
+        hess = zeros(nparm, nparm)
+
+        simloglik_drill_data!(grad, hess, data, theta, sim, false)
+
+        function f(x)
+            LL = simloglik_drill_data!(grad, hess, data, x, sim, false, false)
+            countplus!(LL,x)
+            return -LL
+        end
+
+        function fg!(grad, x)
+            fill!(grad,0)
+            LL = simloglik_drill_data!(grad, hess, data, x, sim, true, false)
+            countplus!(LL,x)
+            grad .*= -1
+            return -LL
+        end
+
+        function h!(hess, x)
+            fill!(grad,0)
+            fill!(hess,0)
+            LL = simloglik_drill_data!(grad, hess, data, x, sim, true, true)
+            countplus!(LL,x)
+            grad .*= -1
+            return -LL
+        end
+
+        function invH0(x::AbstractVector)
+            h!(hess, x)
+            return inv(hess)
+        end
+
+        println("getting ready to optmize")
+        odfg  = OnceDifferentiable(f, fg!, fg!, theta)
+        tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
+        startcount!([100, 200, 500, 100000,], [1, 5, 5, 5,])
+        resetcount!()
+        max_time_sec = 10*60
+        opts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=max_time_sec)
+        res = optimize(tdfgh, theta*0.9, BFGS(;initial_invH = invH0), opts)
+        # res = optimize(tdfgh, theta*0.9, BFGS(), opts)
+        @show res
+        @show minimizer(res), theta
+
+        vcovinv = invH0(minimizer(res))
+        se = sqrt.(diag(vcovinv))
+        tstats = minimizer(res) ./ se
+        pvals = cdf.(Normal(), -2*abs.(tstats))
+        coef_and_se = hcat(theta, minimizer(res), se, tstats, pvals)
+
+        # θ_drill_u = [-5.0, -0.85, -2.7, 0.56, 0.33, 0.5]
+        # θ_drill_c = [-5.0, -0.85, -2.7, 0.5]
+
+        err = theta .- minimizer(res)
+        waldtest = err'*vcovinv*err
+        @show ccdf(Chisq(length(theta)), waldtest) > 0.05
+        @show coef_and_se
+        # Base.showarray(stdout, coef_and_se)
+    end
 
 
 end
