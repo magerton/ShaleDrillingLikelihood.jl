@@ -234,6 +234,12 @@ function ValueFunction(ddm::DDM_VFAO)
     return ValueFunction(ev, dev, reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
 end
 
+
+@inline function clamp_psi(m::DynamicDrillingModel, psi)
+    psis = psispace(m)
+    return clamp(psi, first(psis), last(psis))
+end
+
 # -----------------------------------------
 # Value Function Arrays
 # -----------------------------------------
@@ -254,7 +260,8 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
     vf = value_function(mod)
     vf_sitp = EV_scaled_itp(vf)
 
-    psi = _ψ(obs, sim)
+    psi_unsafe = _ψ(obs, sim)
+    psi = clamp_psi(mod, psi_unsafe)
     sp = sprime(statespace(mod), _x(obs), d)
     z = zchars(obs)
 

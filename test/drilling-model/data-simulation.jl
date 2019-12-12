@@ -149,7 +149,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.5
+    θρ = -0.7 # 0.5
     αψ = 0.33
     αg = 0.56
 
@@ -169,7 +169,7 @@ end
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parms
-    num_i = 100
+    num_i = 1_000
 
     # grid sizes
     nψ =  13
@@ -365,9 +365,9 @@ end
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
         startcount!([100, 200, 500, 100000,], [1, 5, 5, 5,])
         resetcount!()
-        max_time_sec = 10*60
+        max_time_sec = 1*60^2
         opts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=max_time_sec)
-        res = optimize(tdfgh, theta*0.9, BFGS(;initial_invH = invH0), opts)
+        res = optimize(tdfgh, theta, BFGS(;initial_invH = invH0), opts)
         # res = optimize(tdfgh, theta*0.9, BFGS(), opts)
         @show res
         @show minimizer(res), theta
