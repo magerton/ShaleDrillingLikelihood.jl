@@ -154,7 +154,7 @@ end
     discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
     # set up coefs
-    θρ = 0.75
+    θρ = 0.0
     αψ = 0.33
     αg = 0.56
 
@@ -174,7 +174,7 @@ end
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parms
-    num_i = 1_000
+    num_i = 350
 
     # grid sizes
     nψ =  13
@@ -245,9 +245,11 @@ end
 
     # construct royalty data
     data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
+    royrates_endog = royalty_rates[_y(data_roy)]
+    royrates_exog = sample(royalty_rates, num_i)
 
     # construct ichars for drilling
-    _ichars = [gr for gr in zip(log_ogip, royalty_rates[_y(data_roy)])]
+    _ichars = [gr for gr in zip(log_ogip, royrates_exog)]
 
     # construct drilling data
     # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
@@ -260,23 +262,6 @@ end
     # constrained versions of above
     data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
     data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
-
-    # states
-    end_ex1(wp), end_ex0(wp)
-
-    sort(countmap(_x(data_drill_n_con)))
-    # count of where we are before dirlling first
-    # frequency of choices before expiration
-    sort(countmap([x for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x <= end_ex0(wp) && y > 0]))
-
-    sort(countmap(_x(data_drill_n_con)[tptr(data_drill_n_con)[j2ptr(data_drill_n_con)[2]:end].-1]))
-
-    # frequency of choices before expiration
-    sort(countmap([y for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x <= end_ex0(wp)]))
-    # infill drilling choices
-    sort(countmap([y for (x,y) in zip(_x(data_drill_n_con), _y(data_drill_n_con)) if x > end_lrn(wp)]))
-    # frequency of states just before where D==2 at end_lrn(wp)+2
-    sort(countmap(_x(data_drill_n_con)[findall(x -> x==end_lrn(wp)+2, _x(data_drill_n_con)).-1]))
 
     # number of wells drilled
     nwells_w = map(s -> _D(wp,s), max_states(data_drill_w))
@@ -349,7 +334,7 @@ end
 
 
     @testset "Dynamic Drilling Model optimize" begin
-        data = data_drill_n_con
+        data = data_drill_w_con
         theta = θ_drill_c
         sim = SimulationDraws(M, data)
 
