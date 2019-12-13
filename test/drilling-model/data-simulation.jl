@@ -314,17 +314,24 @@ end
         tmpg_full = zeros(length(grad_full), num_i)
 
         M = 50
-        sim = SimulationDraws(M, data_d_sm)
+        sim_dril = SimulationDraws(M, data_d_sm)
+        sim_full = SimulationDraws(M, data_d_lg)
 
-        # let grad=grad_dril, hess=hess_dril, tmpg=tmpg_dril, thet=theta_dril, data=data_dril
-        #     simloglik!(grad, hess, tmpg, data, thet, sim, false)
-        #     simloglik!(grad, hess, tmpg, data, thet, sim, true)
-        # end
-        #
-        # let grad=grad_full, hess=hess_full, tmpg=tmpg_full, thet=theta_full, data=data_full
-        #     simloglik!(grad, hess, tmpg, data, thet, sim, false)
-        #     simloglik!(grad, hess, tmpg, data, thet, sim, true)
-        # end
+        thetasvw_dril = ShaleDrillingLikelihood.thetas(data_dril, theta_dril)
+        @test length.(thetasvw_dril) == _nparm.(data_dril)
+
+        thetasvw_full = ShaleDrillingLikelihood.thetas(data_full, theta_full)
+        @test length.(thetasvw_full) == _nparm.(data_full)
+
+        let grad=grad_dril, hess=hess_dril, tmpg=tmpg_dril, thet=theta_dril, data=data_dril, sim=sim_dril
+            simloglik!(grad, hess, tmpg, data, thet, sim, false)
+            simloglik!(grad, hess, tmpg, data, thet, sim, true)
+        end
+
+        let grad=grad_full, hess=hess_full, tmpg=tmpg_full, thet=theta_full, data=data_full, sim=sim_full
+            simloglik!(grad, hess, tmpg, data, thet, sim, false)
+            simloglik!(grad, hess, tmpg, data, thet, sim, true)
+        end
 
         # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
         #

@@ -104,10 +104,9 @@ function theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull)
 
     data_p = produce(data)
     idx_p = OneTo(_nparm(data_p))
-    cf_drops = first.(coef_links(data))
-    idx_p_drop = [cf_drop(data_p) for cf_drop in cf_drops]
+    idx_p_drops = coef_link_pdxn(data)
 
-    thet_p_short = [thet_p[i] for i in idx_p if i ∉ idx_p_drop]
+    thet_p_short = [thet_p[i] for i in idx_p if i ∉ idx_p_drops]
 
     return vcat(thet_d, thet_r[2:end], thet_p_short)
 end

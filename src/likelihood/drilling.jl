@@ -86,7 +86,7 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     fill!(gradM, 0)
 
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
-    size(gradM, 1) == length(grad) || throw(DimensionMismatch("gradM not OK"))
+    size(gradM, 1) == length(grad) || throw(DimensionMismatch("size(gradM) = $(size(gradM)) vs size(theta) = $(size(theta)) not OK"))
 
     mapper = Mapper(M, 10)
 

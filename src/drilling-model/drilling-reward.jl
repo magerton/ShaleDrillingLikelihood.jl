@@ -27,6 +27,9 @@ idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 _nparm_cost_ext(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x))
 idx_drill_g(x::DrillReward) = _nparm_cost_ext(x) + idx_g(revenue(x))
 idx_drill_ψ(x::DrillReward) = _nparm_cost_ext(x) + idx_ψ(revenue(x))
+idx_drill_g(d::DataDrill{<:DynamicDrillingModel}) = idx_drill_g(reward(_model(d)))
+idx_drill_ψ(d::DataDrill{<:DynamicDrillingModel}) = idx_drill_ψ(reward(_model(d)))
+
 
 vw_cost(   x::DrillReward, theta) = uview(theta, idx_cost(x))
 vw_extend( x::DrillReward, theta) = uview(theta, idx_extend(x))
