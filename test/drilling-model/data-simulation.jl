@@ -304,7 +304,8 @@ end
 
         @test data_full isa DataFull
 
-        function dochecks(thet, data, sim)
+        function dochecks(thet, data; M=50)
+            sim = SimulationDraws(data, M)
             k = length(thet)
             n = ShaleDrillingLikelihood.num_i(data)
             grad = zeros(k)
@@ -319,24 +320,15 @@ end
             @test all(grad .== 0)
             simloglik!(grad, hess, tmpg, data, thet, sim, true)
             angrad = copy(grad)
-            println("doing FD")
-            fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpg, data, xx, sim, false), thet, :central)
+
+            f(xx) = simloglik!(grad, hess, tmpg, data, xx, sim, false)
+            fd = Calculus.gradient(f, thet, :central)
             @test fd ≈ angrad
         end
 
-
-        M = 50
-        sim_dril = SimulationDraws(M, data_d_sm)
-        sim_full = SimulationDraws(M, data_d_lg)
-        sim_royp = SimulationDraws(M, num_i)
-
-        dochecks(theta_dril, data_dril, sim_dril)
-        dochecks(theta_royp, data_royp, sim_royp)
-        dochecks(theta_full, data_full, sim_full)
-
-        # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
-        # @test !all(grad.==0)
-        # @test isapprox(fd, grad; rtol=2e-5)
+        dochecks(theta_dril, data_dril)
+        dochecks(theta_royp, data_royp)
+        dochecks(theta_full, data_full)
     end
 
 

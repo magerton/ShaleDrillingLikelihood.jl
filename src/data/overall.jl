@@ -48,6 +48,11 @@ function DataSetofSets(d,r,p,cfl::Vector{<:Tuple})
     return DataSetofSets(d,r,p, first.(cfl), last.(cfl))
 end
 
+function SimulationDraws(data::DataSetofSets, M)
+    n = num_i(data)
+    k = _nparm(drill(data))
+    return SimulationDraws(M,n,k)
+end
 
 
 # some versions
