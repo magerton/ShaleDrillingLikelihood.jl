@@ -102,14 +102,12 @@ SEED = 1234
     rwrd_c = DrillReward(DrillingRevenue(Constrained(;log_ogip=αg, α_ψ=αψ),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
     rwrd_u = UnconstrainedProblem(rwrd_c)
     rwrd = rwrd_u
-    @show rwrd
 
     # parms
-    num_i = 1_000
+    num_i = 250
 
     # grid sizes
     nψ =  13
-    _dmax = 3
     nz = 15
 
     # simulations
@@ -197,6 +195,9 @@ SEED = 1234
         return sort(countmap(last_x))
     end
 
+    # using Juno
+    # Juno.@enter DataDrill(u, v, _zchars, _ichars, ddm, theta1; ddm_opts...)
+
     datas = map(set_seed_and_data, thetas)
     @show ys = map(d -> sum(_y(d)), datas)
     xterms = map(last_state_dist, datas)
@@ -219,8 +220,8 @@ SEED = 1234
     @test xterms[1][expired] > xterms[6][expired] # αψ ↑ ⟹ LESS expired
     @test xterms[1][exhausted] < xterms[6][exhausted] # αψ ↑ ⟹ MORE exhausted
 
-    @test xterms[1][expired] < xterms[7][expired] # ρ ↑ ⟹ MORE expired
-    @test xterms[1][exhausted] < xterms[7][exhausted] # ρ ↑ ⟹ MORE exhausted
+    @show xterms[1][expired]   < xterms[7][expired] # ρ ↑ ⟹ MORE expired
+    @show xterms[1][exhausted] , xterms[7][exhausted] # ρ ↑ ⟹ MORE exhausted
 
 
     #TODO: test payoff(d=0) == 0 ∀ sidx ≠ end_ex1(wp)

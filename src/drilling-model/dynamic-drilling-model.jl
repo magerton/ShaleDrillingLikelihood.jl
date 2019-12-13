@@ -105,7 +105,9 @@ dEV_scaled_itp(x::ValueFunction) = scaled_interpolation(dEVobj(x))
 # -----------------------------------------
 
 "Full-blown Dynamic discrete choice model"
-struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T}, AUP<:AbstractUnitProblem, TT<:Tuple, AR<:StepRangeLen{T}, VF<:Union{AbstractValueFunction,Nothing}} <: AbstractDrillModel
+struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
+    AUP<:AbstractUnitProblem, TT<:Tuple, AR<:StepRangeLen{T}, VF<:Union{AbstractValueFunction,Nothing}
+} <: AbstractDynamicDrillModel
     reward::PF            # payoff function
     discount::T           # discount factor
     statespace::AUP       # structure of endogenous choice vars

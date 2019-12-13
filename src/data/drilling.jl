@@ -309,6 +309,9 @@ function initialize_x!(x, m, lease)
 end
 update_x!(x, t, m, state, d) = nothing
 
+# check that VF is not all zeros...
+check_vf_not_zero(m::AbstractStaticDrillModel) = true
+check_vf_not_zero(m::AbstractDynamicDrillModel) = any(EV(value_function(m)) .!= 0)
 
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
@@ -329,11 +332,12 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
 
         initialize_x!(x, m, lease)
 
-        update_interpolation!(value_function(m), false)
+        dograd = false
+        update_interpolation!(value_function(m), dograd)
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
-            f(d) = full_payoff!(tmpgrad, d, obs, theta, sim, false)
+            f(d) = full_payoff!(tmpgrad, d, obs, theta, sim, dograd)
             actions = actionspace(obs)
             resize!(ubv, length(actions))
             ubv .= f.(actions)
@@ -368,6 +372,8 @@ function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
 ) where {D}
+
+    all(u .!= v) || throw(error("u,v must be different!"))
 
     num_i = length(u)
     num_i == length(v) || throw(DimensionMismatch())
@@ -404,8 +410,11 @@ function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{
     θρ = theta_drill_ρ(reward(m),theta)
 
     # update leases
-    for (i,unit) in enumerate(data)
+    println("Simulating $num_i units.")
+    @showprogress 1 for (i,unit) in enumerate(data)
         sim = SimulationDraw(u[i], v[i], θρ)
+        solve_vf_and_update_itp!(m, theta, ichars(unit), false)
+        check_vf_not_zero(m) || @warn "Value Function is all 0s!"
         for regimes in unit
             for lease in regimes
                 simulate_lease(lease, theta, sim)

@@ -13,6 +13,7 @@ using SparseArrays
 using AxisAlgorithms
 using Interpolations
 using LoopVectorization
+using ProgressMeter
 
 using UnsafeArrays
 
@@ -53,9 +54,11 @@ abstract type AbstractModel end
 struct NoModel <: AbstractModel end
 length(::NoModel) = 0
 
-abstract type AbstractDrillModel      <: AbstractModel end
-abstract type AbstractProductionModel <: AbstractModel end
-abstract type AbstractRoyaltyModel    <: AbstractModel end
+abstract type AbstractDrillModel         <: AbstractModel end
+abstract type AbstractDynamicDrillModel  <: AbstractDrillModel end
+abstract type AbstractStaticDrillModel   <: AbstractDrillModel end
+abstract type AbstractProductionModel    <: AbstractModel end
+abstract type AbstractRoyaltyModel       <: AbstractModel end
 
 abstract type AbstractModelVariations end
 

@@ -10,4 +10,7 @@ add https://github.com/chriselrod/SLEEFPirates.jl
 add https://github.com/chriselrod/LoopVectorization.jl
 
 add https://github.com/magerton/Halton
+add https://github.com/magerton/GenGlobal.jl
+add https://github.com/magerton/CountPlus
+
 ```

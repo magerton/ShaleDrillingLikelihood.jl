@@ -63,7 +63,7 @@ Random.seed!(7)
 discount = ((0x1.006b55c832502p+0)^12 / 1.125) ^ (1/4)  # real discount rate
 
 # set up coefs
-θρ = -4.0
+θρ = 0.0
 αψ = 0.33
 αg = 0.56
 
@@ -102,7 +102,7 @@ num_royalty_rates = length(royalty_rates)
 nk_royalty = length(θ_royalty) - (length(royalty_rates)-1)-2
 
 # geology
-ogip_dist = Normal(4.68,0.31)
+ogip_dist = Normal(4.68, 0.31)
 
 # price parameters
 zrho = 0.8                # rho
@@ -162,4 +162,6 @@ jldopen(filepath, "w") do file
     file["zrng"] = zrng
     file["psis"] = ψs
     file["ztrans"] = ztrans
+    file["theta"] = θ_drill_u
+    file["discount"] = discount
 end

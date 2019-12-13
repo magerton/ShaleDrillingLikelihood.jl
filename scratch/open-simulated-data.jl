@@ -18,4 +18,7 @@ file = jldopen(filepath, "r")
     in_zrng    = file["zrng"]
     in_psis    = file["psis"]
     in_ztrans  = file["ztrans"]
+
+    θ_drill, θ_ext, θ_α0, θ_αψ, θ_θρ = file["theta"]
+    
 close(file)

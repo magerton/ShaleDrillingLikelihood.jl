@@ -91,6 +91,8 @@ println("print to keep from blowing up")
     @test _psi2(sim) == _ψ2(sim)
     @test u == _psi2(sim) == _ψ2(u,v)
     @test (rho*u + sqrt(1-rho^2)*v) == _psi1(sim) == _ψ1(sim)
+    @test _psi1(SimulationDraw(u,v,Inf)) == u
+    @test _psi1(SimulationDraw(u,v,-Inf)) == v
 
     for sidx in 1:length(wp)
         D = _D(wp,sidx)
