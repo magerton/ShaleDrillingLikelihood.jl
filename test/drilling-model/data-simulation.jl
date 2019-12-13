@@ -75,7 +75,9 @@ using ShaleDrillingLikelihood: ObservationDrill,
     state_idx,
     j2ptr, tptr,
     idx_produce_ψ, idx_drill_ψ,
-    idx_produce_g, idx_drill_g
+    idx_produce_g, idx_drill_g,
+    thetas,
+    theta_produce
 
 
 println("print to keep from blowing up")
@@ -269,8 +271,8 @@ end
     nwells_w = map(s -> _D(wp,s), max_states(data_drill_w))
     nwells_n = map(s -> _D(wp,s), max_states(data_drill_n))
 
-    @show sort(countmap(nwells_w))
-    @show sort(countmap(nwells_n))
+    # @show sort(countmap(nwells_w))
+    # @show sort(countmap(nwells_n))
 
     data_produce_w = DataProduce(u, nwells_w, obs_per_well, θ_produce, log_ogip)
     data_produce_n = DataProduce(u, nwells_n, obs_per_well, θ_produce, log_ogip)
@@ -290,53 +292,48 @@ end
 
         data_dril = DataSetofSets(data_d_sm, empty, empty)
         data_full = DataSetofSets(data_d_lg, data_r, data_p, coef_links)
+        data_royp = DataSetofSets(empty, data_r, data_p)
 
         theta_dril = θ_drill_c
         theta_tuple = (θ_drill_u, θ_royalty, θ_produce)
         theta_full = theta_linked(theta_tuple, data_full)
+        theta_royp = vcat(θ_royalty, θ_produce)
 
-        @show theta_tuple
-        @show length(vcat(theta_tuple...))
-        @show ShaleDrillingLikelihood.idx_drill(  data_full)
-        @show ShaleDrillingLikelihood.idx_royalty(data_full)
-        @show @which ShaleDrillingLikelihood.idx_produce(data_full)
+        @test theta_produce(data_produce_w, θ_produce)[idx_produce_g(data_produce_w)] == αg
+        @test theta_produce(data_produce_n, θ_produce)[idx_produce_g(data_produce_n)] == αg
 
         @test data_full isa DataFull
 
-        # @show ShaleDrillingLikelihood.thetas(data_full, theta_full)
+        function dochecks(thet, data, sim)
+            k = length(thet)
+            n = ShaleDrillingLikelihood.num_i(data)
+            grad = zeros(k)
+            hess = zeros(k,k)
+            tmpg = zeros(k,n)
 
-        grad_dril = similar(theta_dril)
-        grad_full = similar(theta_full)
-        hess_dril = zeros(length(grad_dril), length(grad_dril))
-        hess_full = zeros(length(grad_full), length(grad_full))
+            theta_vw = thetas(data, thet)
+            @test length.(theta_vw) == _nparm.(data)
+            @test last(size(sim)) == n
 
-        tmpg_dril = zeros(length(grad_dril), num_i)
-        tmpg_full = zeros(length(grad_full), num_i)
+            simloglik!(grad, hess, tmpg, data, thet, sim, false)
+            @test all(grad .== 0)
+            simloglik!(grad, hess, tmpg, data, thet, sim, true)
+            angrad = copy(grad)
+            println("doing FD")
+            fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpg, data, xx, sim, false), thet, :central)
+            @test fd ≈ angrad
+        end
+
 
         M = 50
         sim_dril = SimulationDraws(M, data_d_sm)
         sim_full = SimulationDraws(M, data_d_lg)
+        sim_royp = SimulationDraws(M, num_i)
 
-        thetasvw_dril = ShaleDrillingLikelihood.thetas(data_dril, theta_dril)
-        @test length.(thetasvw_dril) == _nparm.(data_dril)
+        dochecks(theta_dril, data_dril, sim_dril)
+        dochecks(theta_royp, data_royp, sim_royp)
+        dochecks(theta_full, data_full, sim_full)
 
-        thetasvw_full = ShaleDrillingLikelihood.thetas(data_full, theta_full)
-        @test length.(thetasvw_full) == _nparm.(data_full)
-
-        let grad=grad_dril, hess=hess_dril, tmpg=tmpg_dril, thet=theta_dril, data=data_dril, sim=sim_dril
-            simloglik!(grad, hess, tmpg, data, thet, sim, false)
-            simloglik!(grad, hess, tmpg, data, thet, sim, true)
-        end
-
-        let grad=grad_full, hess=hess_full, tmpg=tmpg_full, thet=theta_full, data=data_full, sim=sim_full
-            simloglik!(grad, hess, tmpg, data, thet, sim, false)
-            simloglik!(grad, hess, tmpg, data, thet, sim, true)
-        end
-
-        # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
-        #
-        # fill!(grad,0)
-        # fill!(hess,0)
         # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
         # @test !all(grad.==0)
         # @test isapprox(fd, grad; rtol=2e-5)

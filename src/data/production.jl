@@ -252,6 +252,7 @@ function DataProduce(psi::Vector, grouplens::Vector, ntrange::UnitRange, theta::
         end
     end
 
+    update_xsum!(data)
     update_nu!(data, theta)
 
     return data

@@ -64,6 +64,7 @@ coef_link_drill(d::DataSetofSets) = d.coef_link_drill
 coef_link_pdxn(d::DataSetofSets) = d.coef_link_pdxn
 coef_links(d::DataSetofSets) = zip(coef_link_pdxn(d), coef_link_drill(d))
 length(d::DataSetofSets) = 3
+num_i(d::DataSetofSets) = maximum(length.(d))
 
 iterate(d::DataSetofSets, state...) = iterate(data(d), state...)
 Broadcast.broadcastable(d::DataSetofSets) = data(d)
