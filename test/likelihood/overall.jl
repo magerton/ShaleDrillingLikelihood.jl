@@ -51,6 +51,8 @@ println("testing overall likelihood")
     θ_produce = vcat(αψ, rand(3), 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
+    @test idx_produce_ψ isa Function
+    @test idx_drill_ψ isa Function
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
 
     # make data

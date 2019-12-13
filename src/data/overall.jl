@@ -12,20 +12,43 @@ export AbstractDataSetofSets,
 # Data structure
 # -------------------------------------------------
 
-struct DataSetofSets{D<:Union{DataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet}}
+function check_coefs_in_nparm(cf, d::AbstractDataSet)
+    n = _nparm(d)
+    issubset(Set(cf), OneTo(n)) || throw(error("coefs $cf not in 1:$n"))
+    allunique(cf) || throw(error("coefs $cf not unique"))
+    return true
+end
+
+struct DataSetofSets{
+    D<:Union{AbstractDataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet},
+    }
     data::Tuple{D,R,P}
-    coef_links::Vector{NTuple{2,Function}}
-    function DataSetofSets(d::D, r::R, p::P, coef_links) where {D,R,P}
+    coef_link_pdxn::Vector{Int}
+    coef_link_drill::Vector{Int}
+    function DataSetofSets(d::D, r::R, p::P, cfp::V, cfd::V) where {D,R,P,V<:Vector{Int}}
         drp = (d, r, p)
         lengths = length.(drp)
         issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths"))
+        length(cfp) == length(cfd) || throw(DimensionMismatch())
+        check_coefs_in_nparm(cfp, p)
+        check_coefs_in_nparm(cfd, d)
         any(lengths .> 0 ) || throw(error("one dataset must have nonzero length"))
-        return new{D,R,P}( drp, coef_links)
+        return new{D,R,P}(drp, cfp, cfd)
     end
 end
 
 # If no coef_links provided
-DataSetofSets(d,r,p) = DataSetofSets(d,r,p,Vector{NTuple{2,Function}}(undef,0))
+DataSetofSets(d,r,p) = DataSetofSets(d,r,p,zeros(Int,0),zeros(Int,0))
+
+function DataSetofSets(d,r,p, cfp::Vector, cfd::Vector)
+    DataSetofSets(d,r,p, map(f -> f(p), cfp), map(f -> f(d), cfd))
+end
+
+function DataSetofSets(d,r,p,cfl::Vector{<:Tuple})
+    return DataSetofSets(d,r,p, first.(cfl), last.(cfl))
+end
+
+
 
 # some versions
 const DataFull = DataSetofSets{<:AbstractDataDrill, <:DataRoyalty, <:DataProduce}
@@ -37,7 +60,9 @@ const DataDrillOnly = DataSetofSets{<:AbstractDataDrill, EmptyDataSet, EmptyData
 # -------------------------------------------------
 
 data(d::DataSetofSets) = d.data
-coef_links(d::DataSetofSets) = d.coef_links
+coef_link_drill(d::DataSetofSets) = d.coef_link_drill
+coef_link_pdxn(d::DataSetofSets) = d.coef_link_pdxn
+coef_links(d::DataSetofSets) = zip(coef_link_pdxn(d), coef_link_drill(d))
 length(d::DataSetofSets) = 3
 
 iterate(d::DataSetofSets, state...) = iterate(data(d), state...)
@@ -68,10 +93,9 @@ idx_drill(  data::DataSetofSets) = idx_drill(drill(data))
 idx_royalty(data::DataSetofSets) = last(idx_drill(data)) .+ idx_royalty(royalty(data))
 idx_produce(data::DataSetofSets) = last(idx_royalty(data)) .+ idx_produce(produce(data))
 
-theta_ρ(data::DataSetofSets, theta) = theta[_nparm(drill(data))]
-theta_ρ(data::DataRoyaltyProduce) = theta[1]
-
-
+# theta_ρ(data::DataSetofSets{EmptyDataSet,<:DataRoyalty}, theta) = theta[1]
+theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(data))]
+theta_ρ(data::DataRoyaltyProduce, theta) = theta[1]
 
 
 function theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull)
@@ -101,8 +125,8 @@ function idx_produce(data::DataFull)
     kr = _nparm(dr)
     idx = collect((kd+kr-1) .+ idx_produce(dp))
     for (idxp, idxd) in coef_links(data)
-        idx[idxp(dp)] = idxd(dd)
-        idx[idxp(dp)+1:end] .-= 1
+        idx[idxp] = idxd
+        idx[idxp+1:end] .-= 1
     end
     return idx
 end
