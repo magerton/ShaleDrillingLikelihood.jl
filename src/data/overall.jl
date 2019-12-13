@@ -1,6 +1,12 @@
 abstract type AbstractDataSetofSets <: AbstractDataStructure end
 
-export AbstractDataSetofSets, DataSetofSets, DataFull, DataRoyaltyProduce, EmptyDataSet
+export AbstractDataSetofSets,
+    DataSetofSets,
+    DataFull,
+    DataRoyaltyProduce,
+    EmptyDataSet,
+    DataDrillOnly,
+    theta_linked
 
 # -------------------------------------------------
 # Data structure
@@ -22,8 +28,9 @@ end
 DataSetofSets(d,r,p) = DataSetofSets(d,r,p,Vector{NTuple{2,Function}}(undef,0))
 
 # some versions
-const DataFull = DataSetofSets{<:DataDrill, <:DataRoyalty, <:DataProduce}
+const DataFull = DataSetofSets{<:AbstractDataDrill, <:DataRoyalty, <:DataProduce}
 const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
+const DataDrillOnly = DataSetofSets{<:AbstractDataDrill, EmptyDataSet, EmptyDataSet}
 
 # -------------------------------------------------
 # methods
@@ -60,6 +67,27 @@ idx_produce(::EmptyDataSet) = 1:0
 idx_drill(  data::DataSetofSets) = idx_drill(drill(data))
 idx_royalty(data::DataSetofSets) = last(idx_drill(data)) .+ idx_royalty(royalty(data))
 idx_produce(data::DataSetofSets) = last(idx_royalty(data)) .+ idx_produce(produce(data))
+
+theta_ρ(data::DataSetofSets, theta) = theta[_nparm(drill(data))]
+theta_ρ(data::DataRoyaltyProduce) = theta[1]
+
+
+
+
+function theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull)
+    length.(thetas) == _nparm.(data) || throw(DimensionMismatch())
+    thet_d, thet_r, thet_p = thetas
+
+    data_p = produce(data)
+    idx_p = OneTo(_nparm(data_p))
+    cf_drops = first.(coef_links(data))
+    idx_p_drop = [cf_drop(data_p) for cf_drop in cf_drops]
+
+    thet_p_short = [thet_p[i] for i in idx_p if i ∉ idx_p_drop]
+
+    return vcat(thet_d, thet_r[2:end], thet_p_short)
+end
+
 
 # full datasets
 function idx_royalty(data::DataFull)

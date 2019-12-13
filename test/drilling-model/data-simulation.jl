@@ -73,7 +73,9 @@ using ShaleDrillingLikelihood: ObservationDrill,
     _x, _y,
     end_ex0, end_ex1, end_lrn, end_inf,
     state_idx,
-    j2ptr, tptr
+    j2ptr, tptr,
+    idx_produce_ψ, idx_drill_ψ,
+    idx_produce_g, idx_drill_g
 
 
 println("print to keep from blowing up")
@@ -175,11 +177,10 @@ end
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parms
-    num_i = 350
+    num_i = 15
 
     # grid sizes
     nψ =  13
-    _dmax = 3
     nz = 15
 
     # simulations
@@ -277,6 +278,65 @@ end
     @test sum(nwells_w .> 0) == length(Set(view(_x(data_produce_w), 1, :)))
     @test sum(nwells_n .> 0) == length(Set(view(_x(data_produce_n), 1, :)))
 
+    @testset "Big Joint model" begin
+
+        data_d_sm = data_drill_w_con
+        data_d_lg = data_drill_w
+        data_p    = data_produce_w
+        data_r    = data_roy
+        empty = EmptyDataSet()
+
+        coef_links = [(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]
+
+        data_dril = DataSetofSets(data_d_sm, empty, empty)
+        data_full = DataSetofSets(data_d_lg, data_r, data_p, coef_links)
+
+        theta_dril = θ_drill_c
+        theta_tuple = (θ_drill_u, θ_royalty, θ_produce)
+        theta_full = theta_linked(theta_tuple, data_full)
+
+        @show theta_tuple
+        @show length(vcat(theta_tuple...))
+        @show ShaleDrillingLikelihood.idx_drill(  data_full)
+        @show ShaleDrillingLikelihood.idx_royalty(data_full)
+        @show @which ShaleDrillingLikelihood.idx_produce(data_full)
+
+        @test data_full isa DataFull
+
+        # @show ShaleDrillingLikelihood.thetas(data_full, theta_full)
+
+        grad_dril = similar(theta_dril)
+        grad_full = similar(theta_full)
+        hess_dril = zeros(length(grad_dril), length(grad_dril))
+        hess_full = zeros(length(grad_full), length(grad_full))
+
+        tmpg_dril = zeros(length(grad_dril), num_i)
+        tmpg_full = zeros(length(grad_full), num_i)
+
+        M = 50
+        sim = SimulationDraws(M, data_d_sm)
+
+        # let grad=grad_dril, hess=hess_dril, tmpg=tmpg_dril, thet=theta_dril, data=data_dril
+        #     simloglik!(grad, hess, tmpg, data, thet, sim, false)
+        #     simloglik!(grad, hess, tmpg, data, thet, sim, true)
+        # end
+        #
+        # let grad=grad_full, hess=hess_full, tmpg=tmpg_full, thet=theta_full, data=data_full
+        #     simloglik!(grad, hess, tmpg, data, thet, sim, false)
+        #     simloglik!(grad, hess, tmpg, data, thet, sim, true)
+        # end
+
+        # fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
+        #
+        # fill!(grad,0)
+        # fill!(hess,0)
+        # simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
+        # @test !all(grad.==0)
+        # @test isapprox(fd, grad; rtol=2e-5)
+    end
+
+
+    if false
     @testset "Test dynamic Drilling model gradients" begin
         data = data_drill_n_con
         theta = θ_drill_c
@@ -402,7 +462,7 @@ end
         @show coef_and_se
         # Base.showarray(stdout, coef_and_se)
     end
-
+    end
 
 end
 
