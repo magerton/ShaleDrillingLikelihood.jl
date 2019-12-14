@@ -73,6 +73,7 @@ if SHOW_CODE_WARNTYPE
     @code_warntype f2(jnk, mysitp, vec)
 end
 
+# timing to figure out most efficient way to udpate
 @btime f1($jnk, $mysitp, $vec)
 @btime f2($jnk, $mysitp, $vec)
 

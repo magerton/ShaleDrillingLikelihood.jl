@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillModel_ComputeFullPayoff
 
 DOBTIME = false
 PRINTSTUFF = false

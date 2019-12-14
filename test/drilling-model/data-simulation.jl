@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillModel_Simulation
 
 DOBTIME = false
 DOPROFILE = false
@@ -237,16 +237,6 @@ end
     ddm_with_t1ev   = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
     ddm_c_no_t1ev   = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
     ddm_c_with_t1ev = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
-
-    # tests about royalty coef
-    @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
-
-    # test drilling coef
-    @test theta_ρ(rwrd, θ_drill_u) == θρ
-    @test theta_ρ(revenue(rwrd), vw_revenue(rwrd, θ_drill_u)) == θρ
-    @test θ_drill_u[1:1] == vw_cost(rwrd, θ_drill_u)
-    @test θ_drill_u[2:2] == vw_extend(rwrd, θ_drill_u)
-    @test θ_drill_u[end-3:end] == vw_revenue(rwrd, θ_drill_u)
 
     # construct royalty data
     data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)

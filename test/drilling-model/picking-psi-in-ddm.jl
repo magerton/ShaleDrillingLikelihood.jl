@@ -41,7 +41,7 @@ using ShaleDrillingLikelihood: DCDPEmax,
 
 println("print to keep from blowing up")
 
-@testset "DDM - thetas" begin
+@testset "Selection of psi in DDM" begin
 
     # set up coefs
     θρ = 0.0
