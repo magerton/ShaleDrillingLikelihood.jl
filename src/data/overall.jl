@@ -114,6 +114,8 @@ function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
     return vcat(thet_d, thet_r[2:end], thet_p_short)
 end
 
+merge_thetas(thetas, data) = vcat(thetas...)
+
 @deprecate theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull) merge_thetas(thetas,data)
 
 # full datasets
