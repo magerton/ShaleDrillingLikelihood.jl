@@ -56,7 +56,7 @@ function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
     if nJ > 0
         LLj .= log.(j1chars(InitialDrilling(unit)))
         for (ji,lease) in enumerate(InitialDrilling(unit))
-            gradj = view(gradJ, :, ji)
+            gradj = uview(gradJ, :, ji)
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
@@ -88,24 +88,13 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
     size(gradM, 1) == length(grad) || throw(DimensionMismatch("size(gradM) = $(size(gradM)) vs size(theta) = $(size(theta)) not OK"))
 
-    mapper = Mapper(M, 10)
-
     model = _model(_data(unit))
     solve_vf_and_update_itp!(model, theta, ichars(unit), dograd; kwargs...)
 
-    let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
-        @threads for j in OneTo(nthreads())
-            local dtvi = dtv[threadid()]  # thread-specific tmpvars
-            while true
-                mrng = nextrange!(mapper)
-                isnothing(mrng) && break
-                @inbounds for m in mrng
-                    local sims_m = sims[m]        # get 1 particular simulation
-                    local gradm_i = view(gradM, :, m)
-                    llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtvi, dograd)
-                end
-            end
-        end
+    @inbounds for m in OneTo(M)
+        sims_m = sims[m]        # get 1 particular simulation
+        gradm_i = uview(gradM, :, m)
+        llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtv, dograd)
     end
 end
 

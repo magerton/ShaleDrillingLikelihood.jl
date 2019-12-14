@@ -30,7 +30,7 @@ export DataDrill
 
 abstract type AbstractDataDrill <: AbstractDataSet end
 
-struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<:DrillingTmpVarsAll} <: AbstractDataDrill
+struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -48,7 +48,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
 
     # time indices
     zchars::ETV
-    dtv::DTV
+    dtv::DrillingTmpVars{Float64}
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
         jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
@@ -83,9 +83,8 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
 
         # construct tmpvars
         dtv = DrillingTmpVars(maxj1length(j1ptr), model, Float64)
-        DTV = typeof(dtv)
 
-        return new{M,ETV,ITup,XT,DTV}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
+        return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
     end
 end
 
