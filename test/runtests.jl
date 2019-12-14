@@ -24,11 +24,11 @@ end
 # include("drilling-model/picking-psi-in-ddm.jl")
 # include("drilling-model/test-full-payoff.jl")
 # include("drilling-model/dynamic-drilling-learning-versions.jl")
-# # include("likelihood/drilling.jl")
+# include("likelihood/drilling.jl")
 # include("likelihood/overall.jl")
 #
 # include("full-model/data-simulation-comparative-statics.jl")
 # include("full-model/data-simulation.jl")
 
 include("full-model/optimize-static.jl")
-# include("full-model/optimize.jl")
+# include("full-model/optimize-dynamic.jl")

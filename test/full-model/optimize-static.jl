@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_Optimize
+module ShaleDrillingLikelihood_OptimizeStatic
 
 DOBTIME = false
 DOPROFILE = false
@@ -82,7 +82,9 @@ using ShaleDrillingLikelihood: ObservationDrill,
     theta_produce,
     serial_simloglik!,
     parallel_simloglik!,
-    TestDrillModel
+    TestDrillModel,
+    drill,
+    DataFull
 
 
 
@@ -102,14 +104,14 @@ println("print to keep from blowing up")
 
     model_drill = TestDrillModel()
     θ_drill   = [αψ, 2.0, -2.0, -0.75, θρ]
-    θ_royalty = [θρ, 1.0,    -1.0, 1.0, 1.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    θ_royalty = [θρ, 1.0,    0.5, 0.5,    -0.6, 0.6]  # dψdρ, ψ, β, κ
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
 
     M = 250
-    num_i = 500
-    num_zt = 150          # drilling
+    num_i = 300
+    num_zt = 200          # drilling
 
     # observations
     obs_per_well = 10:20  # pdxn
@@ -144,19 +146,22 @@ println("print to keep from blowing up")
     royrates_exog = sample(royalty_rates, num_i)
 
     # construct ichars for drilling
-    _ichars = [gr for gr in zip(log_ogip, data_roy)]
+    _ichars = [gr for gr in zip(log_ogip, royrates_exog)]
+    @test _ichars isa Vector{<:NTuple{2,Number}}
 
 
-    data_drill_opt = (minmaxleases=1:2, nper_initial=10:20, nper_development=0:10, tstart=1:50,)
+    data_drill_opt = (minmaxleases=1:5, nper_initial=40:40, nper_development=40:40, tstart=1:50,)
     data_drill   = DataDrill(u, v, _zchars, _ichars, TestDrillModel(), θ_drill; data_drill_opt...)
     data_produce = DataProduce(u, 10, obs_per_well, θ_produce, log_ogip)
 
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
     data_full = DataSetofSets(data_drill, data_roy, data_produce, coef_links)
     data_small = DataSetofSets(EmptyDataSet(), EmptyDataSet(), data_produce)
+    data_drill = DataSetofSets(data_drill, EmptyDataSet(), EmptyDataSet())
 
+    @test data_full isa DataFull
 
-    DOPAR = false
+    DOPAR = true
 
     if DOPAR
         rmprocs(workers())
@@ -169,56 +174,85 @@ println("print to keep from blowing up")
     println_time_flush("Package on workers")
 
 
-    # d = data_full
-    # t = θ
-    d = data_small
-    t = θ_produce
+    datas  = [ data_small,   data_drill,   data_full,]
+    datanm = ["data_small", "data_drill", "data_full",]
+    thetas = [θ_produce, θ_drill, θ, ]
 
-    resetcount!()
+    theta_tuple = (θ_drill, θ_royalty, θ_produce)
+    theta_full = merge_thetas(theta_tuple, data_full)
+    @test theta_full == θ
 
-    leo = LocalEstObj(d,t)
-    s = SimulationDraws(M, ShaleDrillingLikelihood.data(leo))
-    reo = RemoteEstObj(leo, M)
-    ew = EstimationWrapper(leo, reo)
 
-    for dograd in false:true
-        @eval @everywhere set_g_RemoteEstObj($reo)
-        simloglik!(1, t, dograd, reo)
-        serial_simloglik!(ew, t, dograd)
-        parallel_simloglik!(ew, t, dograd)
+    for (d,t,nm) in zip(datas, thetas, datanm)
+
+        @test _nparm(d) .== length(t)
+        println("rocking out dataset $nm")
+        resetcount!()
+
+        leo = LocalEstObj(d,t)
+        s = SimulationDraws(M, ShaleDrillingLikelihood.data(leo))
+        reo = RemoteEstObj(leo, M)
+        ew = EstimationWrapper(leo, reo)
+
+        for dograd in false:true
+            println_time_flush("Moving data to workers")
+            @eval @everywhere set_g_RemoteEstObj($reo)
+            println_time_flush("Data moved")
+            simloglik!(1, t, dograd, reo)
+            serial_simloglik!(ew, t, dograd)
+            parallel_simloglik!(ew, t, dograd)
+        end
+
+        leograd = ShaleDrillingLikelihood.grad(leo)
+
+        fill!(leograd, 0)
+        serial_simloglik!(ew, t, true)
+        gs = copy(leograd)
+        @test any(gs .!= 0)
+
+        fill!(leograd, 0)
+        parallel_simloglik!(ew, t, true)
+        gp = copy(leograd)
+        @test any(gp .!= 0)
+        @test gs ≈ gp
+
+        # fds = Calculus.gradient(x -> serial_simloglik!(  ew, x, false), t, :central)
+        # @test fds ≈ fdp
+        # if !(gs ≈ fds)
+        #     println("gs !≈ fds")
+        #     @show extrema(gs .- fds), gs, fds
+        # end
+
+        fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), t, :central)
+        if !(gp ≈ fdp)
+            println("gp !≈ fdp")
+            @show extrema(gp .- fdp), gp, fdp
+        end
+
+        if true
+            # startcount!([1, 100000,], [100, 100,])
+            resetcount!()
+            startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
+            res = solve_model(ew, 0.9*t; show_trace=true, time_limit=30)
+            @show res
+            @test minimizer(res) == theta1(leo)
+
+            @show Fstat!(leo)
+
+            se = ShaleDrillingLikelihood.stderr(leo)
+            rhohat = theta_ρ(d, minimizer(res))
+            rhotrue = θρ
+            if drill(d) == EmptyDataSet()
+            else
+                @test theta_ρ(d, t) == θρ
+                rho_se = theta_ρ(d, se)
+                rho_t = (rhohat - rhotrue) / rho_se
+                rho_p = ccdf(Normal(), -2*abs(rho_t))
+                @show rhohat, rhotrue, rho_se, rho_t, rho_p
+            end
+        end
     end
-
-    # startcount!([1, 100000,], [100, 100,])
-    resetcount!()
-    startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
-    res = solve_model(ew, t; show_trace=true, time_limit=10)
-    @show res
-    @test minimizer(res) == theta1(leo)
-
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

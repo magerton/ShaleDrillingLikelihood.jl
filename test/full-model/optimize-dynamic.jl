@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_Optimize
+module ShaleDrillingLikelihood_OptimizeDynamic
 
 DOBTIME = false
 DOPROFILE = false
@@ -246,18 +246,18 @@ println("print to keep from blowing up")
         reo = RemoteEstObj(leo, M)
         ew = EstimationWrapper(leo, reo)
 
-        for dograd in false:true
-            @eval @everywhere set_g_RemoteEstObj($reo)
-            simloglik!(1, t, dograd, reo)
-            serial_simloglik!(ew, t, dograd)
-            parallel_simloglik!(ew, t, dograd)
-        end
-
-        # startcount!([1, 100000,], [100, 100,])
-        startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
-        res = solve_model(ew, t; show_trace=true, time_limit=maxt)
-        @show res
-        @test minimizer(res) == theta1(leo)
+        # for dograd in false:true
+        #     @eval @everywhere set_g_RemoteEstObj($reo)
+        #     simloglik!(1, t, dograd, reo)
+        #     serial_simloglik!(ew, t, dograd)
+        #     parallel_simloglik!(ew, t, dograd)
+        # end
+        #
+        # # startcount!([1, 100000,], [100, 100,])
+        # startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
+        # res = solve_model(ew, t; show_trace=true, time_limit=maxt)
+        # @show res
+        # @test minimizer(res) == theta1(leo)
 
         # leograd = ShaleDrillingLikelihood.grad(leo)
         #
