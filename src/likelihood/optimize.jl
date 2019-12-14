@@ -1,3 +1,5 @@
+using Optim: OnceDifferentiable
+
 export RemoteEstObj,
     LocalEstObj,
     EstimationWrapper,
@@ -188,21 +190,23 @@ function parallel_simloglik!(ew, theta, dograd)
 end
 
 
-function OnceDifferentiable(ew::EstimationWrapper, theta)
-    f(x) = parallel_simloglik!(ew, x, false)
+function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 
-    function fg!(g,x)
-        nll = parallel_simloglik!(ew, x, true)
+    function f(x::Vector)
+        return parallel_simloglik!(ew, x, false)
+    end
+
+    function fg!(g::Vector,x::Vector)
+        nll = serial_simloglik!(ew, x, true)
         g .= grad(LocalEstObj(ew))
         return nll
     end
 
-    odfg = OnceDifferentiable(f, fg!, fg!, theta)
+    odfg = Optim.OnceDifferentiable(f, fg!, fg!, theta)
+    return odfg
 end
 
-hessian!(ew::EstimationWrapper, theta=theta1(ew)) =
-
-function invhesian!(ew::EstimationWrapper, theta)
+function invhessian!(ew::EstimationWrapper, theta)
     parallel_simloglik!(ew, theta, true)
     leo = LocalEstObj(ew)
     invhess(leo) .= inv(hess(leo))
@@ -213,10 +217,9 @@ function solve_model(ew, theta; allow_f_increases=true, show_trace=true, time_li
     leo = LocalEstObj(ew)
     theta0(leo) .= theta
     odfg  = OnceDifferentiable(ew, theta)
-    startcount!([100, 200, 500, 100000,], [1, 5, 5, 5,])
     resetcount!()
 
-    bfgs =  BFGS(;initial_invH = x -> invhesian!(ew, x))
+    bfgs =  BFGS(;initial_invH = x -> invhessian!(ew, x))
     opts = Optim.Options(
         allow_f_increases=allow_f_increases,
         show_trace=show_trace,
@@ -228,10 +231,10 @@ function solve_model(ew, theta; allow_f_increases=true, show_trace=true, time_li
     return res
 end
 
-
+export theta0, theta1, hess, invhess, grad, stderr, tstats, pvals, coef_and_se!
 
 stderr!(leo) = sqrt.(diag(invhess!(leo)))
-stder(leo) = sqrt.(diag(invhess(leo)))
+stderr(leo) = sqrt.(diag(invhess(leo)))
 tstats!(leo) = theta1(leo) ./ stderr!(leo)
 tstats(leo) = theta1(leo) ./ stderr(leo)
 pvals!(leo) = cdf.(Normal(), -2*abs.(tstats!(leo)))

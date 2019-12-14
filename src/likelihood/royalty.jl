@@ -7,7 +7,7 @@ function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     L = _num_choices(obs)
     η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
     η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
-    η1 < η2 || throw(error("η1 < η2 is false"))
+    η1 < η2 || throw(error("$η1 = η1 < η2=$η2 is false"))
     return η1, η2
 end
 
@@ -82,6 +82,8 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     xbeta = _xbeta(obs)
 
     βψ = theta_royalty_ψ(obs, theta)
+    issorted(theta_royalty_κ(obs, theta)) || throw(error("royalty κ not sorted"))
+
 
     @inbounds for m in OneTo(M)
         zm  = xbeta + βψ * psi[m]

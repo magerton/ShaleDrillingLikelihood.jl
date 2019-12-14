@@ -116,14 +116,14 @@ println("print to keep from blowing up")
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parameters
-    num_i = 3
+    num_i = 1_000
 
     # grid sizes
     nψ =  13
     nz = 15
 
     # simulations
-    M = 5
+    M = 500
 
     # observations
     num_zt = 150          # drilling
@@ -232,8 +232,13 @@ println("print to keep from blowing up")
     @everywhere using ShaleDrillingLikelihood
     println_time_flush("Package on workers")
 
-    for (d,t) in zip( [data_royp, data_dril, data_full], [theta_royp, theta_dril, theta_full] )
 
+    dataversions = [data_royp, data_dril, data_full]
+    thetaversions = [theta_royp, theta_dril, theta_full]
+    maxtimes = [2, 10, 10] .* 60
+
+    for (d,t,maxt) in zip(dataversions, thetaversions, maxtimes  )
+    # for (d,t,maxt) in zip( [data_royp,], [theta_royp,] [120,])
         resetcount!()
 
         leo = LocalEstObj(d,t)
@@ -247,6 +252,12 @@ println("print to keep from blowing up")
             serial_simloglik!(ew, t, dograd)
             parallel_simloglik!(ew, t, dograd)
         end
+
+        # startcount!([1, 100000,], [100, 100,])
+        startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
+        res = solve_model(ew, t; show_trace=true, time_limit=maxt)
+        @show res
+        @test minimizer(res) == theta1(leo)
 
         # leograd = ShaleDrillingLikelihood.grad(leo)
         #

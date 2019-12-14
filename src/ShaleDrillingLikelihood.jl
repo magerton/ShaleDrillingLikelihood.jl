@@ -18,6 +18,7 @@ using GenGlobal
 using SharedArrays
 using Distributed
 using CountPlus
+using Optim
 
 using UnsafeArrays
 

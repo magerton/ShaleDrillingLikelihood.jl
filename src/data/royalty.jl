@@ -33,8 +33,8 @@ struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataS
         k,n = size(x)
         length(y) == n  || throw(DimensionMismatch())
         l,L = extrema(y)
-        l == 1 || throw(error())
-        L == length(countmap(y)) || throw(error())
+        l == 1 || throw(error("lowest royalty ID > 1"))
+        L == length(countmap(y)) || throw(error("highest royalty ID < L = $L"))
         return new{M,I,T}(model, y, x, Vector{T}(undef, n), L)
     end
 end
