@@ -47,7 +47,8 @@ const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,Observ
 #---------------------------
 
 _xbeta(      d::DataOrObsRoyalty) = d.xbeta
-_num_choices(d::DataOrObsRoyalty) = d.num_choices
+num_choices(d::DataOrObsRoyalty) = d.num_choices
+@deprecate _num_choices(d::DataOrObsRoyalty) num_choices(d)
 
 # DataRoyalty interface
 #---------------------------
@@ -165,6 +166,7 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vec
     l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
     data = DataRoyalty(RoyaltyModel(),l,X)
 
+    num_choices(data) == L || throw(error("not all choices taken"))
     return data
 end
 
