@@ -151,3 +151,4 @@ function split_thetas(data::DataSetofSets, theta::AbstractVector)
 end
 
 @deprecate thetas(data::DataSetofSets, theta::AbstractVector) split_thetas(data,theta)
+@deprecate split_theta(data, theta) split_thetas(data, theta)

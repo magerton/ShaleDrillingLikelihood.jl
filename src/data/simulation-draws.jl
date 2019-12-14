@@ -105,6 +105,12 @@ function SimulationDraws(M, data::AbstractDataSet; kwargs...)
     return SimulationDraws(M, length(data), _nparm(_model(data)); kwargs...)
 end
 
+function SimulationDraws(M, data::DataSetofSets; kwargs...)
+    drillmod = _model(drill(data))
+    return SimulationDraws(M, length(data), _nparm(drillmod); kwargs...)
+end
+
+
 # interface
 #---------------------------
 
@@ -128,10 +134,13 @@ _llm(  s::SimulationDrawOrDraws) = _qm(s)
 # @deprecate _dψ1dρ(s::SimulationDrawOrDraws) _dψ1dθρ(s)
 
 _num_sim(s::SimulationDraws) = size(_u(s),1)
+num_i(s::SimulationDrawsMatrix) = size(_u(s),2)
+num_i(s::SimulationDrawsVector) = 1
 
 # manipulate like array
 tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψ1dθρ(s)
 size(s::SimulationDraws) = size(_u(s))
+_nparm(s::SimulationDraws) = size(_drillgradm(s),1)
 
 function view(s::SimulationDrawsMatrix, i::Integer)
     psiviews = view.(tup(s), :, i)
