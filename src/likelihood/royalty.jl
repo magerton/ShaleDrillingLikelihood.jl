@@ -84,25 +84,27 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
 
     βψ = theta_royalty_ψ(obs, theta)
-    isfinite(βψ) || throw(error("royalty βψ = $βψ not finite!"))
-
     κ = theta_royalty_κ(obs, theta)
-    issorted(κ) || throw(error("royalty κ = $κ not sorted"))
 
-    @inbounds for m in OneTo(M)
-        zm  = xbeta + βψ * psi[m]
-        eta12 = η12(obs, theta, zm)
+    if issorted(κ)
+        @inbounds for m in OneTo(M)
+            zm  = xbeta + βψ * psi[m]
+            eta12 = η12(obs, theta, zm)
 
-        if dograd == false
-            LLm[m] += loglik_royalty(obs, eta12)
-        else
-            η1, η2 = eta12
-            F,LL  = lik_loglik_royalty(obs, eta12)
-            LLm[m] += LL
-            am[m] = normpdf(η1) / F
-            bm[m] = normpdf(η2) / F
-            cm[m] = dlogcdf_trunc(η1, η2)
+            if dograd == false
+                LLm[m] += loglik_royalty(obs, eta12)
+            else
+                η1, η2 = eta12
+                F,LL  = lik_loglik_royalty(obs, eta12)
+                LLm[m] += LL
+                am[m] = normpdf(η1) / F
+                bm[m] = normpdf(η2) / F
+                cm[m] = dlogcdf_trunc(η1, η2)
+            end
         end
+    else
+        @warn "royalty κ = $κ not sorted"
+        fill!(LLm, -Inf)
     end
     return nothing
 end
