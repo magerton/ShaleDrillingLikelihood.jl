@@ -109,9 +109,9 @@ end
 # Overall structure
 #----------------------------
 
-include("threadutils.jl")
-include("sum-functions.jl")
-include("inplace-interpolation.jl")
+include("utilities/threadutils.jl")
+include("utilities/sum-functions.jl")
+include("utilities/inplace-interpolation.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
