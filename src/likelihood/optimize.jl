@@ -88,7 +88,7 @@ end
 
 function LocalEstObj(data, theta)
     k = length(theta)
-    k == _nparm(data) || throw(DimensionMismatch())
+    k == _nparm(data) || throw(DimensionMismatch("length(theta) = $(length(theta)) but _nparm(data) = $(_nparm(data)) θ = $theta"))
 
     theta0 = Vector{Float64}(undef, k)
     theta1 = similar(theta0)

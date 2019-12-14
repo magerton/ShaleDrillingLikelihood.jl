@@ -101,7 +101,8 @@ theta_ρ(data::DataSetofSets{<:EmptyDataSet}, theta) = theta[1]
 
 
 function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
-    length.(thetas) == _nparm.(data) || throw(DimensionMismatch())
+    length.(thetas) == _nparm.(data) ||
+        throw(DimensionMismatch("len thetas = $(length.(thetas)) but nparm = $(_nparm.(data))"))
     thet_d, thet_r, thet_p = thetas
 
     data_p = produce(data)

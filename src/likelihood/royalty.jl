@@ -82,9 +82,10 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     xbeta = _xbeta(obs)
 
     βψ = theta_royalty_ψ(obs, theta)
+    isfinite(βψ) || throw(error("royalty βψ = $βψ not finite!"))
+
     κ = theta_royalty_κ(obs, theta)
     issorted(κ) || throw(error("royalty κ = $κ not sorted"))
-
 
     @inbounds for m in OneTo(M)
         zm  = xbeta + βψ * psi[m]
@@ -164,7 +165,10 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
     gradtmp = zeros(Float64, ncoef, n)
     LL      = Vector{Float64}(undef, n)
 
-    update_xbeta!(data, theta_royalty_β(data, θ))
+    beta = theta_royalty_β(data, θ)
+    all(isfinite.(beta)) || throw(error("royalty β = $beta not finite!"))
+
+    update_xbeta!(data, beta)
 
     for i in OneTo(n)
         gtmp = uview(gradtmp, :, i)
