@@ -82,7 +82,8 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     xbeta = _xbeta(obs)
 
     βψ = theta_royalty_ψ(obs, theta)
-    issorted(theta_royalty_κ(obs, theta)) || throw(error("royalty κ not sorted"))
+    κ = theta_royalty_κ(obs, theta)
+    issorted(κ) || throw(error("royalty κ = $κ not sorted"))
 
 
     @inbounds for m in OneTo(M)

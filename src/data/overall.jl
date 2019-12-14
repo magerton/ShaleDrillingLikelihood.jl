@@ -97,7 +97,7 @@ idx_produce(data::DataSetofSets) = last(idx_royalty(data)) .+ idx_produce(produc
 
 # theta_ρ(data::DataSetofSets{EmptyDataSet,<:DataRoyalty}, theta) = theta[1]
 theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(data))]
-theta_ρ(data::DataRoyaltyProduce, theta) = theta[1]
+theta_ρ(data::DataSetofSets{<:EmptyDataSet}, theta) = theta[1]
 
 
 function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)

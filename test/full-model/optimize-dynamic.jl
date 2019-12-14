@@ -224,7 +224,7 @@ println("print to keep from blowing up")
 
     if DOPAR
         rmprocs(workers())
-        pids = addprocs(4)
+        pids = addprocs()
     else
         pids = [1,]
     end
