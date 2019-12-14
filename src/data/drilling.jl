@@ -368,22 +368,19 @@ end
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
 xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
-function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
+function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:NTuple{N,Number}},
     m::AbstractDrillModel, theta::AbstractVector;
     minmaxleases::UnitRange=0:3, nper_initial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
-) where {D}
+) where {D,N}
 
     all(u .!= v) || throw(error("u,v must be different!"))
 
     num_i = length(u)
     num_i == length(v) || throw(DimensionMismatch())
     num_zt = length(_zchars)
-
-    # ichars
-    # _ichars = ichars_sample(m,num_i)
 
     # initial leases per unit
     initial_leases_per_unit = sample(minmaxleases, num_i)
