@@ -222,7 +222,13 @@ function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 end
 
 function update_invhess!(leo::LocalEstObj)
-    invhess(leo) .= inv(hess(leo))
+    rnk = rank(hess(leo))
+    k = checksquare(hess(leo))
+    if rnk == k
+        invhess(leo) .= inv(hess(leo))
+    else
+        @warn "rank of hess(leo) = $rnk < $k"
+    end
     return invhess(leo)
 end
 
