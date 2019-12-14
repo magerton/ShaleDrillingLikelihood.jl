@@ -153,3 +153,8 @@ end
 
 @deprecate thetas(data::DataSetofSets, theta::AbstractVector) split_thetas(data,theta)
 @deprecate split_theta(data, theta) split_thetas(data, theta)
+
+function coefnames(data::DataSetofSets)
+    nms = coefnames.(data)
+    return merge_thetas(nms, data)
+end

@@ -15,6 +15,7 @@ _nparm(::ExtensionCost_Zero) = 0
 @inline function flow!(grad, ::ExtensionCost_Zero, d, obs, θ, sim, dograd::Bool)
     return azero(θ)
 end
+coefnames(::ExtensionCost_Zero) = Vector{String}(undef,0)
 
 "Constant extension cost"
 struct ExtensionCost_Constant <: AbstractExtensionCost end
@@ -26,3 +27,4 @@ _nparm(::ExtensionCost_Constant) = 1
     end
     return sgn ? θ[1] : azero(θ)
 end
+coefnames(::ExtensionCost_Constant) = ["\\alpha_{ext}",]

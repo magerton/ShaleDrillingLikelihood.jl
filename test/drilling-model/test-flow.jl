@@ -35,6 +35,7 @@ using ShaleDrillingLikelihood: TestDrillModel,
 
     @testset "TestDrillModel" begin
         model = TestDrillModel()
+        coefnames(model)
         theta = [1.5, 2.0, -3.0, -0.6, 0.5]
         @test theta_drill_ψ(model, theta) == 1.5
         @test theta_drill_x(model, theta) == 2.0

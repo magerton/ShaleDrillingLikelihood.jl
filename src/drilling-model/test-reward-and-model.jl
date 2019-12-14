@@ -23,6 +23,8 @@ const TestDrillModelOrRewardOrData = Union{TestDrillModel,TestDrillReward,DataDr
 @inline theta_drill_ρ(d, theta) = theta[idx_drill_ρ(d)]
 @inline theta_drill_d(d, theta) = theta[idx_drill_d(d)]
 
+coefnames(m::TestDrillReward) = ["\\psi", "x", "z", "d", "\\theta\\rho"]
+
 # Number of parameters
 @inline num_choices(  m::TestStateSpace, i...) = 3
 @inline actionspace(  m::TestStateSpace, i...) = 0:2

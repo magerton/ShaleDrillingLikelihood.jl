@@ -40,8 +40,8 @@ vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 # -----------------------------------------
 
 function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
-    e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
     c = flow!(vw_cost(   x, grad), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
+    e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
     r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
     return e+c+r
 end
@@ -56,6 +56,13 @@ function flowdψ(x::DrillReward, d, obs, θ, sim)
         u = r+c
     end
     return u::T
+end
+
+function coefnames(x::DrillReward)
+    c = coefnames(cost(   x))
+    e = coefnames(extend( x))
+    r = coefnames(revenue(x))
+    return vcat(c, e, r)
 end
 
 # -----------------------------------------

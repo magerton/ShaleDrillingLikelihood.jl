@@ -80,6 +80,9 @@ const DOPRINT = false
             let z = (2.5, 2.0, 2010), ichars = (4.5, 0.25)
 
                 n = _nparm(f)
+                cfs = coefnames(f)
+                @test cfs isa Vector{<:Union{String,Symbol}}
+                @test n == length(cfs)
                 θ0 = rand(n)
                 u, v = randn(2)
 

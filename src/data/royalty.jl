@@ -140,6 +140,23 @@ theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
 theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
 
+
+function coefnames(d::DataRoyalty)
+    nms = Vector{String}(undef, _nparm(d))
+    if _model(d) isa RoyaltyModel
+        nms[idx_royalty_ρ(d)] = "\\rho"
+        nms[idx_royalty_ψ(d)] = "\\psi^0"
+    end
+    for (i,nmi) in enumerate(idx_royalty_β(d))
+        nms[nmi] = "\\beta_$i"
+    end
+    for (i, nmi) in enumerate(idx_royalty_κ(d))
+        nms[nmi] = "\\sigma^2_u"
+    end
+    return nms
+end
+
+
 """
     DataRoyalty(u,v,X,theta,L)
 

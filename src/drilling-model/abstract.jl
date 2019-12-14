@@ -34,6 +34,7 @@ theta_drill(d, theta) = view(theta, idx_drill(d))
 # @deprecate length(f::AbstractPayoffFunction) _nparm(f)
 
 _nparm(m::AbstractDrillModel) = _nparm(reward(m))
+coefnames(x::AbstractDrillModel) = coefnames(reward(x))
 
 # -------------------------------------------
 # Generic functions

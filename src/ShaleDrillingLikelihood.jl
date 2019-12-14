@@ -19,6 +19,7 @@ using SharedArrays
 using Distributed
 using CountPlus
 using Optim
+using StatsBase
 
 using UnsafeArrays
 
@@ -28,6 +29,10 @@ import Base: length, size, iterate,
     view, ==, eltype, +, -, isless,
     fill!,string, show, convert, eltype,
     step
+
+import StatsBase: coeftable, coefnames
+
+export coefnames
 
 # specific functions
 using Distributions: _F1
@@ -120,6 +125,7 @@ end
 include("utilities/threadutils.jl")
 include("utilities/sum-functions.jl")
 include("utilities/inplace-interpolation.jl")
+include("utilities/delegate-methods.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")

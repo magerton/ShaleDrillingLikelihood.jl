@@ -10,11 +10,12 @@ export RemoteEstObj,
     strderr, tstats, pvals,
     Fstat!
 
+export theta0, theta1, hess, invhess, grad, stderr, tstats, pvals, coef_and_se!, coeftable
+
 function println_time_flush(str)
     println(Dates.format(now(), "HH:MM:SS   ") * str)
     flush(stdout)
 end
-
 
 @GenGlobal g_RemoteEstObj
 
@@ -63,6 +64,8 @@ num_i(x::RemoteEstObj) = length(llvec(eo))
 _nparm(x::RemoteEstObj) = size(scoremat(x),1)
 LL(x::RemoteEstObj) = sum(llvec(x))
 negLL(x::RemoteEstObj) = -LL(x)
+loglikelihood(x::RemoteEstObj) = LL(x)
+
 
 theta0(x::LocalEstObj) = x.theta0
 theta1(x::LocalEstObj) = x.theta1
@@ -71,6 +74,13 @@ hess(  x::LocalEstObj) = x.hess
 invhess(x::LocalEstObj) = x.invhess
 num_i( x::LocalEstObj) = num_i(data(x))
 _nparm(x::LocalEstObj) = length(theta0(x))
+
+function reset!(x::LocalEstObj)
+    fill!(grad(x), 0)
+    fill!(hess(x), 0)
+    fill!(invhess(x),0)
+    fill!(theta1(x),0)
+end
 
 function invhess!(x::LocalEstObj)
     invhess(x) .= inv(hess(x))
@@ -195,6 +205,7 @@ end
 function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 
     function f(x::Vector)
+        reset!(LocalEstObj(ew))
         return parallel_simloglik!(ew, x, false)
         # return serial_simloglik!(ew, x, false)
     end
@@ -210,52 +221,88 @@ function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
     return odfg
 end
 
-function invhessian!(ew::EstimationWrapper, theta)
-    parallel_simloglik!(ew, theta, true)
-    leo = LocalEstObj(ew)
+function update_invhess!(leo::LocalEstObj)
     invhess(leo) .= inv(hess(leo))
     return invhess(leo)
 end
 
-function solve_model(ew, theta; allow_f_increases=true, show_trace=true, time_limit=60, kwargs...)
+function invhessian!(ew::EstimationWrapper, theta)
+    parallel_simloglik!(ew, theta, true)
+    leo = LocalEstObj(ew)
+    return update_invhess!(leo)
+end
+
+const OptimOpts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=30)
+
+function solve_model(ew, theta; OptimOpts=OptimOpts)
     leo = LocalEstObj(ew)
     theta0(leo) .= theta
     odfg  = OnceDifferentiable(ew, theta)
     resetcount!()
 
     bfgs =  BFGS(;initial_invH = x -> invhessian!(ew, x))
-    opts = Optim.Options(
-        allow_f_increases=allow_f_increases,
-        show_trace=show_trace,
-        time_limit=time_limit,
-        kwargs...
-    )
 
-    res = optimize(odfg, theta, bfgs, opts)
+    res = optimize(odfg, theta, bfgs, OptimOpts)
     return res
 end
 
-export theta0, theta1, hess, invhess, grad, stderr, tstats, pvals, coef_and_se!
+function critval(alpha::Real=0.05, twosided::Bool=true)
+    0 < alpha < 1 || throw(DomainError(alpha))
+    alpha >= 0.5 && @warn "α = $alpha > 0.05"
+    a = twosided ? alpha/2 : alpha
+    return quantile(Normal(), a)
+end
 
-stderr!(leo::LocalEstObj) = sqrt.(diag(invhess!(leo)))
-stderr( leo::LocalEstObj) = sqrt.(diag(invhess(leo)))
-tstats!(leo::LocalEstObj) = theta1(leo) ./ stderr!(leo)
-tstats( leo::LocalEstObj) = theta1(leo) ./ stderr(leo)
-pvals!( leo::LocalEstObj) = cdf.(Normal(), -2*abs.(tstats!(leo)))
-pvals(  leo::LocalEstObj) = cdf.(Normal(), -2*abs.(tstats(leo)))
+coef(  leo::LocalEstObj) = theta1(leo)
+stderr(leo::LocalEstObj) = sqrt.(diag(invhess(leo)))
+tstats(leo::LocalEstObj) = coef(leo) ./ stderr(leo)
+
+function pvals(leo::LocalEstObj, alpha=0.05)
+    t = tstats(leo)
+    invq = critval(alpha,true)
+    p = cdf.(Normal(), invq*abs.(t))
+    return p
+end
+
+function coef_and_se(leo::LocalEstObj)
+    se = stderr(leo)
+    t = coef(leo) ./ se
+    p = pvals(leo)
+    return hcat(coef(leo), se, t, p)
+end
+
+tstats!(leo)         = (update_invhess!(leo); stderr(leo))
+stderr!(leo)         = (update_invhess!(leo); tstats(leo))
+pvals!(leo, args...) = (update_invhess!(leo); pvals(leo, args...))
+coef_and_se!(leo)    = (update_invhess!(leo); coef_and_se(leo))
+
+@deprecate coef_and_se(args...) coeftable(args...)
+@deprecate coef_and_se!(args...) coeftable(args...)
 
 function Fstat!(leo::LocalEstObj; H0 = theta0(leo), alpha=0.05)
     k = _nparm(leo)
-    err = theta1(leo) .- H0
+    err = coef(leo) .- H0
     waldtest = err'*invhess!(leo)*err
     p = ccdf(Chisq(k), waldtest)
     reject = p < alpha
     return waldtest, p, reject
 end
 
-function coef_and_se!(leo::LocalEstObj)
-    se = stderr!(leo)
-    t = theta1(leo) ./ se
-    p = pvals(leo)
-    return hcat(theta1(leo), se, t, p)
+function coeftable(leo, alpha::Real=0.05)
+    # see defn at
+    # https://github.com/JuliaStats/StatsBase.jl/blob/da42557642046116097ddaca39fd5dc2c41402cc/src/statmodels.jl#L376-L401
+    update_invhess!(leo)
+    cc = coef(leo)
+    se = stderr(leo)
+    tt = tstats(leo)
+    p = pvals(leo, alpha)
+    ci = se .* critval(alpha, true)
+
+    omlev100 = (1 - alpha)*100
+    levstr = isinteger(omlev100) ? string(Integer(omlev100)) : string(omlev100)
+
+    tbl = hcat(cc, se, tt, p, cc+ci, cc-ci)
+    cols = ["Estimate","Std. Error","t value","Pr(>|t|)","Lower $levstr%","Upper $levstr%"]
+    rows = coefnames(data(leo))
+    return CoefTable(tbl, cols, rows, 4)
 end

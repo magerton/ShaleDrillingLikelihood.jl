@@ -158,6 +158,8 @@ j1chars( d::DataDrill) = d.j1chars
 DrillingTmpVars(d::DataDrill) = d.dtv
 DrillingTmpVars(data) = DrillingTmpVars(_data(data))
 
+coefnames(x::DataDrill)  = coefnames(_model(x))
+
 # length of things
 hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
