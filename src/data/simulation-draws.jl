@@ -105,9 +105,9 @@ function SimulationDraws(M, data::AbstractDataSet; kwargs...)
     return SimulationDraws(M, length(data), _nparm(_model(data)); kwargs...)
 end
 
-function SimulationDraws(M, data::DataSetofSets; kwargs...)
+function SimulationDraws(M, data::AbstractDataSetofSets; kwargs...)
     drillmod = _model(drill(data))
-    return SimulationDraws(M, length(data), _nparm(drillmod); kwargs...)
+    return SimulationDraws(M, num_i(data), _nparm(drillmod); kwargs...)
 end
 
 

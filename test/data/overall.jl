@@ -77,7 +77,6 @@ println("testing overall royalty")
     data_produce = DataProduce(u, 10, 10:20, θ_produce)
     data_royalty = DataRoyalty(u,v,θ_royalty,L)
 
-
     @test idx_produce_ψ isa Function
     @test idx_drill_ψ isa Function
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]

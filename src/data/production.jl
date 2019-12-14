@@ -107,13 +107,11 @@ end
 function update_nu!(d::DataOrObsProduction, theta)
     length(theta) == _nparm(d) || throw(DimensionMismatch())
     _nu(d) .= _y(d) - _x(d)'*theta_produce_β(d,theta)
-    let d = d
-        for j in OneTo(_num_obs(d))
-            obs = Observation(d, j)
-            nu = _nu(obs)
-            setindex!(_nusum(d),   sum(nu),    j)
-            setindex!(_nusumsq(d), dot(nu,nu), j)
-        end
+    for j in OneTo(_num_obs(d))
+        obs = Observation(d, j)
+        nu = _nu(obs)
+        setindex!(_nusum(d),   sum(nu),    j)
+        setindex!(_nusumsq(d), dot(nu,nu), j)
     end
     return nothing
 end

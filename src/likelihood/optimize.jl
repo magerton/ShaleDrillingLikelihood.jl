@@ -1,3 +1,16 @@
+export RemoteEstObj,
+    LocalEstObj,
+    EstimationWrapper,
+    solve_model,
+    println_time_flush,
+    update_reo!
+
+function println_time_flush(str)
+    println(Dates.format(now(), "HH:MM:SS   ") * str)
+    flush(stdout)
+end
+
+
 @GenGlobal g_RemoteEstObj
 
 abstract type AbstractEstimationObjects end
@@ -10,10 +23,10 @@ struct RemoteEstObj{D<:DataSetofSets} <: AbstractEstimationObjects
 
     function RemoteEstObj(data::D,llvec,scoremat,sim) where {D}
         k, n = size(scoremat)
-        n == num_i(data) == length(llvec) == num_i(sim) || throw(DimensionMismatch())
-        k == _nparm(data) || throw(DimensionMismatch())
-        _nparm(drill(data)) == _nparm(sim) || throw(DimensionMismatch())
-        return new{D}(llvec,scoremat,data)
+        n == num_i(data) == length(llvec) == num_i(sim) || throw(DimensionMismatch("num_i"))
+        k == _nparm(data) || throw(DimensionMismatch("k"))
+        _nparm(drill(data)) == _nparm(sim) || throw(DimensionMismatch("sim k"))
+        return new{D}(data, llvec, scoremat, sim)
     end
 end
 
@@ -59,12 +72,12 @@ function invhess!(x::LocalEstObj)
     return invhess(leo)
 end
 
-function RemoteEstObj(pids, leo::LocalEstObj, M)
+function RemoteEstObj(leo::LocalEstObj, M, pids = workers())
     n = num_i(leo)
     k = _nparm(leo)
     llvec    = SharedVector{Float64}(n;    pids=pids)
     scoremat = SharedMatrix{Float64}(k, n; pids=pids)
-    sim      = SimulationDraws(M, data)
+    sim      = SimulationDraws(M, data(leo))
     return RemoteEstObj(data(leo), llvec, scoremat, sim)
 end
 
@@ -92,6 +105,9 @@ end
 
 LocalEstObj(ew::EstimationWrapper) = ew.leo
 RemoteEstObj(ew::EstimationWrapper) = ew.reo
+data(ew::EstimationWrapper) = data(RemoteEstObj(ew))
+OneTo(ew::EstimationWrapper) = OneTo(num_i(LocalEstObj(ew)))
+_nparm(ew::EstimationWrapper) = _nparm(LocalEstObj(ew))
 
 function check_theta(ew::EstimationWrapper, theta)
     length(theta) == _nparm(ew) || throw(DimensionMismatch())
@@ -102,9 +118,9 @@ end
 
 function update!(ew::EstimationWrapper, theta, dograd)
     l = LocalEstObj(ew)
+    r = RemoteEstObj(ew)
     theta1(l) .= theta
     if dograd
-        r = RemoteEstObj(ew)
         score = scoremat(r)
         h = hess(l)
         g = grad(l)
@@ -113,7 +129,7 @@ function update!(ew::EstimationWrapper, theta, dograd)
         g .*= -1
         h .*= -1
     end
-    nll = negLL(l)
+    nll = negLL(r)
     countplus!(-nll,theta)
     return nll
 end
@@ -135,33 +151,38 @@ end
     thetasvw = split_thetas(data(reo), theta)
     idxs = theta_indexes(data(reo))
 
-    for (grp, θ) in zip(grptup, thetasvw)
-        update!(grp, θ)
+    llv = llvec(reo)
+    llv[i] = simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd)
+
+end
+
+@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
+    dat = data(reo)
+    thetas = split_thetas(dat, theta)
+    for (d, θ) in zip(dat, thetas)
+        update!(d, θ)
     end
-
-    llvec[i] = simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd)
-
+    return nothing
 end
 
-function simloglik!(i, theta, dograd)
-    reo = get_g_RemoteEstObj()
-    @assert reo isa RemoteEstObj
-    return simloglik!(i,theta,dograd,reo)
-end
+simloglik!(i, theta, dograd) = simloglik!(i,theta,dograd,get_g_RemoteEstObj())
+update_reo!(theta::Vector) = update_reo!(get_g_RemoteEstObj(), theta)
+
 
 function serial_simloglik!(ew, theta, dograd)
     check_theta(ew,theta)
-    n = num_i(LocalEstObj(ew))
-    map(i -> simloglik!(i, theta, dograd, RemoteEstObj(ew)), OneTo(n))
+    reo = RemoteEstObj(ew)
+    update_reo!(reo, theta)
+    map(i -> simloglik!(i, theta, dograd, reo), OneTo(ew))
     return update!(ew, theta, dograd)
 end
 
 function parallel_simloglik!(ew, theta, dograd)
     check_theta(ew,theta)
-    n = num_i(LocalEstObj(ew))
     wp = CachingPool(workers())
+    @eval @everywhere update_reo!($theta)
     let theta=theta, dograd=dograd
-        pmap(wp, i -> simloglik!(i, theta, dograd), OneTo(n));
+        pmap(i -> simloglik!(i, theta, dograd), wp, OneTo(ew))
     end
     return update!(ew, theta, dograd)
 end
@@ -220,7 +241,7 @@ function Fstat!(leo; H0 = theta0(leo), alpha=0.05)
     k = _nparm(leo)
     err = theta1(leo) .- H0
     waldtest = err'*invhess!(leo)*err
-    p = ccdf(Chisq(k, waldtest)
+    p = ccdf(Chisq(k, waldtest))
     reject = p < alpha
     return waldtest, p, reject
 end

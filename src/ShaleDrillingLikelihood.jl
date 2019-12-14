@@ -14,6 +14,10 @@ using AxisAlgorithms
 using Interpolations
 using LoopVectorization
 using ProgressMeter
+using GenGlobal
+using SharedArrays
+using Distributed
+using CountPlus
 
 using UnsafeArrays
 
@@ -53,6 +57,7 @@ abstract type AbstractModel end
 "No model"
 struct NoModel <: AbstractModel end
 length(::NoModel) = 0
+_nparm(::NoModel) = 0
 
 abstract type AbstractProductionModel    <: AbstractModel end
 abstract type AbstractRoyaltyModel       <: AbstractModel end
@@ -68,7 +73,6 @@ abstract type AbstractModelVariations end
 
 # For data structures
 
-export EmptyDataSet
 
 
 # "Collection of data on a particular outcome for individuals `i`"
@@ -83,12 +87,15 @@ abstract type AbstractObservation      <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+
+export EmptyDataSet
+
 "Empty Data Set"
 struct EmptyDataSet <: AbstractDataSet end
 length(d::EmptyDataSet) = 0
 eachindex(d::EmptyDataSet) = 1:typemax(Int)
 _nparm(d::EmptyDataSet) = 0
-
+_model(d::EmptyDataSet) = NoModel()
 
 # useful functions
 #----------------------------
@@ -160,5 +167,6 @@ include("likelihood/royalty.jl")
 include("likelihood/production.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
+include("likelihood/optimize.jl")
 
 end # module

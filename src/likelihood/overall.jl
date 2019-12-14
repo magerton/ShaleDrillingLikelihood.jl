@@ -1,5 +1,6 @@
 simloglik!(grad, grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
 grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
+update!(d::Union{EmptyDataSet,ObservationGroupEmpty}, args...) = nothing
 
 
 function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},

@@ -89,7 +89,7 @@ end
 #---------------------------
 
 function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
-    length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
+    # length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
     mul!(_xbeta(d), _x(d)', theta)
     return nothing
 end
