@@ -17,7 +17,7 @@ struct ObservationRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:Abstra
     xbeta::T
     num_choices::I
     function ObservationRoyalty(model::M,y::I,x::V,xbeta::T,num_choices::I) where {M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:AbstractVector{T}}
-        isfinite(xbeta) || throw(DomainError(xbeta, "$xbeta = xβ = $x * β not finite"))
+        isfinite(xbeta) || throw(DomainError(xbeta, "$xbeta = xβ = $x * β not finite")) # FIXME
         0 < y <= num_choices || throw(DomainError(y, "y = $y should be 1 <= y <= $num_choices"))
         return new{M,I,T,V}(model, y, x, xbeta, num_choices)
     end

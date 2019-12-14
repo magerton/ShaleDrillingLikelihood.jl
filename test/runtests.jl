@@ -25,8 +25,7 @@ end
 # include("drilling-model/test-full-payoff.jl")
 # include("drilling-model/dynamic-drilling-learning-versions.jl")
 # include("likelihood/drilling.jl")
-# include("likelihood/overall.jl")
-#
+# include("likelihood/overall.jl") #
 # include("full-model/data-simulation-comparative-statics.jl")
 # include("full-model/data-simulation.jl")
 

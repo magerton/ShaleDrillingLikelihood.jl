@@ -233,11 +233,11 @@ println("print to keep from blowing up")
             # startcount!([1, 100000,], [100, 100,])
             resetcount!()
             startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
-            res = solve_model(ew, 0.9*t; show_trace=true, time_limit=30)
+            res = solve_model(ew, 0.9*t; show_trace=true, time_limit=5*60)
             @show res
             @test minimizer(res) == theta1(leo)
 
-            @show Fstat!(leo)
+            @test last(Fstat!(leo))
 
             se = ShaleDrillingLikelihood.stderr(leo)
             rhohat = theta_ρ(d, minimizer(res))
