@@ -19,7 +19,8 @@ using ShaleDrillingLikelihood: showtypetree,
     theta_ρ,
     vw_revenue,
     vw_cost,
-    vw_extend
+    vw_extend,
+    revenue
 
 using Calculus: finite_difference!
 
