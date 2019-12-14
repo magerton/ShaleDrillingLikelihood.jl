@@ -116,14 +116,14 @@ println("print to keep from blowing up")
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parameters
-    num_i = 1_000
+    num_i = 250
 
     # grid sizes
     nψ =  13
     nz = 15
 
     # simulations
-    M = 500
+    M = 250
 
     # observations
     num_zt = 150          # drilling
@@ -220,11 +220,11 @@ println("print to keep from blowing up")
     theta_royp = vcat(θ_royalty, θ_produce)
 
 
-    DOPAR = false
+    DOPAR = true
 
     if DOPAR
         rmprocs(workers())
-        pids = addprocs()
+        pids = addprocs(4)
     else
         pids = [1,]
     end
@@ -233,9 +233,9 @@ println("print to keep from blowing up")
     println_time_flush("Package on workers")
 
 
-    dataversions = [data_royp, data_dril, data_full]
-    thetaversions = [theta_royp, theta_dril, theta_full]
-    maxtimes = [2, 10, 10] .* 60
+    dataversions  = [data_dril, data_full] # [data_royp, data_dril, data_full]
+    thetaversions = [theta_dril, theta_full] # [theta_royp, theta_dril, theta_full]
+    maxtimes = [10, 10] .* 60 # [2, 10, 10] .* 60
 
     for (d,t,maxt) in zip(dataversions, thetaversions, maxtimes  )
     # for (d,t,maxt) in zip( [data_royp,], [theta_royp,] [120,])

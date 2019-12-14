@@ -194,10 +194,12 @@ function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 
     function f(x::Vector)
         return parallel_simloglik!(ew, x, false)
+        # return parallel_simloglik!(ew, x, false)
     end
 
     function fg!(g::Vector,x::Vector)
-        nll = serial_simloglik!(ew, x, true)
+        nll = parallel_simloglik!(ew, x, true)
+        # nll = serial_simloglik!(ew, x, true)
         g .= grad(LocalEstObj(ew))
         return nll
     end
@@ -219,7 +221,7 @@ function solve_model(ew, theta; allow_f_increases=true, show_trace=true, time_li
     odfg  = OnceDifferentiable(ew, theta)
     resetcount!()
 
-    bfgs =  BFGS(;initial_invH = x -> invhessian!(ew, x))
+    # bfgs =  BFGS(;initial_invH = x -> invhessian!(ew, x))
     opts = Optim.Options(
         allow_f_increases=allow_f_increases,
         show_trace=show_trace,
@@ -227,7 +229,7 @@ function solve_model(ew, theta; allow_f_increases=true, show_trace=true, time_li
         kwargs...
     )
 
-    res = optimize(odfg, theta, bfgs, opts)
+    res = optimize(odfg, theta, BFGS(), opts)
     return res
 end
 
