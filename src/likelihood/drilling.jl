@@ -129,7 +129,6 @@ function simloglik_drill_data!(grad, hess, data, theta, sim::SimulationDrawsMatr
     dohess == true && dograd == false && throw(error("can't dohess without dograd"))
     checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
-    update_theta!(DrillingTmpVars(data), theta)
     θρ = theta_drill_ρ(_model(data), theta)
     update!(sim, θρ)
     g = dohess ? similar(grad) : grad

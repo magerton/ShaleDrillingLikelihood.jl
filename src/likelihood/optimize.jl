@@ -5,7 +5,10 @@ export RemoteEstObj,
     EstimationWrapper,
     solve_model,
     println_time_flush,
-    update_reo!
+    update_reo!,
+    strderr!, tstats!, pvals!,
+    strderr, tstats, pvals,
+    Fstat!
 
 function println_time_flush(str)
     println(Dates.format(now(), "HH:MM:SS   ") * str)
@@ -70,8 +73,8 @@ num_i( x::LocalEstObj) = num_i(data(x))
 _nparm(x::LocalEstObj) = length(theta0(x))
 
 function invhess!(x::LocalEstObj)
-    invhess(leo) .= inv(hess(leo))
-    return invhess(leo)
+    invhess(x) .= inv(hess(x))
+    return invhess(x)
 end
 
 function RemoteEstObj(leo::LocalEstObj, M, pids = workers())
@@ -234,23 +237,23 @@ end
 
 export theta0, theta1, hess, invhess, grad, stderr, tstats, pvals, coef_and_se!
 
-stderr!(leo) = sqrt.(diag(invhess!(leo)))
-stderr(leo) = sqrt.(diag(invhess(leo)))
-tstats!(leo) = theta1(leo) ./ stderr!(leo)
-tstats(leo) = theta1(leo) ./ stderr(leo)
-pvals!(leo) = cdf.(Normal(), -2*abs.(tstats!(leo)))
-pvals(leo) = cdf.(Normal(), -2*abs.(tstats(leo)))
+stderr!(leo::LocalEstObj) = sqrt.(diag(invhess!(leo)))
+stderr( leo::LocalEstObj) = sqrt.(diag(invhess(leo)))
+tstats!(leo::LocalEstObj) = theta1(leo) ./ stderr!(leo)
+tstats( leo::LocalEstObj) = theta1(leo) ./ stderr(leo)
+pvals!( leo::LocalEstObj) = cdf.(Normal(), -2*abs.(tstats!(leo)))
+pvals(  leo::LocalEstObj) = cdf.(Normal(), -2*abs.(tstats(leo)))
 
-function Fstat!(leo; H0 = theta0(leo), alpha=0.05)
+function Fstat!(leo::LocalEstObj; H0 = theta0(leo), alpha=0.05)
     k = _nparm(leo)
     err = theta1(leo) .- H0
     waldtest = err'*invhess!(leo)*err
-    p = ccdf(Chisq(k, waldtest))
+    p = ccdf(Chisq(k), waldtest)
     reject = p < alpha
     return waldtest, p, reject
 end
 
-function coef_and_se!(leo)
+function coef_and_se!(leo::LocalEstObj)
     se = stderr!(leo)
     t = theta1(leo) ./ se
     p = pvals(leo)
