@@ -4,7 +4,7 @@
 
 function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     l = _y(obs)
-    L = _num_choices(obs)
+    L = num_choices(obs)
     η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
     η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
     η1 < η2 || throw(error("$η1 = η1 < η2=$η2 is false"))
@@ -28,7 +28,7 @@ function lik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     l = _y(obs)
     if l == 1
         return normcdf(η2)
-    elseif l == _num_choices(obs)
+    elseif l == num_choices(obs)
         return normccdf(η1)
     else
         return normcdf(η2) - normcdf(η1)
@@ -41,7 +41,7 @@ function loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     l = _y(obs)
     if l == 1
         return normlogcdf(η2)
-    elseif l == _num_choices(obs)
+    elseif l == num_choices(obs)
         return normlogccdf(η1)
     else
         return log(normcdf(η2) - normcdf(η1))
@@ -56,7 +56,7 @@ function lik_loglik_royalty(obs::ObservationRoyalty, η12::NTuple{2,Real})
     η1, η2 = η12
     if l == 1
         return  F, normlogcdf(η2)
-    elseif l == _num_choices(obs)
+    elseif l == num_choices(obs)
         return  F, normlogccdf(η1)
     else
         return F, log(F)
@@ -123,7 +123,7 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
 
     model = _model(obs)
     l = _y(obs)         # discrete choice info
-    L = _num_choices(obs)  # discrete choice info
+    L = num_choices(obs)  # discrete choice info
     x = _x(obs)
 
     βψ = theta_royalty_ψ(obs, theta) # parameters
@@ -157,7 +157,7 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
 
     k = _num_x(data)
     n = length(data)
-    L = _num_choices(data)
+    L = num_choices(data)
     ncoef = _nparm(data)
 
     ncoef == length(grad) || throw(DimensionMismatch())
@@ -186,7 +186,7 @@ function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroupRoyalty, dograd
     eta12 = η12(obs, θ, _xbeta(obs))
     F, LL = lik_loglik_royalty(obs, eta12)
     l = _y(obs)
-    L = _num_choices(obs)
+    L = num_choices(obs)
 
     if dograd
         a, b = normpdf.(eta12) ./ F

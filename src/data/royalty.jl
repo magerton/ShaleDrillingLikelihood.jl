@@ -58,8 +58,8 @@ group_ptr(d::DataRoyalty) = OneTo(length(d)+1)
 obs_ptr(  d::DataRoyalty) = OneTo(length(d)+1)
 
 function choice_in_model(d::DataOrObsRoyalty, l::Integer)
-    0 < l <= _num_choices(d) && return true
-    throw(DomainError(l, "$l outside of 1:$(_num_choices(d))"))
+    0 < l <= num_choices(d) && return true
+    throw(DomainError(l, "$l outside of 1:$(num_choices(d))"))
 end
 
 # Iteration over data
@@ -70,7 +70,7 @@ function Observation(d::DataRoyalty, k::Integer)
     y = getindex(_y(d), k)
     x = view(_x(d), :, k)
     xbeta = getindex(_xbeta(d), k)
-    return ObservationRoyalty(_model(d), y, x, xbeta, _num_choices(d))
+    return ObservationRoyalty(_model(d), y, x, xbeta, num_choices(d))
 end
 
 getindex(   g::ObservationGroupRoyalty, k) = Observation(_data(g), getindex(grouprange(g), k))
@@ -83,7 +83,7 @@ function ==(a::ObservationRoyalty, b::ObservationRoyalty)
     _y(a) == _y(b) &&
     _x(a) == _x(b) &&
     _xbeta(a) == _xbeta(b) &&
-    _num_choices(a) == _num_choices(b)
+    num_choices(a) == num_choices(b)
 end
 
 # Updating data
@@ -101,8 +101,8 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 #---------------------------
 
 # length of RoyaltyModel parameters & gradient
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) + 1
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
+_nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + num_choices(d) + 1
+_nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + num_choices(d) - 1
 
 idx_royalty(d::Union{DataOrObsRoyalty,AbstractRoyaltyModel}) = OneTo(_nparm(d))
 theta_royalty(d, theta) = view(theta, idx_royalty(d))
@@ -111,7 +111,7 @@ theta_royalty(d, theta) = view(theta, idx_royalty(d))
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
 idx_royalty_ψ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
 idx_royalty_β(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = (1:_num_x(d))
-idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:_num_choices(d)-1)
+idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:num_choices(d)-1)
 
 function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l::Integer)
     choice_in_model(d,l)
@@ -121,7 +121,7 @@ end
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 1
 idx_royalty_ψ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 2
 idx_royalty_β(d::DataOrObsRoyalty{RoyaltyModel}) = 2 .+ (1:_num_x(d))
-idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
+idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:num_choices(d)-1)
 function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
     choice_in_model(d,l)
     return 2 + _num_x(d) + l
