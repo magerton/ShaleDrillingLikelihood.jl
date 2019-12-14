@@ -77,7 +77,7 @@ end
 
 Threaded computation of `_llm(sims)[m] += log lik(DrillUnit, sims[m])`
 """
-function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dograd)
+function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, dograd; kwargs...)
 
     dtv = DrillingTmpVars(unit)
     M = _num_sim(sims)
@@ -86,9 +86,12 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
     fill!(gradM, 0)
 
     length(grad) == length(theta) || throw(DimensionMismatch("grad,theta incompatible"))
-    size(gradM, 1) == length(grad) || throw(DimensionMismatch("gradM not OK"))
+    size(gradM, 1) == length(grad) || throw(DimensionMismatch("size(gradM) = $(size(gradM)) vs size(theta) = $(size(theta)) not OK"))
 
     mapper = Mapper(M, 10)
+
+    model = _model(_data(unit))
+    solve_vf_and_update_itp!(model, theta, ichars(unit), dograd; kwargs...)
 
     let M=M, llm=llm, unit=unit, theta=theta, sims=sims, dtv=dtv, gradM=gradM, mapper=mapper
         @threads for j in OneTo(nthreads())
@@ -138,7 +141,8 @@ function simloglik_drill_data!(grad, hess, data, theta, sim::SimulationDrawsMatr
     checksquare(hess) == length(grad) == length(theta) || throw(DimensionMismatch("grad, theta incompatible"))
 
     update_theta!(DrillingTmpVars(data), theta)
-    update!(sim, theta_drill_ρ(_model(data), theta))
+    θρ = theta_drill_ρ(_model(data), theta)
+    update!(sim, θρ)
     g = dohess ? similar(grad) : grad
 
     LL = azero(theta)

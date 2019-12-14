@@ -46,7 +46,11 @@ eltype(::SimulationDraw{T}) where {T} = T
 
 function SimulationDraw(u::Real, v::Real, θρ::T) where {T}
     ρ = _ρ(θρ)
-    return SimulationDraw(_ψ1(u,v,ρ), _ψ2(u,v,ρ), _dψ1dθρ(u,v,ρ,θρ), Vector{T}(undef,0))
+    psi1 = _ψ1(u,v,ρ)
+    @assert u == _ψ2(u,v,ρ)
+    dpsidrho = _dψ1dθρ(u,v,ρ,θρ)
+    zerovec = Vector{T}(undef,0)
+    return SimulationDraw(psi1, u, dpsidrho, zerovec)
 end
 
 function SimulationDrawFD(s::SimulationDraw, x::Real)

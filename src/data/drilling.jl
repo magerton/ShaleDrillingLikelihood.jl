@@ -77,7 +77,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
         # time vars are OK
         for j in 1:length(tptr)-1
             0 < jtstart[j] || throw(DomainError())
-            jtstart[j] + tptr[j+1] - 1 - tptr[j] < length(zchars) ||
+            jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
                 throw(error("don't have z for all times implied by jtstart"))
         end
 
@@ -92,6 +92,13 @@ end
 DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
+function DataDrill(m::AbstractDrillModel, d::DataDrill)
+    return DataDrill(
+        m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
+        j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
+    )
+end
+
 # What is an observation?
 #------------------------------------------
 
@@ -102,6 +109,9 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number
     y::Int
     x::XT
 end
+
+const ObservationDynamicDrill = ObservationDrill{<:AbstractDynamicDrillModel}
+const ObservationStaticDrill = ObservationDrill{ <:AbstractStaticDrillModel}
 
 # ichars
 @inline ichars(obs::ObservationDrill) = obs.ichars
@@ -154,6 +164,8 @@ hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = _nparm(_model(d))
+j1length(   d::AbstractDataDrill) = length(j1chars(d))
+@deprecate total_leases(d) j1length(d)
 
 # getindex in fields of AbstractDataDrill
 ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)
@@ -198,8 +210,11 @@ j1_range( g::DrillUnit) = j1_range(_data(g), _i(g))
 j1start(  g::DrillUnit) = j1start( _data(g), _i(g))
 j1stop(   g::DrillUnit) = j1stop(  _data(g), _i(g))
 j2ptr(    g::DrillUnit) = j2ptr(   _data(g), _i(g))
+ichars(   g::DrillUnit) = ichars(  _data(g), _i(g))
 j1chars(  g::DrillUnit) = view(j1chars(_data(g)), j1_range(g))
 uniti(    g::DrillUnit) = _i(g)
+
+j1_sample(g::DrillUnit) = first(sample(j1_range(g), 1))
 
 firstindex(grp::DrillUnit) = InitialDrilling()
 lastindex( grp::DrillUnit) = DevelopmentDrilling()
@@ -211,6 +226,17 @@ InitialDrilling(    d::DrillUnit) = ObservationGroup(d,InitialDrilling())
 DevelopmentDrilling(d::DrillUnit) = ObservationGroup(d,DevelopmentDrilling())
 
 num_initial_leases(d::DrillUnit) = j1length(d)
+
+function max_state(grp::DrillUnit)
+    d = _data(grp)
+    _t1range = tstart(d, j1start(grp)) : tstop(d, j1stop(grp))
+    _t2range = trange(d, j2ptr(grp))
+    x1 = length(_t1range) > 0 ? maximum(view(_x(d), _t1range)) : 0
+    x2 = length(_t2range) > 0 ? maximum(view(_x(d), _t2range)) : 0
+    return max(x1,x2)
+end
+
+max_states(d::DataDrill) = [max_state(g) for g in d]
 
 # Regime (second layer of iteration)
 #------------------------------------------
@@ -255,6 +281,15 @@ j1chars(g::DrillLease) = j1chars(DataDrill(g), _i(g))
 _j(g::DrillLease) = _i(g)
 _regime(g::DrillLease) = _i(_data(g))
 
+lease_ever_drilled(g::DrillLease) = sum(_y(g)) > 0
+
+function lease_expired(g::DrillLease)
+    m = _model(_data(g))
+    wp = statespace(m)
+    return exploratory_terminal(wp) in _x(g)
+end
+
+
 
 function getindex(g::DrillLease, t)
     Observation(DataDrill(g), uniti(g), _regime(g) ,_j(g), t)
@@ -272,9 +307,21 @@ function randsumtoone(n)
     return x
 end
 
+
+function initialize_x!(x, m, lease)
+    x .= (2*is_development(lease)-1) .* abs.(x)
+end
+update_x!(x, t, m, state, d) = nothing
+
+# check that VF is not all zeros...
+check_vf_not_zero(m::AbstractStaticDrillModel) = true
+check_vf_not_zero(m::AbstractDynamicDrillModel) = any(EV(value_function(m)) .!= 0)
+
 function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim::SimulationDraw)
     m = _model(DataDrill(lease))
     length(theta) == _nparm(m) || throw(DimensionMismatch())
+
+    tmpgrad = similar(theta)
 
     nper = length(lease)
     if nper > 0
@@ -287,19 +334,22 @@ function simulate_lease(lease::DrillLease, theta::AbstractVector{<:Number}, sim:
         i = uniti(lease)
         ubv = Vector{Float64}(undef, length(actionspace(m)))
 
-        # x[1] = initial_state(m) + is_development(lease) # FIXME
+        initialize_x!(x, m, lease)
 
-        x .= (2*is_development(lease)-1) .* abs.(x)
+        dograd = false
+        update_interpolation!(value_function(m), dograd)
 
         for t in 1:nper
             obs = ObservationDrill(m, ic, zc[t], y[t], x[t])
-            f(d) = flow(reward(m), d,obs,theta,sim)
-            ubv .= f.(actionspace(obs))
+            f(d) = full_payoff!(tmpgrad, d, obs, theta, sim, dograd)
+            actions = actionspace(obs)
+            resize!(ubv, length(actions))
+            ubv .= f.(actions)
             logsumexp!(ubv)
             cumsum!(ubv, ubv)
             choice = searchsortedfirst(ubv, rand())-1
             y[t] = choice
-            # t < nper && (x[t+1] = next_state(m,x[t],choice))
+            update_x!(x, t, m, x[t], choice)
         end
     end
 end
@@ -319,20 +369,22 @@ end
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
 xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
-function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractVector;
-    num_zt=30,
+function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
+    m::AbstractDrillModel, theta::AbstractVector;
     minmaxleases::UnitRange=0:3, nper_initial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
 ) where {D}
 
+    all(u .!= v) || throw(error("u,v must be different!"))
+
     num_i = length(u)
     num_i == length(v) || throw(DimensionMismatch())
-    _zchars = ExogTimeVarsSample(m, num_zt)
+    num_zt = length(_zchars)
 
     # ichars
-    _ichars = ichars_sample(m,num_i)
+    # _ichars = ichars_sample(m,num_i)
 
     # initial leases per unit
     initial_leases_per_unit = sample(minmaxleases, num_i)
@@ -341,8 +393,8 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
 
     # observations per lease
     obs_per_lease = vcat(
-        sample(nper_development, num_initial_leases),
-        sample(nper_initial, num_i)
+        sample(nper_initial, num_initial_leases),
+        sample(nper_development, num_i)
     )
 
     # pointers to observations
@@ -359,9 +411,14 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
 
     data = DataDrill(m, _j1ptr, _j2ptr, _tptr, _jtstart, _jchars, _ichars, y, x, _zchars)
 
+    θρ = theta_drill_ρ(reward(m),theta)
+
     # update leases
-    for (i,unit) in enumerate(data)
-        sim = SimulationDraw(u[i], v[i], theta_drill_ρ(reward(m),theta))
+    println("Simulating $num_i units.")
+    @showprogress 1 for (i,unit) in enumerate(data)
+        sim = SimulationDraw(u[i], v[i], θρ)
+        solve_vf_and_update_itp!(m, theta, ichars(unit), false)
+        check_vf_not_zero(m) || @warn "Value Function is all 0s!"
         for regimes in unit
             for lease in regimes
                 simulate_lease(lease, theta, sim)
@@ -372,9 +429,16 @@ function DataDrill(u::Vector, v::Vector, m::AbstractDrillModel, theta::AbstractV
     return data
 end
 
-
 function DataDrill(m, theta; num_i=100, kwargs...)
     u = randn(num_i)
     v = randn(num_i)
     DataDrill(u,v,m,theta; kwargs...)
+end
+
+
+function DataDrill(u, v, m, theta; num_zt=30, kwargs...)
+    _zchars = ExogTimeVarsSample(m, num_zt)
+    num_i = length(u)
+    _ichars = ichars_sample(m,num_i)
+    return DataDrill(u,v,_zchars, _ichars,m,theta;kwargs...)
 end

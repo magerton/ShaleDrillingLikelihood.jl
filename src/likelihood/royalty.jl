@@ -136,11 +136,11 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     l < L && ( grad[idx_royalty_κ(obs,l)]   += dot(qm, bm) )
 end
 
-function simloglik!(grad::AbstractVector, grp::ObservationGroup{<:DataRoyalty}, theta, sim, dograd)
+function simloglik!(grad::AbstractVector, grp::ObservationGroupRoyalty, theta, sim, dograd)
     simloglik_royalty!(first(grp), theta, sim, dograd)
 end
 
-function grad_simloglik!(grad, grp::ObservationGroup{<:DataRoyalty}, theta, sim)
+function grad_simloglik!(grad, grp::ObservationGroupRoyalty, theta, sim)
     grad_simloglik_royalty!(grad, first(grp), theta, sim)
 end
 
@@ -177,7 +177,7 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
     return sum(LL)
 end
 
-function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroup{<:DataRoyalty}, dograd::Bool, θ::AbstractVector)
+function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroupRoyalty, dograd::Bool, θ::AbstractVector)
 
     RM = _model(_data(grp))
     obs = first(grp)

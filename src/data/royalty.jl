@@ -140,17 +140,18 @@ theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
 
 """
-    DataRoyalty(u,v,theta,L)
+    DataRoyalty(u,v,X,theta,L)
 
 Simulate dataset for `RoyaltyModel` using `u,v` to make `ψ1`
 """
-function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Integer=3)
+function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vector, L::Integer=3)
 
+    k,nobs = size(X)
     L >= 3 || throw(error("L = $L !>= 3"))
-    k = length(theta) - (L-1) - 2
+
+    k == length(theta) - (L-1) - 2 || throw(DimensionMismatch("dim mismatch b/w X: $(size(X)) and θ = $theta"))
     k >= 1 || throw(error("theta too short"))
-    nobs = length(u)
-    nobs == length(v) || throw(DimensionMismatch())
+    nobs == length(u) == length(v) || throw(DimensionMismatch())
 
     # get ψ1
     ψ1 = similar(u)
@@ -158,7 +159,6 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Int
     update_ψ1!(ψ1, u, v, first(theta))
     update_dψ1dθρ!(dψ1dρ, u, v, first(theta))
 
-    X      = randn(k,nobs)
     eps    = randn(nobs)
 
     rstar  = theta[2] .* ψ1 .+ X'*theta[2 .+ (1:k)] .+ eps
@@ -167,6 +167,19 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Int
 
     return data
 end
+
+"""
+    DataRoyalty(u,v,theta,L)
+
+Simulate dataset for `RoyaltyModel` generating random X
+"""
+function DataRoyalty(u::AbstractVector, v::AbstractVector, theta::Vector, L::Integer=3)
+    k = length(theta) - (L-1) - 2
+    nobs = length(u)
+    X = randn(k, nobs)
+    return DataRoyalty(u,v,X,theta,L)
+end
+
 
 function DataRoyalty(num_i::Integer, theta::Vector, L::Integer=3)
     return DataRoyalty(randn(num_i), randn(num_i), theta, L)

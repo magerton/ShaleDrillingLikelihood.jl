@@ -1,19 +1,5 @@
 export ObservationGrup
 
-# For data structures
-abstract type AbstractDataStructure end
-
-"Collection of data on a particular outcome for individuals `i`"
-abstract type AbstractDataSet <: AbstractDataStructure end
-
-"What we feed into a likelihood"
-abstract type AbstractObservation <: AbstractDataStructure end
-
-const DataOrObs = Union{AbstractDataSet,AbstractObservation}
-
-"Group of observations"
-abstract type AbstractObservationGroup <: AbstractDataStructure end
-
 """
 Observation Groups help us iterate through a panel
 
@@ -30,13 +16,6 @@ struct ObservationGroup{D<:AbstractDataStructure,I} <: AbstractObservationGroup
         return new{D,I}(data,i)
     end
 end
-
-
-"Empty Data Set"
-struct EmptyDataSet <: AbstractDataSet end
-length(d::EmptyDataSet) = 0
-eachindex(d::EmptyDataSet) = 1:typemax(Int)
-_nparm(d::EmptyDataSet) = 0
 
 const ObservationGroupEmpty = ObservationGroup{EmptyDataSet}
 

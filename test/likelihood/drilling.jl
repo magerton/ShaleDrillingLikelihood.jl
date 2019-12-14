@@ -1,5 +1,7 @@
 module ShaleDrillingLikelihood_Drilling_Test
 
+const DOBTIME = false
+
 using ShaleDrillingLikelihood
 
 using Test
@@ -102,9 +104,11 @@ println("testing drilling likelihood")
     let k = length(theta), hess = zeros(k,k)
         # @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, false, false)
         # @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, false)
-        print("")
-        @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, true)
-        print("")
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik_drill_data!($grad, $hess, $data, $theta, $sim, true, true)
+            print("")
+        end
     end
 
     println("initial tests done")

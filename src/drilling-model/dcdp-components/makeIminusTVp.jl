@@ -2,7 +2,7 @@
 # update [I - TV] operator based on current prices
 # -----------------------------------------
 
-function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:Matrix,PF}
+function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:Matrix,PF}
     IminusTVp = IminusTEVp(tmpv)
     ztrans = ztransition(ddm)
     β = discount(ddm)
@@ -19,7 +19,7 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,P
 end
 
 
-function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillingModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:SparseMatrixCSC,PF}
+function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:SparseMatrixCSC,PF}
     IminusTVp = IminusTEVp(tmpv)
     ztrans = ztransition(ddm)
 

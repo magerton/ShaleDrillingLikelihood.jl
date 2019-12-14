@@ -1,37 +1,71 @@
-abstract type AbstractDataSetofSets <: AbstractDataStructure end
-
-export AbstractDataSetofSets, DataSetofSets, DataFull, DataRoyaltyProduce, EmptyDataSet
+export DataSetofSets,
+    DataFull,
+    DataRoyaltyProduce,
+    DataDrillOnly,
+    theta_linked
 
 # -------------------------------------------------
 # Data structure
 # -------------------------------------------------
 
-struct DataSetofSets{D<:Union{DataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet}}
+"check coef restrictions fit in parameter vector"
+function check_coef_restr_in_parm_vec(cf, d::AbstractDataSet)
+    n = _nparm(d)
+    issubset(Set(cf), OneTo(n)) || throw(error("coefs $cf not in 1:$n"))
+    allunique(cf) || throw(error("coefs $cf not unique"))
+    return true
+end
+
+struct DataSetofSets{
+    D<:Union{AbstractDataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet},
+    } <: AbstractDataSetofSets
     data::Tuple{D,R,P}
-    coef_links::Vector{NTuple{2,Function}}
-    function DataSetofSets(d::D, r::R, p::P, coef_links) where {D,R,P}
+    coef_link_pdxn::Vector{Int}
+    coef_link_drill::Vector{Int}
+    function DataSetofSets(d::D, r::R, p::P, cfp::V, cfd::V) where {D,R,P,V<:Vector{Int}}
         drp = (d, r, p)
         lengths = length.(drp)
         issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths"))
+        length(cfp) == length(cfd) || throw(DimensionMismatch())
+        check_coef_restr_in_parm_vec(cfp, p)
+        check_coef_restr_in_parm_vec(cfd, d)
         any(lengths .> 0 ) || throw(error("one dataset must have nonzero length"))
-        return new{D,R,P}( drp, coef_links)
+        return new{D,R,P}(drp, cfp, cfd)
     end
 end
 
-# If no coef_links provided
-DataSetofSets(d,r,p) = DataSetofSets(d,r,p,Vector{NTuple{2,Function}}(undef,0))
-
 # some versions
-const DataFull = DataSetofSets{<:DataDrill, <:DataRoyalty, <:DataProduce}
+const DataFull = DataSetofSets{<:AbstractDataDrill, <:DataRoyalty, <:DataProduce}
 const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
+const DataDrillOnly = DataSetofSets{<:AbstractDataDrill, EmptyDataSet, EmptyDataSet}
+
+# If no coef_links provided
+DataSetofSets(d,r,p) = DataSetofSets(d,r,p,zeros(Int,0),zeros(Int,0))
+
+function DataSetofSets(d,r,p, cfp::Vector, cfd::Vector)
+    DataSetofSets(d,r,p, map(f -> f(p), cfp), map(f -> f(d), cfd))
+end
+
+function DataSetofSets(d,r,p,cfl::Vector{<:Tuple})
+    return DataSetofSets(d,r,p, first.(cfl), last.(cfl))
+end
+
+function SimulationDraws(data::DataSetofSets, M)
+    n = num_i(data)
+    k = _nparm(drill(data))
+    return SimulationDraws(M,n,k)
+end
 
 # -------------------------------------------------
 # methods
 # -------------------------------------------------
 
 data(d::DataSetofSets) = d.data
-coef_links(d::DataSetofSets) = d.coef_links
+coef_link_drill(d::DataSetofSets) = d.coef_link_drill
+coef_link_pdxn(d::DataSetofSets) = d.coef_link_pdxn
+coef_links(d::DataSetofSets) = zip(coef_link_pdxn(d), coef_link_drill(d))
 length(d::DataSetofSets) = 3
+num_i(d::DataSetofSets) = maximum(length.(d))
 
 iterate(d::DataSetofSets, state...) = iterate(data(d), state...)
 Broadcast.broadcastable(d::DataSetofSets) = data(d)
@@ -61,6 +95,26 @@ idx_drill(  data::DataSetofSets) = idx_drill(drill(data))
 idx_royalty(data::DataSetofSets) = last(idx_drill(data)) .+ idx_royalty(royalty(data))
 idx_produce(data::DataSetofSets) = last(idx_royalty(data)) .+ idx_produce(produce(data))
 
+# theta_ρ(data::DataSetofSets{EmptyDataSet,<:DataRoyalty}, theta) = theta[1]
+theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(data))]
+theta_ρ(data::DataRoyaltyProduce, theta) = theta[1]
+
+
+function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
+    length.(thetas) == _nparm.(data) || throw(DimensionMismatch())
+    thet_d, thet_r, thet_p = thetas
+
+    data_p = produce(data)
+    idx_p = OneTo(_nparm(data_p))
+    idx_p_drops = coef_link_pdxn(data)
+
+    thet_p_short = [thet_p[i] for i in idx_p if i ∉ idx_p_drops]
+
+    return vcat(thet_d, thet_r[2:end], thet_p_short)
+end
+
+@deprecate theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull) merge_thetas(thetas,data)
+
 # full datasets
 function idx_royalty(data::DataFull)
     kd = _nparm(drill(data))
@@ -73,8 +127,8 @@ function idx_produce(data::DataFull)
     kr = _nparm(dr)
     idx = collect((kd+kr-1) .+ idx_produce(dp))
     for (idxp, idxd) in coef_links(data)
-        idx[idxp(dp)] = idxd(dd)
-        idx[idxp(dp)+1:end] .-= 1
+        idx[idxp] = idxd
+        idx[idxp+1:end] .-= 1
     end
     return idx
 end
@@ -89,9 +143,11 @@ end
 # to ensure that we get a copy... NOT a view
 theta_produce(d::DataFull, theta) = theta[idx_produce(d)]
 
-function thetas(data::DataSetofSets, theta::AbstractVector)
+function split_thetas(data::DataSetofSets, theta::AbstractVector)
     d = theta_drill(  data, theta)
     r = theta_royalty(data, theta)
     p = theta_produce(data, theta)
     return d, r, p
 end
+
+@deprecate thetas(data::DataSetofSets, theta::AbstractVector) split_thetas(data,theta)

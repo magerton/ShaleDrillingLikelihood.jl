@@ -1,5 +1,5 @@
 "Static discrete choice model to test likelihood"
-struct TestDrillModel  <: AbstractDrillModel end
+struct TestDrillModel  <: AbstractStaticDrillModel end
 struct TestDrillReward <: AbstractStaticPayoff end
 struct TestStateSpace  <: AbstractStateSpace end
 

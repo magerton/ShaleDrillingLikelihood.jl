@@ -6,6 +6,8 @@ module ShaleDrillingLikelihood_OverallLikelihood_Test
 # using ProfileView
 # using PProf
 
+const DOBTIME=false
+
 using ShaleDrillingLikelihood
 using Test
 using StatsFuns
@@ -49,6 +51,8 @@ println("testing overall likelihood")
     θ_produce = vcat(αψ, rand(3), 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
+    @test idx_produce_ψ isa Function
+    @test idx_drill_ψ isa Function
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
 
     # make data
@@ -80,10 +84,12 @@ println("testing overall likelihood")
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
 
-        print("")
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-        print("")
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+            print("")
+        end
 
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
         # println("\n\n\n----------------------------\n\n\n")
@@ -109,25 +115,31 @@ println("testing overall likelihood")
         theta = θ
         grad = similar(theta)
         nparm = _nparm(data)
-        hess = Matrix{eltype(theta)}(undef, nparm, nparm)
-        tmpgrads = Matrix{eltype(theta)}(undef, nparm, num_i)
+        hess = zeros(nparm, nparm)
+        tmpgrads = zeros(nparm, num_i)
 
+        println("simloglik, no grad")
         simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
+        println("simloglik, with grad")
         simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
 
+        println("simloglik finite diff")
         fd = Calculus.gradient(xx -> simloglik!(grad, hess, tmpgrads, data, xx, sim, false), theta, :central)
 
         fill!(grad,0)
         fill!(hess,0)
+        println("simloglik gradient")
         simloglik!(grad, hess, tmpgrads, data, theta, sim, true)
         @test !all(grad.==0)
         @test isapprox(fd, grad; rtol=2e-5)
+        println("done")
 
-        print("")
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
-        @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
-        print("")
-
+        if DOBTIME
+            print("")
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, false)
+            @show @benchmark simloglik!($grad, $hess, $tmpgrads, $data, $theta, $sim, true)
+            print("")
+        end
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, false)
         # println("\n\n\n----------------------------\n\n\n")
         # @code_warntype simloglik!(grad, hess, tmpgrads, data, theta, sim, true)

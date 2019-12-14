@@ -267,7 +267,7 @@ end
 # flow revenue
 # ----------------------------------------------------------------
 
-@inline function flow(x::DrillingRevenueNoTaxes, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
+function flow(x::DrillingRevenueNoTaxes, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
     z = zchars(obs)
     u = d_tax_royalty(x, d, royalty(obs)) *
     exp(
@@ -278,7 +278,7 @@ end
     return u
 end
 
-@inline function flow(x::DrillingRevenue, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
+function flow(x::DrillingRevenue, d::Integer, obs::ObservationDrill, θ::AbstractVector, sim)
     z = zchars(obs)
     u = d_tax_royalty(x, d, royalty(obs)) *
     exp(
@@ -295,11 +295,14 @@ end
 # Gradient
 # ------------------------------
 
-@inline function flow!(grad, x::DrillingRevenue{Unconstrained, NoTrend}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
-    rev = flow(x, d, obs, θ, sim)
-    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
+@inline function flowzero!(grad, θ, dograd)
+    dograd && fill!(grad, 0)
+    return azero(θ)
+end
 
+function flow!(grad, x::DrillingRevenue{Unconstrained, NoTrend}, d, obs, θ, sim, dograd::Bool)
+    d == 0 && return flowzero!(grad,θ,dograd)
+    rev = flow(x, d, obs, θ, sim)
     if dograd
         grad[idx_0(x)] = rev
         grad[idx_g(x)] = rev*geology(obs)
@@ -309,11 +312,10 @@ end
     return rev
 end
 
-@inline function flow!(grad, x::DrillingRevenue{Unconstrained, TimeTrend}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
+function flow!(grad, x::DrillingRevenue{Unconstrained, TimeTrend}, d, obs, θ, sim, dograd::Bool)
+    d == 0 && return flowzero!(grad,θ,dograd)
     z = zchars(obs)
     rev = flow(x, d, obs, θ, sim)
-    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
     if dograd
         grad[idx_0(x)] = rev
         grad[idx_g(x)] = rev*geology(obs)
@@ -327,10 +329,9 @@ end
 # Constrained gradient
 # ------------------------------
 
-@inline function flow!(grad, x::DrillingRevenue{Constrained}, d, obs, θ, sim, dograd::Bool)
-    d == 0 && return azero(θ)
+function flow!(grad, x::DrillingRevenue{Constrained}, d, obs, θ, sim, dograd::Bool)
+    d == 0 && return flowzero!(grad,θ,dograd)
     rev = flow(x, d, obs, θ, sim)
-    # dpsi = flowdψ(rev, x, d, obs, θ, sim)
     if dograd
         grad[idx_0(x)] = rev
         grad[idx_ρ(x)] = rev*dEexpψdσ(x, d, obs, θ, sim)
@@ -342,7 +343,7 @@ end
 # dψ is the same across many functions
 # ----------------------------------------------------------------
 
-@inline function flowdψ(rev::Real, x::DrillingRevenue, d, obs, θ, sim)
+function flowdψ(rev::Real, x::DrillingRevenue, d, obs, θ, sim)
     dψ = rev * theta_ψ(x,θ)
     if _Dgt0(obs)
         return dψ
@@ -351,7 +352,7 @@ end
     end
 end
 
-@inline function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
+function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
     d == 0 && return azero(θ)
     rev = flow(x, d, obs, θ, sim)
     return flowdψ(rev, x, d, obs, θ, sim)

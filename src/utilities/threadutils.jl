@@ -3,8 +3,6 @@
 
 default_step(n) =  min(n, round(Int, 10*sqrt(n)))
 
-abstract type AbstractThreadMapper end
-
 function getrange(n)
     tid = Threads.threadid()
     nt = Threads.nthreads()
@@ -13,6 +11,12 @@ function getrange(n)
     to = from + d - 1 + (tid ≤ r ? 1 : 0)
     from:to
 end
+
+# --------------------
+# Thread mappers
+# --------------------
+
+abstract type AbstractThreadMapper end
 
 struct Mapper <: AbstractThreadMapper
     start::Threads.Atomic{Int}

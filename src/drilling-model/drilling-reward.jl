@@ -6,39 +6,47 @@ struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstrac
 end
 
 # access components
-@inline revenue(x::DrillReward) = x.revenue
-@inline drill(  x::DrillReward) = x.drill
-@inline extend( x::DrillReward) = x.extend
-@inline cost(   x::DrillReward) = drill(x)
+revenue(x::DrillReward) = x.revenue
+drill(  x::DrillReward) = x.drill
+extend( x::DrillReward) = x.extend
+cost(   x::DrillReward) = drill(x)
 
 # -----------------------------------------
 # lengths
 # -----------------------------------------
 
-@inline _nparms(x::DrillReward) = (_nparm(drill(x)), _nparm(extend(x)), _nparm(revenue(x)))
-@inline _nparm( x::DrillReward) = sum(_nparms(x))
+_nparms(    x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(revenue(x)))
+_nparm(     x::DrillReward) = sum(_nparms(x))
+idx_cost(   x::DrillReward) = OneTo(_nparm(cost(x)))
+idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+  _nparm(cost(x))
+idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(cost(x)) + _nparm(extend(x)))
+idx_ρ(      x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
-@inline idx_cost(   x::DrillReward) = OneTo(_nparm(drill(x)))
-@inline idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+ _nparm(drill(x))
-@inline idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(drill(x)) + _nparm(extend(x)))
-@inline idx_ρ(x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
+idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 
-@inline vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
-@inline vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
-@inline vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
+_nparm_cost_ext(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x))
+idx_drill_g(x::DrillReward) = _nparm_cost_ext(x) + idx_g(revenue(x))
+idx_drill_ψ(x::DrillReward) = _nparm_cost_ext(x) + idx_ψ(revenue(x))
+idx_drill_g(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_g(reward(_model(d)))
+idx_drill_ψ(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_ψ(reward(_model(d)))
+
+
+vw_cost(   x::DrillReward, theta) = uview(theta, idx_cost(x))
+vw_extend( x::DrillReward, theta) = uview(theta, idx_extend(x))
+vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 
 # -----------------------------------------
 # flow payoffs
 # -----------------------------------------
 
-@inline function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
+function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
     e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
     c = flow!(vw_cost(   x, grad), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
     r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
     return e+c+r
 end
 
-@inline function flowdψ(x::DrillReward, d, obs, θ, sim)
+function flowdψ(x::DrillReward, d, obs, θ, sim)
     T = eltype(θ)
     if d == 0
         u = flowdψ(extend(x), d, obs, vw_extend(x,θ), sim)

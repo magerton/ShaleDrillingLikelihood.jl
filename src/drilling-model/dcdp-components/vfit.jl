@@ -1,8 +1,12 @@
 const VFTOL = 1e-10
 
 
-"Value function iteration for 1 period"
-function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
+"""
+    vfit!(EV0, t, ddm)
+
+Given `ubV(t) ≡ u + βV(x')`, update `EV0 ← E[max u + β V(x')]`
+"""
+function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillModel)
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(lse(t), q(t), tmp(t), ubV(t))
     else
@@ -12,7 +16,7 @@ function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
 end
 
 # preserves ubV & updates derivatives
-function vfit!(EV0, dEV0, t::DCDPTmpVars, ddm::DynamicDrillingModel)
+function vfit!(EV0, dEV0, t::DCDPTmpVars, ddm::DynamicDrillModel)
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(lse(t), q(t), tmp(t), ubV(t))
     else
@@ -32,7 +36,7 @@ end
 # --------------------------- VFIT until conv ----------------------------
 
 
-function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=60, vftol=VFTOL, kwargs...)
+function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillModel; maxit=60, vftol=VFTOL, kwargs...)
 
     iter = zero(maxit)
     while true
@@ -50,7 +54,7 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
-function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; vftol=VFTOL, kwargs...)
+function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vftol=VFTOL, kwargs...)
 
     ΔEV = lse(t)
     q0 = ubV(t)
@@ -87,7 +91,7 @@ end
 # --------------------------- pfit until convergence ----------------------------
 
 
-function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillingModel; maxit=30, vftol=VFTOL, kwargs...)
+function solve_inf_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; maxit=40, vftol=VFTOL, kwargs...)
     iter = zero(maxit)
     while true
         bnds = pfit!(EV0, t, ddm; vftol=vftol)
@@ -105,7 +109,7 @@ end
 
 
 # note -- this destroys ubV
-function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingModel)
+function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
 
     nz, nψ, nk, nd = size(dubVperm(t))
     nd >= 2 || throw(error("Need dubV with at least 2+ action possibilities"))
@@ -116,8 +120,6 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillingMode
 
     ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
     dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
-
-    qq =
 
     if anticipate_t1ev(ddm)
         softmax3!(ubV(t), lse(t), tmp(t), ubV(t))
@@ -148,7 +150,7 @@ end
 
 # # --------------------------- double vfit/pfit loop -----------------------
 
-function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillingModel; vftol=VFTOL, maxit0=45, maxit1=20, kwargs...)
+function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::DynamicDrillModel; vftol=VFTOL, maxit0=45, maxit1=20, kwargs...)
     solve_inf_vfit!(EV0, t, prim; maxit=maxit0, vftol=vftol)
 
     # try-catch loop in case we have insane parameters that have Pr(no action) = 0, producing a singular IminusTEVp matrix.

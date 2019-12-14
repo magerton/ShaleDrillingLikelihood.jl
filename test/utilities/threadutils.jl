@@ -1,5 +1,7 @@
 module ShaleDrillingLikelihood_ThreadUtils_Test
 
+DOBTIME = false
+
 using ShaleDrillingLikelihood
 
 using Test
@@ -96,22 +98,22 @@ z = rand(10^3)
 
     println("Mapper")
     _h3 = h3(z)
-    @btime h3($z)
+    DOBTIME && @btime h3($z)
 
     println("Mapper2")
     _h2 = h2(z)
-    @btime h2($z)
+    DOBTIME && @btime h2($z)
 
     println("getrange")
     _f = f(z)
-    @btime f($z)
+    DOBTIME && @btime f($z)
 
     println("unthreaded")
-    @btime g($z)
+    DOBTIME && @btime g($z)
     _g = g(z)
 
     println("mapreduce")
-    @btime gg($z)
+    DOBTIME && @btime gg($z)
 
     @test _f ≈ _g
     @test _g ≈ _h2

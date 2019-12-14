@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModel_Test_LearningVersions
+module ShaleDrillingLikelihood_DynamicDrillModel_Test_LearningVersions
 
 DOBTIME = false
 PRINTSTUFF = false
@@ -67,23 +67,21 @@ println("print to keep from blowing up")
         theta1[end] = 20
         theta2[end] = 0
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        solve_vf_all!(tmpv, ddm2, theta2, ichar, false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, ichar, false)
-
-        @test EV(evs) ≈ EV0
-        @test EV(evs) != EV0
+        @test EV(ev1) ≈ EV(ev2)
+        @test EV(ev1) != EV(ev2)
     end # perfect info
 
 
@@ -98,24 +96,22 @@ println("print to keep from blowing up")
         theta1[end] = -20
         theta2[end] = 0
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        solve_vf_all!(tmpv, ddm2, theta2, ichar, false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, ichar, false)
-
-        @test EV(evs) ≈ EV0
-        @test EV(evs) != EV0
-    end
+        @test EV(ev1) ≈ EV(ev2)
+        @test EV(ev1) != EV(ev2)
+    end # max learning
 
     @testset "NoRoyalty" begin
         f1 = DrillReward(DrillingRevenue(Constrained(), NoTrend(), NoTaxes(), Learn(), WithRoyalty()), DrillingCost_constant(), ExtensionCost_Constant())
@@ -124,22 +120,20 @@ println("print to keep from blowing up")
         theta1 = randn(_nparm(f1))
         theta2 = copy(theta1)
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
-        evs = DCDPEmax(ddm1)
+        ev1 = ValueFunctionArrayOnly(ddm1)
+        ev2 = ValueFunctionArrayOnly(ddm2)
         tmpv = DCDPTmpVars(ddm1)
 
-        EV0 = similar(EV(evs))
+        fill!(ev1, 0)
+        fill!(ev2, 0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, (2.0, 0.0), false)
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm1, theta1, (2.0, 0.0), false)
+        solve_vf_all!(tmpv, ddm2, theta2, (2.0, 0.25), false)
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm2, theta2, (2.0, 0.25), false)
-
-        @test EV(evs) == EV0
+        @test EV(ev1) == EV(ev2)
     end
 
 
@@ -165,8 +159,8 @@ println("print to keep from blowing up")
         @test vw_revenue(f0, theta0) == theta0[3:4]
         @test vw_revenue(f1, theta1) == theta1[3:4]
 
-        ddm0 = DynamicDrillingModel(f0, 0.9, wp, zs, ztrans, ψs, false)
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm0 = DynamicDrillModel(f0, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
 
         let z = (2.5, 2.0, 2010),
             grad = similar(theta0),
@@ -186,21 +180,20 @@ println("print to keep from blowing up")
 
             @test ff0 ≈ ff1
         end
-        evs = DCDPEmax(ddm0)
+        ev0 = ValueFunctionArrayOnly(ddm0)
+        ev1 = ValueFunctionArrayOnly(ddm1)
         tmpv = DCDPTmpVars(ddm0)
 
-        EV0 = similar(EV(evs))
+        fill!(ev0, 0)
+        fill!(ev1,0)
 
-        fill!(evs, 0)
-        solve_vf_all!(evs, tmpv, ddm0, theta0, ichar, false)
-        @test all(isfinite.(EV(evs)))
-        EV0 .= EV(evs)
+        solve_vf_all!(tmpv, ddm0, theta0, ichar, false)
+        @test all(isfinite.(EV(ev0)))
 
-        fill!(evs,0)
-        solve_vf_all!(evs, tmpv, ddm1, theta1, ichar, false)
-        @test all(isfinite.(EV(evs)))
+        solve_vf_all!(tmpv, ddm1, theta1, ichar, false)
+        @test all(isfinite.(EV(ev1)))
 
-        @test EV(evs) ≈ EV0
+        @test EV(ev0) ≈ EV(ev1)
     end
 
 

@@ -6,7 +6,6 @@ export AbstractPayoffFunction,
     AbstractExtensionCost,
     AbstractStaticPayoff,
     DrillReward,
-    DynamicDrillingModel,
     flow, dflow!, flowdψ
 
 
@@ -120,7 +119,7 @@ end
 function check_flow_grad(m, d, obs, theta, sim)
 
     # compute analytic
-    grad = zero(theta)
+    grad = ones(eltype(theta), length(theta))
     flow!(grad, m, d, obs, theta, sim, true)
 
     # check finite difference for dθ
