@@ -31,6 +31,8 @@ using ShaleDrillingLikelihood: AbstractDataSet,
     idx_produce, theta_produce,
     idx_drill_ρ, idx_royalty_ρ,
     idx_drill_ψ, idx_produce_ψ,
+    split_thetas,
+    merge_thetas,
     thetas,
     reward
 
@@ -96,10 +98,10 @@ println("testing overall royalty")
     @test _nparm(dataroypdxn) == length(vcat(θ_royalty, θ_produce))
     @test _nparm(datadrillonly) == length(θ_drill)
 
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
-    @test (θ_drill, θ_royalty, θ_produce) == thetas(data_no_coeflinks, vcat(θ_drill, θ_royalty[2:end], θ_produce))
-    @test ([], θ_royalty, θ_produce,)     == thetas(dataroypdxn, vcat(θ_royalty, θ_produce))
-    @test (θ_drill, [], []) == thetas(datadrillonly, θ_drill)
+    @test (θ_drill, θ_royalty, θ_produce) == split_thetas(data, vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end]))
+    @test (θ_drill, θ_royalty, θ_produce) == split_thetas(data_no_coeflinks, vcat(θ_drill, θ_royalty[2:end], θ_produce))
+    @test ([], θ_royalty, θ_produce,)     == split_thetas(dataroypdxn, vcat(θ_royalty, θ_produce))
+    @test (θ_drill, [], []) == split_thetas(datadrillonly, θ_drill)
 
     @test theta_drill(  data, θ) == θ_drill
     @test theta_royalty(data, θ) == θ_royalty

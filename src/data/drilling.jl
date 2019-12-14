@@ -110,6 +110,9 @@ struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number
     x::XT
 end
 
+const ObservationDynamicDrill = ObservationDrill{<:AbstractDynamicDrillModel}
+const ObservationStaticDrill = ObservationDrill{ <:AbstractStaticDrillModel}
+
 # ichars
 @inline ichars(obs::ObservationDrill) = obs.ichars
 @deprecate _ichars(obs::ObservationDrill) ichars(obs)
@@ -161,7 +164,8 @@ hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
 length(     d::AbstractDataDrill) = length(j2ptr(d))
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = _nparm(_model(d))
-total_leases(d::AbstractDataDrill) = length(j1chars(d))
+j1length(   d::AbstractDataDrill) = length(j1chars(d))
+@deprecate total_leases(d) j1length(d)
 
 # getindex in fields of AbstractDataDrill
 ichars( d::AbstractDataDrill, i) = getindex(ichars(d),  i)

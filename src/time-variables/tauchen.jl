@@ -1,7 +1,8 @@
-export tauchen_2d!, tauchen_1d!,
-    tauchen_2d, tauchen_1d,
+export tauchen_2d!,
+    tauchen_1d!,
+    tauchen_2d,
+    tauchen_1d,
     AR1process,
-    approxgrid,
     TimeSeriesProcess,
     RandomWalkProcess
 
@@ -106,6 +107,7 @@ end
 ar(x::RandomWalkProcess) = 1
 mu(x::RandomWalkProcess) = 0
 
+# TODO: fix name?
 function approxgrid(x::AR1process, n; m=3)
     lrstdev = sqrt(lrvar(x))
     centered = range(-m*lrstdev; stop=m*lrstdev, length=n)

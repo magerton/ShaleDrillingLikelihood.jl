@@ -133,7 +133,7 @@ Xroyalty = vcat(log_ogip', randn(nk_royalty-1, num_i))
 u,v = randn(num_i), randn(num_i)
 
 # model
-ddm_with_t1ev = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
+ddm_with_t1ev = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
 
 # construct royalty data
 data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)

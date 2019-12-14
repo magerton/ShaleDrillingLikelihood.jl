@@ -1,111 +1,12 @@
-export DynamicDrillingModel,
-    reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev,
-    ValueFunctionArrayOnly,
-    ValueFunction,
-    EV_scaled_itp,
-   dEV_scaled_itp
-
-
-function check_a_eq_b_sans_2nd_to_last(a::Tuple, b::Tuple)
-   length(b) == length(a)+1 || return false
-   b[1:end-2] == a[1:end-1] || return false
-   b[end] == a[end]         || return false
-   return true
-end
-
-
-abstract type AbstractValueFunction end
-
-# -----------------------------------------
-# Value Function Arrays
-# -----------------------------------------
-
-"Value function arrays"
-struct ValueFunctionArrayOnly{T<:Real} <: AbstractValueFunction
-   EV::Array{T,3}
-   dEV::Array{T,4}
-   function ValueFunctionArrayOnly(EV, dEV)
-      check_a_eq_b_sans_2nd_to_last(size(EV), size(dEV))  || throw(DimensionMismatch("EV is $(size(EV)) but dEV is $(size(dEV))"))
-      new{eltype(EV)}(EV, dEV)
-   end
-end
-
-EV(  x::ValueFunctionArrayOnly) = x.EV
-dEV( x::ValueFunctionArrayOnly) = x.dEV
-size(x::ValueFunctionArrayOnly) = size(dEV(x))
-
-function fill!(x::ValueFunctionArrayOnly, y)
-    fill!(EV(x), y)
-    fill!(dEV(x), y)
-end
-
-# -----------------------------------------
-# Value Function Array w/ interpolation info
-# -----------------------------------------
-
-"Value Function arrays with ability to interpolate"
-struct ValueFunction{T<:Real, TC<:Real, N, NP1,
-    EV_ITP <:InPlaceInterp{T, TC, N,   Array{T,N}  },
-    DEV_ITP<:InPlaceInterp{T, TC, NP1, Array{T,NP1}}
-} <: AbstractValueFunction
-
-    EV::EV_ITP
-    dEV::DEV_ITP
-
-    function ValueFunction(ev::EV_ITP, dev::DEV_ITP) where {
-        T<:Real, TC<:Real, N, NP1,
-        EV_ITP <:InPlaceInterp{T, TC, N,   Array{T,N}  },
-        DEV_ITP<:InPlaceInterp{T, TC, NP1, Array{T,NP1}}
-    }
-
-        check_a_eq_b_sans_2nd_to_last(size(ev), size(dev))       || throw(DimensionMismatch())
-        check_a_eq_b_sans_2nd_to_last(itpflag(ev), itpflag(dev)) || throw(error("itpflags are different"))
-        check_a_eq_b_sans_2nd_to_last(ranges(ev), ranges(dev))   || throw(error("ranges are different"))
-
-        return new{T,TC,N,NP1,EV_ITP,DEV_ITP}(ev, dev)
-    end
-end
-
-EVobj( x::ValueFunction) = x.EV
-dEVobj(x::ValueFunction) = x.dEV
-
-function EV(x::ValueFunction)
-    v = data(EVobj(x))
-    nd = ndims(v)
-    return reshape(v, :, size(v, nd-1), size(v, nd))
-end
-
-function dEV(x::ValueFunction)
-    v = data(dEVobj(x))
-    nd = ndims(v)
-    return reshape(v, :, size(v, nd-2), size(v, nd-1), size(v, nd))
-end
-
-ValueFunctionArrayOnly(x::ValueFunction) = ValueFunctionArrayOnly(EV(x), dEV(x))
-
-function fill!(x::ValueFunction, y)
-    fill!(data( EVobj(x)), y)
-    fill!(data(dEVobj(x)), y)
-end
-
-function update_interpolation!(x::ValueFunction, dograd)
-    dograd && update_interpolation!(dEVobj(x))
-    update_interpolation!(EVobj(x))
-end
-
-update_interpolation!(x...) = nothing
-value_function(x...) = nothing
-
-
- EV_scaled_itp(x::ValueFunction) = scaled_interpolation( EVobj(x))
-dEV_scaled_itp(x::ValueFunction) = scaled_interpolation(dEVobj(x))
+export DynamicDrillModel,
+    reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev
 
 # -----------------------------------------
 # Model
 # -----------------------------------------
 
 "Full-blown Dynamic discrete choice model"
-struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
+struct DynamicDrillModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
     AUP<:AbstractUnitProblem, TT<:Tuple, AR<:StepRangeLen{T}, VF<:Union{AbstractValueFunction,Nothing}
 } <: AbstractDynamicDrillModel
     reward::PF            # payoff function
@@ -118,7 +19,7 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
     vf::VF                # value function
     tmpv::DCDPTmpVarsArray{T,AM}
 
-    function DynamicDrillingModel(
+    function DynamicDrillModel(
       reward::APF, discount::T, statespace::AUP, zspace::TT, ztransition::AM,
       psispace::AR, anticipate_t1ev, vf::Union{Type,Function}=ValueFunction
     ) where {
@@ -143,84 +44,30 @@ struct DynamicDrillingModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
     end
 end
 
-const ObservationDynamicDrill = ObservationDrill{<:DynamicDrillingModel}
-
 @deprecate DCDPEmax(args...) ValueFunctionArrayOnly(args...)
 
-reward(         x::DynamicDrillingModel) = x.reward
-discount(       x::DynamicDrillingModel) = x.discount
-statespace(     x::DynamicDrillingModel) = x.statespace
-zspace(         x::DynamicDrillingModel) = x.zspace
-ztransition(    x::DynamicDrillingModel) = x.ztransition
-psispace(       x::DynamicDrillingModel) = x.psispace
-anticipate_t1ev(x::DynamicDrillingModel) = x.anticipate_t1ev
-value_function( x::DynamicDrillingModel) = x.vf
-DCDPTmpVars(    x::DynamicDrillingModel) = x.tmpv
+reward(         x::DynamicDrillModel) = x.reward
+discount(       x::DynamicDrillModel) = x.discount
+statespace(     x::DynamicDrillModel) = x.statespace
+zspace(         x::DynamicDrillModel) = x.zspace
+ztransition(    x::DynamicDrillModel) = x.ztransition
+psispace(       x::DynamicDrillModel) = x.psispace
+anticipate_t1ev(x::DynamicDrillModel) = x.anticipate_t1ev
+value_function( x::DynamicDrillModel) = x.vf
+DCDPTmpVars(    x::DynamicDrillModel) = x.tmpv
 
-beta_1minusbeta(ddm::DynamicDrillingModel) = discount(ddm) / (1-discount(ddm))
+beta_1minusbeta(ddm::DynamicDrillModel) = discount(ddm) / (1-discount(ddm))
 
-theta_drill_ρ(d::DynamicDrillingModel, theta) = theta[_nparm(reward(d))]
-
-# -----------------------------------------
-# Outer constructors for VF
-# -----------------------------------------
-
-NoValueFunction(args...) = nothing
-
-function ValueFunctionArrayOnly(reward, discount::T, statespace, zspace, ztransition, psispace, args...) where {T<:Real}
-    nz = size(ztransition, 1)
-    nψ = length(psispace)
-    nK = _nparm(reward)
-    nS = length(statespace)
-
-    dev = zeros(T, nz, nψ, nK, nS)
-     ev = zeros(T, nz, nψ,     nS)
-    return ValueFunctionArrayOnly(ev, dev)
-end
-
-const DEFAULT_SPLINE = BSpline(Quadratic(Free(OnGrid())))
-splinetype(r::AbstractRange, spline::Union{NoInterp,<:BSpline}=DEFAULT_SPLINE) = spline
-splinetype(r::AbstractUnitRange, spline...) = NoInterp()
-
-function ValueFunction(ev, dev, reward, discount, statespace, zspace, ztransition, psispace, args...)
-    nK = _nparm(reward)
-    nS = length(statespace)
-    nψ = length(psispace)
-    nz = length.(zspace)
-
-    ev_ranges  = (zspace..., psispace,            OneTo(nS))
-    dev_ranges = (zspace..., psispace, OneTo(nK), OneTo(nS))
-
-    ev_it  = splinetype.( ev_ranges, args...)
-    dev_it = splinetype.(dev_ranges, args...)
-
-    ev  = reshape(ev,  nz..., nψ,    nS)
-    dev = reshape(dev, nz..., nψ, nK, nS)
-
-    EV  = InPlaceInterp( ev,  ev_it,  ev_ranges)
-    dEV = InPlaceInterp(dev, dev_it, dev_ranges)
-
-    return ValueFunction(EV, dEV)
-end
-
-function ValueFunction(reward, discount::T, statespace, zspace, ztransition, psispace, args...) where {T<:Real}
-    nK = _nparm(reward)
-    nS = length(statespace)
-    nψ = length(psispace)
-    nz = length.(zspace)
-    ev  = zeros(T, nz..., nψ,    nS)
-    dev = zeros(T, nz..., nψ, nK, nS)
-    return ValueFunction(ev, dev, reward, discount, statespace, zspace, ztransition, psispace, args...)
-end
+theta_drill_ρ(d::DynamicDrillModel, theta) = theta[_nparm(reward(d))]
 
 # -----------------------------------------
 # Outer constructors for VF from DDM
 # -----------------------------------------
 
-const DDM_NoVF = DynamicDrillingModel{T,APF,AM,AUP,TT,AR,Nothing} where {T,APF,AM,AUP,TT,AR}
-const DDM_VFAO = DynamicDrillingModel{T,APF,AM,AUP,TT,AR,<:ValueFunctionArrayOnly} where {T,APF,AM,AUP,TT,AR}
-const DDM_VF   = DynamicDrillingModel{T,APF,AM,AUP,TT,AR,<:ValueFunction} where {T,APF,AM,AUP,TT,AR}
-const DDM_AbstractVF = DynamicDrillingModel{T,APF,AM,AUP,TT,AR,<:AbstractValueFunction} where {T,APF,AM,AUP,TT,AR}
+const DDM_NoVF       = DynamicDrillModel{T,APF,AM,AUP,TT,AR, Nothing}                  where {T,APF,AM,AUP,TT,AR}
+const DDM_VFAO       = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:ValueFunctionArrayOnly} where {T,APF,AM,AUP,TT,AR}
+const DDM_VF         = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:ValueFunction}          where {T,APF,AM,AUP,TT,AR}
+const DDM_AbstractVF = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:AbstractValueFunction}  where {T,APF,AM,AUP,TT,AR}
 
 ValueFunctionArrayOnly(ddm::DDM_NoVF) = ValueFunctionArrayOnly(reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
 ValueFunction(         ddm::DDM_NoVF) = ValueFunction(         reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
@@ -229,6 +76,7 @@ ValueFunctionArrayOnly(ddm::DDM_VFAO) = value_function(ddm)
 ValueFunctionArrayOnly(ddm::DDM_VF) = ValueFunctionArrayOnly(value_function(ddm))
 
 ValueFunction(ddm::DDM_VF) = value_function(ddm)
+
 function ValueFunction(ddm::DDM_VFAO)
     vfao = value_function(ddm)
     ev = EV(vfao)
@@ -236,15 +84,15 @@ function ValueFunction(ddm::DDM_VFAO)
     return ValueFunction(ev, dev, reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
 end
 
-
-@inline function clamp_psi(m::DynamicDrillingModel, psi)
-    psis = psispace(m)
-    return clamp(psi, first(psis), last(psis))
-end
-
 # -----------------------------------------
 # Value Function Arrays
 # -----------------------------------------
+
+
+@inline function clamp_psi(m::DynamicDrillModel, psi)
+    psis = psispace(m)
+    return clamp(psi, first(psis), last(psis))
+end
 
 """
     discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
@@ -297,13 +145,13 @@ end
 
 
 
-function initialize_x!(x, m::DynamicDrillingModel, lease)
+function initialize_x!(x, m::DynamicDrillModel, lease)
     s1 = 1
     s2 = end_ex1(statespace(m))+1
     x[1] = s1 # sample([s1,s2])
 end
 
-function update_x!(x, t, m::DynamicDrillingModel, state, d)
+function update_x!(x, t, m::DynamicDrillModel, state, d)
     wp = statespace(m)
     @assert d in actionspace(wp,state)
     @assert state <= end_ex0(wp)+1 || state > end_lrn(wp)
@@ -313,8 +161,7 @@ function update_x!(x, t, m::DynamicDrillingModel, state, d)
 end
 
 
-
-function ichars_sample(m::DynamicDrillingModel, num_i)
+function ichars_sample(m::DynamicDrillModel, num_i)
     # geo, roy
     dist_geo = Normal(4.67, 0.33)
     dist_roy = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]

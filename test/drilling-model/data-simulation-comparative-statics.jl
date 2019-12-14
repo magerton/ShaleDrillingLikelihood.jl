@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillModelInterpolationTest
 
 DOBTIME = false
 const DOPROFILE = false
@@ -162,7 +162,7 @@ SEED = 1234
     royrates_exog = sample(royalty_rates, num_i)
 
     # model
-    ddm = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
+    ddm = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
     ddm_opts = (minmaxleases=0:0, nper_initial=0:0, nper_development=60:60, tstart=1:75, xdomain=0:0)
 
     theta1  = [-5.5, -2.0, -2.8, αg, αψ, θρ]

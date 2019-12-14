@@ -33,7 +33,7 @@ function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetof
     nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
 
     # parameters
-    thetasvw = thetas(data, theta)
+    thetasvw = split_thetas(data, theta)
     idxs = theta_indexes(data)
 
     # do updates

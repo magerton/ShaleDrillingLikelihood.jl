@@ -3,7 +3,7 @@ range_i_to_ip1(x,i) = x[i] : (x[i+1]-1)
 
 function DataDynamicDrill(
         u, v, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
-        ddm::DynamicDrillingModel, theta;
+        ddm::DynamicDrillModel, theta;
         minmaxleases=0:3,
         nper_initial=50:50,
         tstart=5:15
@@ -24,16 +24,16 @@ function DataDynamicDrill(
     @assert num_i == length(data)
 
     # for balanced panel of states + decisions
-    lease_states    = zeros(Int, num_zt, total_leases(data))
-    lease_decisions = zeros(Int, num_zt, total_leases(data))
+    lease_states    = zeros(Int, num_zt, j1length(data))
+    lease_decisions = zeros(Int, num_zt, j1length(data))
 
     # for start/end times of each lease
-    tdrill  = zeros(Int,      total_leases(data)) # when lease j is 1st drilled
-    texpire = fill( num_zt+1, total_leases(data)) # when lease j did expire
+    tdrill  = zeros(Int,      j1length(data)) # when lease j is 1st drilled
+    texpire = fill( num_zt+1, j1length(data)) # when lease j did expire
 
     # for start/end times of constructed data
-    tstop1 = zeros(Int, total_leases(data)) # end of exploratory period
-    tstop2 = zeros(Int, total_leases(data)) # end of infill period
+    tstop1 = zeros(Int, j1length(data)) # end of exploratory period
+    tstop2 = zeros(Int, j1length(data)) # end of infill period
 
     # state space
     wp = statespace(ddm)
@@ -147,7 +147,8 @@ function DataDynamicDrill(
     end
 
     # exploratory & infill drilling periods for each lease_j
-    ttimes1 = [a:b for (a,b) in zip(jtstart(data)[1:total_leases(data)], tstop1)]
+    jt1 = view(jtstart(data), OneTo(j1length(data)))
+    ttimes1 = [a:b for (a,b) in zip(jt1, tstop1)]
     ttimes2 = [a+1:b for (a,b) in zip(tstop1, tstop2)]
 
     # number of wells drilled for each lease_j

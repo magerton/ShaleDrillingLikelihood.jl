@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelTest
+module ShaleDrillingLikelihood_DynamicDrillModelTest
 
 DOBTIME = false
 PRINTSTUFF = false
@@ -100,14 +100,14 @@ println("print to keep from blowing up")
     ichar = (2.0, 0.25,)
 
     # ddm object
-    ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
-    ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
+    ddm_no_t1ev   = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true)
 
     if false
         @code_warntype ValueFunction(f, 0.9, wp, zs, ztrans, ψs)
-        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunction)
-        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunctionArrayOnly)
-        @code_warntype DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true, NoValueFunction)
+        @code_warntype DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunction)
+        @code_warntype DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true, ValueFunctionArrayOnly)
+        @code_warntype DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true, NoValueFunction)
     end
 
     @testset "VF Structs" begin

@@ -77,7 +77,7 @@ println("print to keep from blowing up")
     wp = LeasedProblem(8, 8, 30, 20, 8)
 
     # ddm object
-    ddm = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
+    ddm = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, false)
     u,v = (0.3, -1.5)
     θρ = 0.5
     rho = _ρ(θρ)

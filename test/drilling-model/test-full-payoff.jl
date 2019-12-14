@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillModelInterpolationTest
 
 DOBTIME = false
 PRINTSTUFF = false
@@ -63,8 +63,8 @@ println("print to keep from blowing up")
     ichar = (4.0, 0.25,)
 
     # ddm object
-    ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
-    ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
+    ddm_no_t1ev   = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true)
 
 
     @testset "VF Structs" begin

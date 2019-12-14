@@ -9,7 +9,8 @@ using ShaleDrillingLikelihood: condvar,
     lrvar,
     lrmean,
     simulate,
-    zero_out_small_probs
+    zero_out_small_probs,
+    approxgrid
 
 
 @testset "Exog Time Vars: simulation + tauchen" begin

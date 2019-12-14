@@ -1,10 +1,6 @@
-abstract type AbstractDataSetofSets <: AbstractDataStructure end
-
-export AbstractDataSetofSets,
-    DataSetofSets,
+export DataSetofSets,
     DataFull,
     DataRoyaltyProduce,
-    EmptyDataSet,
     DataDrillOnly,
     theta_linked
 
@@ -12,7 +8,8 @@ export AbstractDataSetofSets,
 # Data structure
 # -------------------------------------------------
 
-function check_coefs_in_nparm(cf, d::AbstractDataSet)
+"check coef restrictions fit in parameter vector"
+function check_coef_restr_in_parm_vec(cf, d::AbstractDataSet)
     n = _nparm(d)
     issubset(Set(cf), OneTo(n)) || throw(error("coefs $cf not in 1:$n"))
     allunique(cf) || throw(error("coefs $cf not unique"))
@@ -21,7 +18,7 @@ end
 
 struct DataSetofSets{
     D<:Union{AbstractDataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet},
-    }
+    } <: AbstractDataSetofSets
     data::Tuple{D,R,P}
     coef_link_pdxn::Vector{Int}
     coef_link_drill::Vector{Int}
@@ -30,12 +27,17 @@ struct DataSetofSets{
         lengths = length.(drp)
         issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths"))
         length(cfp) == length(cfd) || throw(DimensionMismatch())
-        check_coefs_in_nparm(cfp, p)
-        check_coefs_in_nparm(cfd, d)
+        check_coef_restr_in_parm_vec(cfp, p)
+        check_coef_restr_in_parm_vec(cfd, d)
         any(lengths .> 0 ) || throw(error("one dataset must have nonzero length"))
         return new{D,R,P}(drp, cfp, cfd)
     end
 end
+
+# some versions
+const DataFull = DataSetofSets{<:AbstractDataDrill, <:DataRoyalty, <:DataProduce}
+const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
+const DataDrillOnly = DataSetofSets{<:AbstractDataDrill, EmptyDataSet, EmptyDataSet}
 
 # If no coef_links provided
 DataSetofSets(d,r,p) = DataSetofSets(d,r,p,zeros(Int,0),zeros(Int,0))
@@ -53,12 +55,6 @@ function SimulationDraws(data::DataSetofSets, M)
     k = _nparm(drill(data))
     return SimulationDraws(M,n,k)
 end
-
-
-# some versions
-const DataFull = DataSetofSets{<:AbstractDataDrill, <:DataRoyalty, <:DataProduce}
-const DataRoyaltyProduce = DataSetofSets{EmptyDataSet, <:DataRoyalty, <:DataProduce}
-const DataDrillOnly = DataSetofSets{<:AbstractDataDrill, EmptyDataSet, EmptyDataSet}
 
 # -------------------------------------------------
 # methods
@@ -104,7 +100,7 @@ theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(d
 theta_ρ(data::DataRoyaltyProduce, theta) = theta[1]
 
 
-function theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull)
+function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
     length.(thetas) == _nparm.(data) || throw(DimensionMismatch())
     thet_d, thet_r, thet_p = thetas
 
@@ -117,6 +113,7 @@ function theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull)
     return vcat(thet_d, thet_r[2:end], thet_p_short)
 end
 
+@deprecate theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull) merge_thetas(thetas,data)
 
 # full datasets
 function idx_royalty(data::DataFull)
@@ -146,9 +143,11 @@ end
 # to ensure that we get a copy... NOT a view
 theta_produce(d::DataFull, theta) = theta[idx_produce(d)]
 
-function thetas(data::DataSetofSets, theta::AbstractVector)
+function split_thetas(data::DataSetofSets, theta::AbstractVector)
     d = theta_drill(  data, theta)
     r = theta_royalty(data, theta)
     p = theta_produce(data, theta)
     return d, r, p
 end
+
+@deprecate thetas(data::DataSetofSets, theta::AbstractVector) split_thetas(data,theta)

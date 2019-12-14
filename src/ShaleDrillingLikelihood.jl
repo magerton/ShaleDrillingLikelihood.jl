@@ -54,14 +54,44 @@ abstract type AbstractModel end
 struct NoModel <: AbstractModel end
 length(::NoModel) = 0
 
+abstract type AbstractProductionModel    <: AbstractModel end
+abstract type AbstractRoyaltyModel       <: AbstractModel end
 abstract type AbstractDrillModel         <: AbstractModel end
 abstract type AbstractDynamicDrillModel  <: AbstractDrillModel end
 abstract type AbstractStaticDrillModel   <: AbstractDrillModel end
-abstract type AbstractProductionModel    <: AbstractModel end
-abstract type AbstractRoyaltyModel       <: AbstractModel end
 
 abstract type AbstractModelVariations end
 
+
+# data structures
+#---------------------
+
+# For data structures
+
+export EmptyDataSet
+
+
+# "Collection of data on a particular outcome for individuals `i`"
+# "What we feed into a likelihood"
+# "Group of observations"
+abstract type AbstractDataStructure end
+abstract type AbstractDataSetofSets    <: AbstractDataStructure end
+
+abstract type AbstractDataSet          <: AbstractDataStructure end
+abstract type AbstractObservationGroup <: AbstractDataStructure end
+abstract type AbstractObservation      <: AbstractDataStructure end
+
+const DataOrObs = Union{AbstractDataSet,AbstractObservation}
+
+"Empty Data Set"
+struct EmptyDataSet <: AbstractDataSet end
+length(d::EmptyDataSet) = 0
+eachindex(d::EmptyDataSet) = 1:typemax(Int)
+_nparm(d::EmptyDataSet) = 0
+
+
+# useful functions
+#----------------------------
 
 # to get a scalar one or zero
 aone(x) = one(eltype(x))
@@ -88,12 +118,14 @@ include("time-variables/tauchen.jl")
 include("time-variables/time-variable-type.jl")
 
 # data structures
-include("data/abstract.jl")
-include("data/simulation.jl")
+include("data/observation-group.jl")
+include("data/simulation-draws.jl")
 include("data/royalty.jl")
 include("data/production.jl")
-include("likelihood/drilling-tmpvars.jl")
+
+include("data/drilling-data-tmpvars.jl")
 include("data/drilling.jl")
+
 include("data/overall.jl")
 
 # drilling model
@@ -110,7 +142,10 @@ include("drilling-model/revenue.jl")
 
 # dynamic model
 include("drilling-model/dynamic-drilling-tmpvars.jl")
+include("drilling-model/value-function.jl")
 include("drilling-model/dynamic-drilling-model.jl")
+
+# VF iteration components
 include("drilling-model/dcdp-components/makeIminusTVp.jl")
 include("drilling-model/dcdp-components/learning_transition.jl")
 include("drilling-model/dcdp-components/vfit.jl")

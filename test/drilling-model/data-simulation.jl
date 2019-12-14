@@ -1,7 +1,7 @@
-module ShaleDrillingLikelihood_DynamicDrillingModelInterpolationTest
+module ShaleDrillingLikelihood_DynamicDrillModelInterpolationTest
 
 DOBTIME = false
-const DOPROFILE = false
+DOPROFILE = false
 
 using ShaleDrillingLikelihood
 using Test
@@ -16,9 +16,9 @@ using StatsBase
 using Optim
 using CountPlus
 using LinearAlgebra
-# using Profile
+using Profile
 # using PProf
-# using Juno
+using Juno
 # if DOPROFILE
 #     using ProfileView
 # end
@@ -76,7 +76,8 @@ using ShaleDrillingLikelihood: ObservationDrill,
     j2ptr, tptr,
     idx_produce_ψ, idx_drill_ψ,
     idx_produce_g, idx_drill_g,
-    thetas,
+    merge_thetas,
+    split_thetas,
     theta_produce
 
 
@@ -129,8 +130,8 @@ println("print to keep from blowing up")
     ichar = (4.0, 0.25,)
 
     # ddm object
-    ddm_no_t1ev   = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, false)
-    ddm_with_t1ev = DynamicDrillingModel(f, 0.9, wp, zs, ztrans, ψs, true)
+    ddm_no_t1ev   = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev = DynamicDrillModel(f, 0.9, wp, zs, ztrans, ψs, true)
     tmpv = DCDPTmpVars(ddm_no_t1ev)
 
     theta = [-4.0, -1.0, -3.0, 0.7]
@@ -232,10 +233,10 @@ end
     u,v = randn(num_i), randn(num_i)
 
     # model
-    ddm_no_t1ev     = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
-    ddm_with_t1ev   = DynamicDrillingModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
-    ddm_c_no_t1ev   = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
-    ddm_c_with_t1ev = DynamicDrillingModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
+    ddm_no_t1ev     = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev   = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
+    ddm_c_no_t1ev   = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
+    ddm_c_with_t1ev = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
 
     # tests about royalty coef
     @test theta_royalty_ρ(RoyaltyModel(), θ_royalty) == θρ
@@ -296,7 +297,7 @@ end
 
         theta_dril = θ_drill_c
         theta_tuple = (θ_drill_u, θ_royalty, θ_produce)
-        theta_full = theta_linked(theta_tuple, data_full)
+        theta_full = merge_thetas(theta_tuple, data_full)
         theta_royp = vcat(θ_royalty, θ_produce)
 
         @test theta_produce(data_produce_w, θ_produce)[idx_produce_g(data_produce_w)] == αg
@@ -312,7 +313,7 @@ end
             hess = zeros(k,k)
             tmpg = zeros(k,n)
 
-            theta_vw = thetas(data, thet)
+            theta_vw = split_thetas(data, thet)
             @test length.(theta_vw) == _nparm.(data)
             @test last(size(sim)) == n
 
@@ -329,6 +330,25 @@ end
         dochecks(theta_dril, data_dril)
         dochecks(theta_royp, data_royp)
         dochecks(theta_full, data_full)
+
+        if DOPROFILE
+            @testset "timing for biglik" begin
+                data = data_full
+                thet = theta_full
+                M = 500
+                sim = SimulationDraws(data,M)
+                k = length(thet)
+                n = ShaleDrillingLikelihood.num_i(data)
+                grad = zeros(k)
+                hess = zeros(k,k)
+                tmpg = zeros(k,n)
+                Profile.clear()
+                @profile simloglik!(grad, hess, tmpg, data, thet, sim, true)
+                Juno.profiletree()
+                Juno.profiler()
+            end
+        end
+
     end
 
 

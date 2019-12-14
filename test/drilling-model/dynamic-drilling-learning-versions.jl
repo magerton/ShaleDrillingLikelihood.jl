@@ -1,4 +1,4 @@
-module ShaleDrillingLikelihood_DynamicDrillingModel_Test_LearningVersions
+module ShaleDrillingLikelihood_DynamicDrillModel_Test_LearningVersions
 
 DOBTIME = false
 PRINTSTUFF = false
@@ -67,8 +67,8 @@ println("print to keep from blowing up")
         theta1[end] = 20
         theta2[end] = 0
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
         ev1 = ValueFunctionArrayOnly(ddm1)
         ev2 = ValueFunctionArrayOnly(ddm2)
@@ -96,8 +96,8 @@ println("print to keep from blowing up")
         theta1[end] = -20
         theta2[end] = 0
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
         ev1 = ValueFunctionArrayOnly(ddm1)
         ev2 = ValueFunctionArrayOnly(ddm2)
@@ -120,8 +120,8 @@ println("print to keep from blowing up")
         theta1 = randn(_nparm(f1))
         theta2 = copy(theta1)
 
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
-        ddm2 = DynamicDrillingModel(f2, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm2 = DynamicDrillModel(f2, 0.9, wp, zs, ztrans, ψs, false)
 
         ev1 = ValueFunctionArrayOnly(ddm1)
         ev2 = ValueFunctionArrayOnly(ddm2)
@@ -159,8 +159,8 @@ println("print to keep from blowing up")
         @test vw_revenue(f0, theta0) == theta0[3:4]
         @test vw_revenue(f1, theta1) == theta1[3:4]
 
-        ddm0 = DynamicDrillingModel(f0, 0.9, wp, zs, ztrans, ψs, false)
-        ddm1 = DynamicDrillingModel(f1, 0.9, wp, zs, ztrans, ψs, false)
+        ddm0 = DynamicDrillModel(f0, 0.9, wp, zs, ztrans, ψs, false)
+        ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)
 
         let z = (2.5, 2.0, 2010),
             grad = similar(theta0),
