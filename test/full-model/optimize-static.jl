@@ -84,7 +84,8 @@ using ShaleDrillingLikelihood: ObservationDrill,
     parallel_simloglik!,
     TestDrillModel,
     drill,
-    DataFull
+    DataFull,
+    coeftable
 
 
 
@@ -108,6 +109,7 @@ println("print to keep from blowing up")
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
+    print_in_binary_for_copy_paste(θ)
 
     M = 250
     num_i = 300
@@ -154,10 +156,18 @@ println("print to keep from blowing up")
     data_drill   = DataDrill(u, v, _zchars, _ichars, TestDrillModel(), θ_drill; data_drill_opt...)
     data_produce = DataProduce(u, 10, obs_per_well, θ_produce, log_ogip)
 
+    coefnames(data_produce)
+    coefnames(data_roy)
+    coefnames(data_drill)
+
     coef_links = [(idx_produce_ψ, idx_drill_ψ,),]
     data_full = DataSetofSets(data_drill, data_roy, data_produce, coef_links)
     data_small = DataSetofSets(EmptyDataSet(), EmptyDataSet(), data_produce)
     data_drill = DataSetofSets(data_drill, EmptyDataSet(), EmptyDataSet())
+
+    coefnames(data_full)
+    coefnames(data_small)
+    coefnames(data_drill)
 
     @test data_full isa DataFull
 
@@ -182,8 +192,12 @@ println("print to keep from blowing up")
     theta_full = merge_thetas(theta_tuple, data_full)
     @test theta_full == θ
 
+    let leo = LocalEstObj(data_small, θ_produce)
+        coeftable(leo)
+        coeftable(leo, 0.1)
+    end
 
-    for (d,t,nm) in zip(datas, thetas, datanm)
+    for (d,t,nm) in zip(datas, 0.9 .* thetas, datanm)
 
         @test _nparm(d) .== length(t)
         println("rocking out dataset $nm")
@@ -194,16 +208,23 @@ println("print to keep from blowing up")
         reo = RemoteEstObj(leo, M)
         ew = EstimationWrapper(leo, reo)
 
-        for dograd in false:true
-            println_time_flush("Moving data to workers")
-            @eval @everywhere set_g_RemoteEstObj($reo)
-            println_time_flush("Data moved")
-            simloglik!(1, t, dograd, reo)
-            serial_simloglik!(ew, t, dograd)
-            parallel_simloglik!(ew, t, dograd)
-        end
-
         leograd = ShaleDrillingLikelihood.grad(leo)
+
+        stopcount!()
+        for dograd in false:true
+            @eval @everywhere set_g_RemoteEstObj($reo)
+
+            simloglik!(1, t, dograd, reo)
+            ShaleDrillingLikelihood.reset!(leo)
+            sll = serial_simloglik!(ew, t, dograd)
+            sgrad = copy(leograd)
+
+            pll = parallel_simloglik!(ew, t, dograd)
+            pgrad = copy(leograd)
+
+            @test sll == pll
+            @test sgrad == pgrad
+        end
 
         fill!(leograd, 0)
         serial_simloglik!(ew, t, true)
@@ -214,42 +235,28 @@ println("print to keep from blowing up")
         parallel_simloglik!(ew, t, true)
         gp = copy(leograd)
         @test any(gp .!= 0)
-        @test gs ≈ gp
+        @test gs == gp
 
-        # fds = Calculus.gradient(x -> serial_simloglik!(  ew, x, false), t, :central)
-        # @test fds ≈ fdp
-        # if !(gs ≈ fds)
-        #     println("gs !≈ fds")
-        #     @show extrema(gs .- fds), gs, fds
-        # end
-
+        fds = Calculus.gradient(x -> serial_simloglik!(  ew, x, false), t, :central)
         fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), t, :central)
-        if !(gp ≈ fdp)
-            println("gp !≈ fdp")
-            @show extrema(gp .- fdp), gp, fdp
-        end
+        @test fds == fdp
+        @test gs ≈ fds
+        @test gp ≈ fdp
 
         if true
             # startcount!([1, 100000,], [100, 100,])
             resetcount!()
-            startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
-            res = solve_model(ew, 0.9*t; show_trace=true, time_limit=5*60)
+            startcount!([100, 500, 100000,], [10, 10, 100,])
+            opts = Optim.Options(show_trace=true, time_limit=20, allow_f_increases=true)
+            res = solve_model(ew, 0.9*t; OptimOpts=opts)
             @show res
             @test minimizer(res) == theta1(leo)
+            print_in_binary_for_copy_paste(minimizer(res))
 
-            @test last(Fstat!(leo))
-
-            se = ShaleDrillingLikelihood.stderr(leo)
-            rhohat = theta_ρ(d, minimizer(res))
-            rhotrue = θρ
-            if drill(d) == EmptyDataSet()
-            else
+            if drill(d) != EmptyDataSet()
                 @test theta_ρ(d, t) == θρ
-                rho_se = theta_ρ(d, se)
-                rho_t = (rhohat - rhotrue) / rho_se
-                rho_p = ccdf(Normal(), -2*abs(rho_t))
-                @show rhohat, rhotrue, rho_se, rho_t, rho_p
             end
+            println(coeftable(leo))
         end
     end
 end
