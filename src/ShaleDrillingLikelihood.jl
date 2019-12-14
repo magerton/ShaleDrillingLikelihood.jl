@@ -32,9 +32,10 @@ import Base: length, size, iterate,
 
 import StatsBase: coeftable, coefnames
 
-export coefnames
+export coefnames, print_in_binary_for_copy_paste
 
 # specific functions
+using Printf: @sprintf
 using Distributions: _F1
 using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
@@ -102,6 +103,7 @@ length(d::EmptyDataSet) = 0
 eachindex(d::EmptyDataSet) = 1:typemax(Int)
 _nparm(d::EmptyDataSet) = 0
 _model(d::EmptyDataSet) = NoModel()
+coefnames(d::EmptyDataSet) = Vector{String}(undef,0)
 
 # useful functions
 #----------------------------
@@ -118,6 +120,12 @@ function showtypetree(T, level=0)
         showtypetree(t, level+1)
    end
 end
+
+function print_in_binary_for_copy_paste(x::Vector{<:Number})
+    xstr = reduce(*, @sprintf("%a, ", i) for i in x)
+    return "[" * xstr * "]"
+end
+
 
 # Overall structure
 #----------------------------
