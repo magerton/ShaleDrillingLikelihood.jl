@@ -270,7 +270,7 @@ println("print to keep from blowing up")
         println(coeftable(leo))
 
         # compare estimate to original coef vector, t
-        @test last(Fstat!(leo, t)) == false
+        @test last(Fstat!(leo; H0=t)) == false
     end
 
 
