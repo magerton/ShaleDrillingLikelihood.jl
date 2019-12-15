@@ -101,8 +101,11 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 #---------------------------
 
 # length of RoyaltyModel parameters & gradient
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + num_choices(d) + 1
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + num_choices(d) - 1
+extra_parm(::RoyaltyModel) = 2
+extra_parm(::RoyaltyModelNoHet) = 0
+extra_parm(d::DataOrObsRoyalty{<:RoyaltyModel}) = extra_parm(_model(d))
+
+_nparm(d::DataOrObsRoyalty) = _num_x(d) + num_choices(d) - 1 + extra_parm(d)
 
 idx_royalty(d::Union{DataOrObsRoyalty,AbstractRoyaltyModel}) = OneTo(_nparm(d))
 theta_royalty(d, theta) = view(theta, idx_royalty(d))

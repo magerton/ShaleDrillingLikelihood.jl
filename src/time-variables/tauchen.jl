@@ -4,7 +4,8 @@ export tauchen_2d!,
     tauchen_1d,
     AR1process,
     TimeSeriesProcess,
-    RandomWalkProcess
+    RandomWalkProcess,
+    AbstractAR1Process
 
 function bvn_upperlower_cdf(xlim, ylim, r)
     xl,xu = xlim
@@ -72,7 +73,7 @@ function tauchen_2d!(P::AbstractMatrix, S::Base.Iterators.ProductIterator, μ::F
 end
 
 abstract type TimeSeriesProcess end
-abstract type AbstractAR1Process{T<:Real} end
+abstract type AbstractAR1Process{T<:Real} <: TimeSeriesProcess end
 
 struct AR1process{T<:Real} <: AbstractAR1Process{T}
     mu::T

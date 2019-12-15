@@ -56,7 +56,12 @@ abstract type AbstractTmpVars end
 # models
 #---------------------
 
-export AbstractModel, NoModel, AbstractDrillModel, AbstractProductionModel, AbstractRoyaltyModel, _nparm
+export AbstractModel,
+    NoModel,
+    AbstractDrillModel, AbstractDynamicDrillModel, AbstractStaticDrillModel, 
+    AbstractProductionModel,
+    AbstractRoyaltyModel,
+    _nparm
 
 # for modeling
 abstract type AbstractModel end
@@ -183,5 +188,9 @@ include("likelihood/production.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
 include("likelihood/optimize.jl")
+
+
+include("parameters/SDLParameters.jl")
+
 
 end # module

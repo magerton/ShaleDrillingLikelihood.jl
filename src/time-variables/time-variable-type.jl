@@ -25,6 +25,10 @@ length(tv::ExogTimeVars) = length(_timestamp(tv))
 size(tv::ExogTimeVars{N}) where {N} = length(tv), N
 view(tv::ExogTimeVars, idx) = view(_timevars(tv), idx)
 
+import Base: minimum, maximum
+
+minimum(tv::ExogTimeVars{1}) = minimum(_timevars(tv))
+maximum(tv::ExogTimeVars{1}) = maximum(_timevars(tv))
 
 function DateQuarter(y::Integer, q::Integer)
     1 <= q <= 4 || throw(DomainError())

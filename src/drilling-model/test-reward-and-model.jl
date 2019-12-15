@@ -1,3 +1,5 @@
+export TestDrillModel, TestDrillReward
+
 "Static discrete choice model to test likelihood"
 struct TestDrillModel  <: AbstractStaticDrillModel end
 struct TestDrillReward <: AbstractStaticPayoff end
