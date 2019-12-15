@@ -82,7 +82,8 @@ using ShaleDrillingLikelihood: ObservationDrill,
     split_thetas,
     theta_produce,
     serial_simloglik!,
-    parallel_simloglik!
+    parallel_simloglik!,
+    drill
 
 
 println("print to keep from blowing up")
@@ -116,14 +117,14 @@ println("print to keep from blowing up")
     @test _nparm(rwrd) == length(θ_drill_u)
 
     # parameters
-    num_i = 250
+    num_i = 500
 
     # grid sizes
     nψ =  13
     nz = 15
 
     # simulations
-    M = 250
+    M = 500
 
     # observations
     num_zt = 150          # drilling
@@ -135,7 +136,7 @@ println("print to keep from blowing up")
     nk_royalty = length(θ_royalty) - (length(royalty_rates)-1)-2
 
     # geology
-    ogip_dist = Normal(4.68,0.31)
+    ogip_dist = Normal(4.68, 0.31)
 
     # price parameters
     zrho = 0.8                # rho
@@ -168,11 +169,6 @@ println("print to keep from blowing up")
     Xroyalty = vcat(log_ogip', randn(nk_royalty-1, num_i))
     u,v = randn(num_i), randn(num_i)
 
-    # model
-    ddm_no_t1ev     = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
-    ddm_with_t1ev   = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
-    ddm_c_no_t1ev   = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
-    ddm_c_with_t1ev = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
 
     # construct royalty data
     data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
@@ -186,6 +182,13 @@ println("print to keep from blowing up")
     # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
     # data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
     # data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
+
+    # model
+    ddm_no_t1ev     = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, false)
+    ddm_with_t1ev   = DynamicDrillModel(rwrd_u, discount, wp, zs, ztrans, ψs, true)
+    ddm_c_no_t1ev   = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, false)
+    ddm_c_with_t1ev = DynamicDrillModel(rwrd_c, discount, wp, zs, ztrans, ψs, true)
+
     ddm_opts = (minmaxleases=0:0, nper_initial=0:0, nper_development=60:60, tstart=1:75, xdomain=0:0)
     data_drill_w = DataDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
     data_drill_n = DataDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
@@ -201,7 +204,6 @@ println("print to keep from blowing up")
     data_produce_w = DataProduce(u, nwells_w, obs_per_well, θ_produce, log_ogip)
     data_produce_n = DataProduce(u, nwells_n, obs_per_well, θ_produce, log_ogip)
 
-
     data_d_sm = data_drill_w_con
     data_d_lg = data_drill_w
     data_p    = data_produce_w
@@ -212,12 +214,9 @@ println("print to keep from blowing up")
 
     data_dril = DataSetofSets(data_d_sm, empty, empty)
     data_full = DataSetofSets(data_d_lg, data_r, data_p, coef_links)
-    data_royp = DataSetofSets(empty, data_r, data_p)
 
     theta_dril = θ_drill_c
-    theta_tuple = (θ_drill_u, θ_royalty, θ_produce)
-    theta_full = merge_thetas(theta_tuple, data_full)
-    theta_royp = vcat(θ_royalty, θ_produce)
+    theta_full = merge_thetas((θ_drill_u, θ_royalty, θ_produce), data_full)
 
 
     DOPAR = true
@@ -232,53 +231,44 @@ println("print to keep from blowing up")
     @everywhere using ShaleDrillingLikelihood
     println_time_flush("Package on workers")
 
-
-    dataversions  = [data_dril, data_full] # [data_royp, data_dril, data_full]
-    thetaversions = [theta_dril, theta_full] # [theta_royp, theta_dril, theta_full]
-    maxtimes = [10, 10] .* 60 # [2, 10, 10] .* 60
+    dataversions  = [data_dril, data_full]
+    thetaversions = [theta_dril, theta_full]
+    maxtimes = [10, 10] .* 60
 
     for (d,t,maxt) in zip(dataversions, thetaversions, maxtimes  )
-    # for (d,t,maxt) in zip( [data_royp,], [theta_royp,] [120,])
         resetcount!()
 
-        leo = LocalEstObj(d,t)
+        theta_peturb = 0.9 .* t
+
+        leo = LocalEstObj(d,theta_peturb)
         s = SimulationDraws(M, ShaleDrillingLikelihood.data(leo))
         reo = RemoteEstObj(leo, M)
         ew = EstimationWrapper(leo, reo)
+        leograd = ShaleDrillingLikelihood.grad(leo)
 
-        # for dograd in false:true
-        #     @eval @everywhere set_g_RemoteEstObj($reo)
-        #     simloglik!(1, t, dograd, reo)
-        #     serial_simloglik!(ew, t, dograd)
-        #     parallel_simloglik!(ew, t, dograd)
-        # end
-        #
-        # # startcount!([1, 100000,], [100, 100,])
-        # startcount!([100, 200, 500, 100000,], [1, 5, 100, 100,])
-        # res = solve_model(ew, t; show_trace=true, time_limit=maxt)
-        # @show res
-        # @test minimizer(res) == theta1(leo)
+        for dograd in false:true
+            @eval @everywhere set_g_RemoteEstObj($reo)
+            simloglik!(1, t, dograd, reo)
+            # serial_simloglik!(ew, t, dograd)
+            parallel_simloglik!(ew, theta_peturb, dograd)
+        end
+        g = copy(leograd)
+        fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), theta_peturb, :central)
+        @test fdp ≈ g
 
-        # leograd = ShaleDrillingLikelihood.grad(leo)
-        #
-        # fill!(leograd, 0)
-        # serial_simloglik!(ew, t, true)
-        # gs = copy(leograd)
-        # @test any(gs .!= 0)
-        #
-        # fill!(leograd, 0)
-        # parallel_simloglik!(ew, t, true)
-        # gp = copy(leograd)
-        # @test any(gp .!= 0)
-        #
-        # @test gs ≈ gp
-        #
-        # fds = Calculus.gradient(x -> serial_simloglik!(  ew, x, false), t)
-        # fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), t)
-        # @test isapprox(gs , fds; atol=4e-6, rtol=10*sqrt(eps(eltype(gs))))
-        # @test isapprox(fds, fdp; atol=4e-6, rtol=10*sqrt(eps(eltype(gs))))
-        # @test isapprox(gp,  fdp; atol=4e-6, rtol=10*sqrt(eps(eltype(gs))))
+        resetcount!()
+        startcount!([100, 50, 100000,], [1, 5, 100,])
+        opts = Optim.Options(show_trace=true, time_limit=maxt, allow_f_increases=true)
+        res = solve_model(ew, theta_peturb; OptimOpts=opts)
+        @show res
+        @test minimizer(res) == theta1(leo)
+        print_in_binary_for_copy_paste(minimizer(res))
 
+        if drill(d) != EmptyDataSet()
+            @test theta_ρ(d, t) == θρ
+        end
+        println(coeftable(leo))
+        @test last(Fstat!(leo)) == false
     end
 
 
