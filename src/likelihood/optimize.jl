@@ -240,15 +240,20 @@ end
 
 const OptimOpts = Optim.Options(allow_f_increases=true, show_trace=true, time_limit=30)
 
-function solve_model(ew, theta; OptimOpts=OptimOpts)
+# see https://github.com/JuliaNLSolvers/LineSearches.jl/tree/master/src
+bfgs(ew) =  Optim.BFGS(;
+    # linesearch = Optim.BackTracking(order=3),
+    linesearch = Optim.MoreThuente(),
+    initial_invH = x -> invhessian!(ew, x)
+)
+nelder() = Optim.NelderMead()
+
+function solve_model(ew, theta; OptimOpts=OptimOpts, OptimMethod=bfgs(ew))
     leo = LocalEstObj(ew)
     theta0(leo) .= theta
     odfg  = OnceDifferentiable(ew, theta)
     resetcount!()
-
-    bfgs =  BFGS(;initial_invH = x -> invhessian!(ew, x))
-
-    res = optimize(odfg, theta, bfgs, OptimOpts)
+    res = optimize(odfg, theta, OptimMethod, OptimOpts)
     return res
 end
 
@@ -265,8 +270,7 @@ tstats(leo::LocalEstObj) = coef(leo) ./ stderr(leo)
 
 function pvals(leo::LocalEstObj, alpha=0.05)
     t = tstats(leo)
-    invq = critval(alpha,true)
-    p = cdf.(Normal(), invq*abs.(t))
+    p = 2 .* cdf.(Normal(), abs.(t))
     return p
 end
 
@@ -310,5 +314,6 @@ function coeftable(leo, alpha::Real=0.05)
     tbl = hcat(cc, se, tt, p, cc+ci, cc-ci)
     cols = ["Estimate","Std. Error","t value","Pr(>|t|)","Lower $levstr%","Upper $levstr%"]
     rows = coefnames(data(leo))
-    return CoefTable(tbl, cols, rows, 4)
+    pvalcol = 4
+    return CoefTable(tbl, cols, rows, pvalcol)
 end
