@@ -140,7 +140,6 @@ theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
 theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
 
-
 function coefnames(d::DataRoyalty)
     nms = Vector{String}(undef, _nparm(d))
     if _model(d) isa RoyaltyModel
@@ -151,7 +150,7 @@ function coefnames(d::DataRoyalty)
         nms[nmi] = "\\beta_$i"
     end
     for (i, nmi) in enumerate(idx_royalty_κ(d))
-        nms[nmi] = "\\sigma^2_u"
+        nms[nmi] = "\\kappa_$i"
     end
     return nms
 end
