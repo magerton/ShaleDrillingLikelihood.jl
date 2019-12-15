@@ -253,8 +253,8 @@ println("print to keep from blowing up")
             parallel_simloglik!(ew, theta_peturb, dograd)
         end
         g = copy(leograd)
-        fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), theta_peturb, :central)
-        @test fdp ≈ g
+        # fdp = Calculus.gradient(x -> parallel_simloglik!(ew, x, false), theta_peturb, :central)
+        # @test fdp ≈ g
 
         resetcount!()
         startcount!([100, 50, 100000,], [1, 5, 100,])
@@ -268,7 +268,9 @@ println("print to keep from blowing up")
             @test theta_ρ(d, t) == θρ
         end
         println(coeftable(leo))
-        @test last(Fstat!(leo)) == false
+
+        # compare estimate to original coef vector, t
+        @test last(Fstat!(leo, t)) == false
     end
 
 
