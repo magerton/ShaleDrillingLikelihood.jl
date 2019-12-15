@@ -50,10 +50,13 @@ using ShaleDrillingLikelihood: ObservationDrill,
     theta_produce,
     serial_simloglik!,
     parallel_simloglik!,
-    drill
+    drill,
+    total_wells_drilled,
+    _D
 
 using ShaleDrillingLikelihood.SDLParameters: TestPriceDates,
-    TestPriceGrid, TestPriceTransition, TestAR1Process
+    TestPriceGrid, TestPriceTransition, TestAR1Process,
+    grid, series, transition
 
 println("print to keep from blowing up")
 
@@ -82,15 +85,15 @@ println("print to keep from blowing up")
     proc = TestAR1Process()
     simz = simulate(proc, num_zt)
     etv = ExogTimeVars(tuple.(simz), tpd)
-    grid = TestPriceGrid(simz, nz; process=proc)
-    trans = TestPriceTransition(grid...; process=proc)
+    grd = TestPriceGrid(simz, nz; process=proc)
+    trans = TestPriceTransition(grd...; process=proc)
+    PriceProcess(proc, grd, etv, trans)
 
     @test minimum(etv) isa Tuple
-    @test length(product(grid...)) == nz
+    @test length(product(grd...)) == nz
 
-    PriceProcess(proc, grid, etv, trans)
-    TestPriceProcess(;process=proc, nsim=num_zt, ngrid=nz)
-
+    price_process = TestPriceProcess(;process=proc, nsim=num_zt, ngrid=nz)
+    _zchars = SDLParameters.zchars(price_process)
 
     # ogips
     ogip_dist = NormalOGIP()
@@ -118,9 +121,10 @@ println("print to keep from blowing up")
 
 
     # geology
-    @test PsiSpace(nψ) == range(-4.5; stop=4.5, length=nψ)
+    ψs = PsiSpace(nψ)
+    @test ψs == range(-4.5; stop=4.5, length=nψ)
 
-    wp = ShaleDrillingLikelihood.LeasedProblem(8, 8, 12, 12, 8)
+    wp = FullLeasedProblem()
 
     u,v = randn(num_i), randn(num_i)
 
@@ -129,49 +133,50 @@ println("print to keep from blowing up")
     royrates_endog = observed_choices(data_roy)
     @test royalty_rates[_y(data_roy)] == royrates_endog
     royrates_exog = sample(royalty_rates, num_i)
-    #
-    # # construct ichars for drilling
-    # _ichars = [gr for gr in zip(log_ogip, royrates_endog)]
-    #
-    # # construct drilling data
-    # # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
-    # # data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
-    # # data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
-    #
-    # # model
-    # ddm_no_t1ev     = DynamicDrillModel(rwrd_u, RealDiscountRate(), wp, zs, ztrans, ψs, false)
-    # ddm_with_t1ev   = DynamicDrillModel(rwrd_u, RealDiscountRate(), wp, zs, ztrans, ψs, true)
-    # ddm_c_no_t1ev   = DynamicDrillModel(rwrd_c, RealDiscountRate(), wp, zs, ztrans, ψs, false)
-    # ddm_c_with_t1ev = DynamicDrillModel(rwrd_c, RealDiscountRate(), wp, zs, ztrans, ψs, true)
-    #
-    # ddm_opts = (minmaxleases=0:0, nper_initial=0:0, nper_development=60:60, tstart=1:75, xdomain=0:0)
-    # data_drill_w = DataDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
-    # data_drill_n = DataDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
-    #
-    # # constrained versions of above
-    # data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
-    # data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
-    #
-    # # number of wells drilled
-    # nwells_w = map(s -> _D(wp,s), max_states(data_drill_w))
-    # nwells_n = map(s -> _D(wp,s), max_states(data_drill_n))
-    #
-    # data_produce_w = DataProduce(u, nwells_w, obs_per_well, θ_produce, log_ogip)
-    # data_produce_n = DataProduce(u, nwells_n, obs_per_well, θ_produce, log_ogip)
-    #
-    # data_d_sm = data_drill_w_con
-    # data_d_lg = data_drill_w
-    # data_p    = data_produce_w
-    # data_r    = data_roy
-    # empty = EmptyDataSet()
-    #
-    # coef_links = [(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]
-    #
-    # data_dril = DataSetofSets(data_d_sm, empty, empty)
-    # data_full = DataSetofSets(data_d_lg, data_r, data_p, coef_links)
-    #
-    # theta_dril = θ_drill_c
-    # theta_full = merge_thetas((θ_drill_u, θ_royalty, θ_produce), data_full)
+
+    _ichars = SDLParameters.ichars(log_ogip, royrates_endog)
+    @test _ichars == [gr for gr in zip(log_ogip, royrates_endog)]
+
+    # model
+    ddm_no_t1ev = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=false)
+
+    ddm_no_t1ev     = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=false)
+    ddm_with_t1ev   = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=true)
+    ddm_c_no_t1ev   = TestDynamicDrillModel(price_process; problem=ConstrainedProblem, anticipate_t1ev=false)
+    ddm_c_with_t1ev = TestDynamicDrillModel(price_process; problem=ConstrainedProblem, anticipate_t1ev=true)
+
+    # construct drilling data
+    ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
+    data_drill_w = DataDynamicDrill(u, v, _zchars, _ichars, ddm_with_t1ev, θ_drill_u; ddm_opts...)
+    data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
+
+    # constrained versions of above
+    data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
+    data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
+
+    # number of wells drilled
+    nwells_w = total_wells_drilled(data_drill_w)
+    nwells_n = total_wells_drilled(data_drill_n)
+    @test nwells_w == map(s -> _D(wp,s), max_states(data_drill_w))
+    @test nwells_n == map(s -> _D(wp,s), max_states(data_drill_n))
+
+    data_produce_w = DataProduce(u, nwells_w, obs_per_well, θ_produce, log_ogip)
+    data_produce_n = DataProduce(u, nwells_n, obs_per_well, θ_produce, log_ogip)
+
+    data_d_sm = data_drill_w_con
+    data_d_lg = data_drill_w
+    data_p    = data_produce_w
+    data_r    = data_roy
+    empty = EmptyDataSet()
+
+    coef_links = CoefLinks(ddm_no_t1ev)
+    @test coef_links == [(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]
+
+    data_dril = DataSetofSets(data_d_sm, empty, empty)
+    data_full = DataSetofSets(data_d_lg, data_r, data_p, CoefLinks(data_d_lg))
+
+    theta_dril = θ_drill_c
+    theta_full = merge_thetas((θ_drill_u, θ_royalty, θ_produce), data_full)
 
 
 end # test

@@ -10,7 +10,16 @@ using ShaleDrillingLikelihood: simulate,
     cost, extend, revenue,
     lrmean, lrvar, lrstd,
     zero_out_small_probs,
-    extra_parm
+    extra_parm,
+    LeasedProblem,
+    idx_produce_ψ,
+    idx_drill_ψ,
+    idx_produce_g,
+    idx_drill_g,
+    idx_produce_t,
+    idx_drill_t,
+    _model
+
 
 import ShaleDrillingLikelihood: ichars
 
@@ -18,14 +27,15 @@ using Base: product
 
 export NormalOGIP, logOGIP,
     PriceProcess, TestPriceProcess,
-    LeasedProblem,
+    SmallLeasedProblem,
+    FullLeasedProblem,
     RoyaltyRates,
     RoyaltyExogVars,
     RealDiscountRate,
     PsiSpace,
     TestPsiSpace,
-    ichars,
-    TestDynamicDrillModel
+    TestDynamicDrillModel,
+    CoefLinks
 
 # ----------------------------
 # Geology
@@ -57,6 +67,7 @@ process(   x::PriceProcess) = x.process
 grid(      x::PriceProcess) = x.grid
 series(    x::PriceProcess) = x.series
 transition(x::PriceProcess) = x.transition
+zchars(    x::PriceProcess) = series(x)
 
 function TestAR1Process(;rho=0.8, mean=1.33*(1-rho), var=0.265^2*(1-rho^2))
     return AR1process(mean, rho, var)
@@ -92,16 +103,8 @@ end
 # Lease problem
 # ----------------------------
 
-function LeasedProblem(s::Symbol=:full)
-    if s == :small
-        lp = LeasedProblem(3, 4, 5, 3, 2)
-    elseif s == :full
-        lp = LeasedProblem(8, 8, 12, 12, 8)
-    else
-        throw(error("don't konw s = $s"))
-    end
-    return lp::LeasedProblem
-end
+SmallLeasedProblem() = LeasedProblem(3, 4, 5, 3, 2)
+FullLeasedProblem() = LeasedProblem(8, 8, 12, 12, 8)
 
 # ----------------------------
 # Royalty rates
@@ -150,9 +153,10 @@ TestPsiSpace() = PsiSpace(13)
 
 ichars(log_ogip, royalty_rates) = collect(zip(log_ogip, royalty_rates))
 
-function TestDynamicDrillModel(z::PriceProcess; reward = UnconstrainedProblem,
+function TestDynamicDrillModel(z::PriceProcess;
+    problem = UnconstrainedProblem,
     discount = RealDiscountRate(),
-    statespace = LeasedProblem(:full),
+    statespace = FullLeasedProblem(),
     psispace = TestPsiSpace(),
     anticipate_t1ev = true
 )
@@ -162,8 +166,8 @@ function TestDynamicDrillModel(z::PriceProcess; reward = UnconstrainedProblem,
         DrillingCost_constant(),
         ExtensionCost_Constant()
     )
-    rwrd = reward(f)
-    zs = tuple(grid(z))
+    rwrd = problem(f)
+    zs = grid(z)
     ztrans = transition(z)
     ddm = DynamicDrillModel(
         rwrd, discount, statespace, zs, ztrans, psispace, anticipate_t1ev
@@ -244,11 +248,20 @@ Theta(m::ExtensionCost_Zero    , args...) = zeros(0)
 Theta(m::ExtensionCost_Constant, args...) = vcat(-2.0)
 
 
+CoefLinks(r) = (zeros(Int,0), zeros(Int,0))
 
+CoefLinks(r::DrillingRevenue{Unconstrained, NoTrend}) =
+    [(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]
 
+CoefLinks(r::DrillingRevenue{Unconstrained, TimeTrend}) =
+    [
+        (idx_produce_ψ, idx_drill_ψ,),
+        (idx_produce_g, idx_drill_g),
+        (idx_produce_g, idx_drill_g),
+    ]
 
-
-
-
+CoefLinks(r::DrillReward) = CoefLinks(revenue(r))
+CoefLinks(m::DynamicDrillModel) = CoefLinks(reward(m))
+CoefLinks(d::DataDrill) = CoefLinks(_model(d))
 
 end

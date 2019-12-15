@@ -239,6 +239,9 @@ end
 
 max_states(d::DataDrill) = [max_state(g) for g in d]
 
+total_wells_drilled(d::DataDrill) = [_D(statespace(_model(d)), max_state(g)) for g in d]
+
+
 # Regime (second layer of iteration)
 #------------------------------------------
 
