@@ -176,7 +176,7 @@ println("print to keep from blowing up")
     royrates_exog = sample(royalty_rates, num_i)
 
     # construct ichars for drilling
-    _ichars = [gr for gr in zip(log_ogip, royrates_exog)]
+    _ichars = [gr for gr in zip(log_ogip, royrates_endog)]
 
     # construct drilling data
     # ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)
