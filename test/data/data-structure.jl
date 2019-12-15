@@ -52,13 +52,14 @@ end
 
     nobs = 10
     k = 3
-    L = 3
+    rates = [1/8, 3/16, 1/4]
+    L = length(rates)
 
     X = rand(k,nobs)
     y = collect(1:nobs)
     @views sample!(collect(1:L), y[L+1:end])
 
-    data = DataRoyalty(RoyaltyModel(), y, X)
+    data = DataRoyalty(RoyaltyModel(), y, X, rates)
 
     @test length(data) == nobs == _num_obs(data)
     @test _num_x(data) == k

@@ -1,4 +1,5 @@
-export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty
+export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty,
+    observed_choices
 
 # Model structure
 #---------------------------
@@ -23,19 +24,20 @@ struct ObservationRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:Abstra
     end
 end
 
-struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataSet
+struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer,AV<:AbstractVector, T<:Real} <: AbstractDataSet
     model::M
     y::Vector{I}
     x::Matrix{T}
     xbeta::Vector{T}
-    num_choices::I
-    function DataRoyalty(model::M, y::Vector{I}, x::Matrix{T}) where {M<:AbstractRoyaltyModel,I,T}
+    choices::AV
+    function DataRoyalty(model::M, y::Vector{I}, x::Matrix{T},choices::AV) where {M,I,AV,T}
         k,n = size(x)
         length(y) == n  || throw(DimensionMismatch())
-        l,L = extrema(y)
-        l == 1 || throw(error("lowest royalty ID > 1"))
+        issorted(choices) || throw(error("choices not sorted"))
+        L = length(choices)
+        extrema(y) == (1,L) || throw(error("lowest royalty ID > 1"))
         L == length(countmap(y)) || throw(error("highest royalty ID < L = $L"))
-        return new{M,I,T}(model, y, x, Vector{T}(undef, n), L)
+        return new{M,I,AV,T}(model, y, x, Vector{T}(undef, n), choices)
     end
 end
 
@@ -47,7 +49,12 @@ const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,Observ
 #---------------------------
 
 _xbeta(      d::DataOrObsRoyalty) = d.xbeta
-num_choices(d::DataOrObsRoyalty) = d.num_choices
+choices(d::DataRoyalty) = d.choices
+num_choices(d::ObservationRoyalty) = d.num_choices
+num_choices(d::DataRoyalty) = length(choices(d))
+
+observed_choices(d::DataRoyalty) = getindex(choices(d), _y(d))
+
 @deprecate _num_choices(d::DataOrObsRoyalty) num_choices(d)
 
 # DataRoyalty interface
@@ -164,9 +171,10 @@ end
 
 Simulate dataset for `RoyaltyModel` using `u,v` to make `ψ1`
 """
-function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vector, L::Integer=3)
+function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vector, rates::AbstractVector)
 
     k,nobs = size(X)
+    L = length(rates)
     L >= 3 || throw(error("L = $L !>= 3"))
 
     k == length(theta) - (L-1) - 2 || throw(DimensionMismatch("dim mismatch b/w X: $(size(X)) and θ = $theta"))
@@ -183,11 +191,20 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vec
 
     rstar  = theta[2] .* ψ1 .+ X'*theta[2 .+ (1:k)] .+ eps
     l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
-    data = DataRoyalty(RoyaltyModel(),l,X)
+    data = DataRoyalty(RoyaltyModel(),l,X,rates)
 
-    num_choices(data) == L || throw(error("not all choices taken"))
     return data
 end
+
+function DataRoyalty(u, v, X, theta, L::Integer=3)
+    if L == 3
+        rates = [1/8, 3/16, 1/4]
+    else
+        throw(error("L != 3"))
+    end
+    return DataRoyalty(u,v,X,theta,rates)
+end
+
 
 """
     DataRoyalty(u,v,theta,L)

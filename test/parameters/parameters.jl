@@ -125,8 +125,9 @@ println("print to keep from blowing up")
     u,v = randn(num_i), randn(num_i)
 
     # construct royalty data
-    data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, num_royalty_rates)
-    royrates_endog = royalty_rates[_y(data_roy)]
+    data_roy = DataRoyalty(u, v, Xroyalty, θ_royalty, royalty_rates)
+    royrates_endog = observed_choices(data_roy)
+    @test royalty_rates[_y(data_roy)] == royrates_endog
     royrates_exog = sample(royalty_rates, num_i)
     #
     # # construct ichars for drilling
