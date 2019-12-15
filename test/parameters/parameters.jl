@@ -138,12 +138,10 @@ println("print to keep from blowing up")
     @test _ichars == [gr for gr in zip(log_ogip, royrates_endog)]
 
     # model
-    ddm_no_t1ev = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=false)
-
-    ddm_no_t1ev     = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=false)
-    ddm_with_t1ev   = TestDynamicDrillModel(price_process; problem=UnconstrainedProblem, anticipate_t1ev=true)
-    ddm_c_no_t1ev   = TestDynamicDrillModel(price_process; problem=ConstrainedProblem, anticipate_t1ev=false)
-    ddm_c_with_t1ev = TestDynamicDrillModel(price_process; problem=ConstrainedProblem, anticipate_t1ev=true)
+    ddm_no_t1ev     = TestDynamicDrillModel(price_process, false; problem=UnconstrainedProblem)
+    ddm_with_t1ev   = TestDynamicDrillModel(price_process, true;  problem=UnconstrainedProblem)
+    ddm_c_no_t1ev   = TestDynamicDrillModel(price_process, false; problem=ConstrainedProblem)
+    ddm_c_with_t1ev = TestDynamicDrillModel(price_process, true;  problem=ConstrainedProblem)
 
     # construct drilling data
     ddm_opts = (minmaxleases=1:1, nper_initial=40:40, tstart=1:50)

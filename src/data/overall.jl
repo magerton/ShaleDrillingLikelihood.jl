@@ -2,7 +2,8 @@ export DataSetofSets,
     DataFull,
     DataRoyaltyProduce,
     DataDrillOnly,
-    theta_linked
+    split_thetas,
+    merge_thetas
 
 # -------------------------------------------------
 # Data structure

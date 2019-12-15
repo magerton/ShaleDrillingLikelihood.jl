@@ -18,7 +18,8 @@ using ShaleDrillingLikelihood: simulate,
     idx_drill_g,
     idx_produce_t,
     idx_drill_t,
-    _model
+    _model,
+    total_wells_drilled
 
 
 import ShaleDrillingLikelihood: ichars
@@ -30,13 +31,18 @@ export NormalOGIP, logOGIP,
     SmallLeasedProblem,
     FullLeasedProblem,
     RoyaltyRates,
+    RoyaltyRatesSmall,
+    RoyaltyRatesFull,
     RoyaltyExogVars,
     RealDiscountRate,
     PsiSpace,
     TestPsiSpace,
     TestDynamicDrillModel,
-    CoefLinks
-
+    TestDataRoyalty,
+    TestDataProduce,
+    CoefLinks,
+    ThetaRho, AlphaPsi, AlphaG, AlphaT, Alpha0,
+    Theta
 # ----------------------------
 # Geology
 # ----------------------------
@@ -110,26 +116,18 @@ FullLeasedProblem() = LeasedProblem(8, 8, 12, 12, 8)
 # Royalty rates
 # ----------------------------
 
-function RoyaltyRates(n::Integer)
-    if n == 3
-        rr = [1/8, 3/16, 1/4,]
-    elseif n == 6
-        rr = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]
+RoyaltyRatesSmall() = [1/8, 3/16, 1/4,]
+RoyaltyRatesFull() = [1/8, 1/6, 3/16, 1/5, 9/40, 1/4]
+
+function RoyaltyRates(n)
+    if n ∈ (3, :small)
+        rr = RoyaltyRatesSmall()
+    elseif n ∈ (6, :full)
+        rr = RoyaltyRatesFull()
     else
         throw(error("don't know this n=$n"))
     end
     return rr::Vector{Float64}
-end
-
-function RoyaltyRates(s::Symbol=:full)
-    if s == :small
-        rr = RoyaltyRates(3)
-    elseif s == :full
-        rr = RoyaltyRates(6)
-    else
-        throw(error("don't konw s = $s"))
-    end
-    return rr
 end
 
 function RoyaltyExogVars(num_i::Integer, rates, theta, log_ogip=zeros(num_i,0), model=RoyaltyModel())
@@ -144,6 +142,23 @@ function RoyaltyExogVars(num_i::Integer, rates, theta, log_ogip=zeros(num_i,0), 
 end
 
 # ----------------------------
+# Test Data
+# ----------------------------
+
+function TestDataRoyalty(u, v, rates, theta, args...)
+    num_i = length(u)
+    num_i == length(v) || throw(DimensionMismatch())
+    Xroyalty = RoyaltyExogVars(num_i, rates, theta, args...)
+    data_roy = DataRoyalty(u, v, Xroyalty, theta, rates)
+    return data_roy
+end
+
+function TestDataProduce(u, datadrill, obs_per_well, theta, log_ogip)
+    nwells = total_wells_drilled(datadrill)
+    return DataProduce(u, nwells, obs_per_well, theta, log_ogip)
+end
+
+# ----------------------------
 # Model
 # ----------------------------
 
@@ -153,12 +168,11 @@ TestPsiSpace() = PsiSpace(13)
 
 ichars(log_ogip, royalty_rates) = collect(zip(log_ogip, royalty_rates))
 
-function TestDynamicDrillModel(z::PriceProcess;
+function TestDynamicDrillModel(z::PriceProcess, anticipate_t1ev::Bool = true;
     problem = UnconstrainedProblem,
     discount = RealDiscountRate(),
     statespace = FullLeasedProblem(),
-    psispace = TestPsiSpace(),
-    anticipate_t1ev = true
+    psispace = TestPsiSpace()
 )
 
     f = DrillReward(
@@ -179,21 +193,11 @@ end
 # Parameters
 # ----------------------------
 
-export ThetaRho,
-    AlphaPsi, AlphaG, AlphaT, Alpha0,
-    Theta
-
 ThetaRho() = 0.0
-AlphaPsi() = 0.33
-AlphaG() = 0.56
-AlphaT() = 0.02
+AlphaPsi() = STARTING_α_ψ
+AlphaG() = STARTING_log_ogip
+AlphaT() = STARTING_α_t
 Alpha0() = -2.8
-# θ_royalty = [θρ, 1.0,    0.1, -0.3,  -0.6, 0.6]
-# #            drill  ext    α0  αg  αψ  θρ
-# θ_drill_u = [-5.5, -2.0, -2.8, αg, αψ, θρ]
-# # θ_drill_u = [-5.8,       -2.8, αg, αψ, θρ]
-# θ_drill_c = vcat(θ_drill_u[1:3], θρ)
-#
 
 Theta(m, args...) = throw(error("Default Theta not assigned for $m"))
 Theta(m::AbstractDynamicDrillModel, args...) = Theta(reward(m), args...)
