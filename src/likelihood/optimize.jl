@@ -257,20 +257,13 @@ function solve_model(ew, theta; OptimOpts=OptimOpts, OptimMethod=bfgs(ew))
     return res
 end
 
-function critval(alpha::Real=0.05, twosided::Bool=true)
-    0 < alpha < 1 || throw(DomainError(alpha))
-    alpha >= 0.5 && @warn "α = $alpha > 0.05"
-    a = twosided ? alpha/2 : alpha
-    return quantile(Normal(), a)
-end
-
 coef(  leo::LocalEstObj) = theta1(leo)
 stderr(leo::LocalEstObj) = sqrt.(diag(invhess(leo)))
 tstats(leo::LocalEstObj) = coef(leo) ./ stderr(leo)
 
-function pvals(leo::LocalEstObj, alpha=0.05)
+function pvals(leo::LocalEstObj)
     t = tstats(leo)
-    p = 2 .* cdf.(Normal(), abs.(t))
+    p = 2 .* ccdf.(Normal(), abs.(t))
     return p
 end
 
@@ -281,10 +274,10 @@ function coef_and_se(leo::LocalEstObj)
     return hcat(coef(leo), se, t, p)
 end
 
-tstats!(leo)         = (update_invhess!(leo); stderr(leo))
-stderr!(leo)         = (update_invhess!(leo); tstats(leo))
-pvals!(leo, args...) = (update_invhess!(leo); pvals(leo, args...))
-coef_and_se!(leo)    = (update_invhess!(leo); coef_and_se(leo))
+tstats!(leo)      = (update_invhess!(leo); stderr(leo))
+stderr!(leo)      = (update_invhess!(leo); tstats(leo))
+pvals!(leo)       = (update_invhess!(leo); pvals(leo))
+coef_and_se!(leo) = (update_invhess!(leo); coef_and_se(leo))
 
 @deprecate coef_and_se(args...) coeftable(args...)
 @deprecate coef_and_se!(args...) coeftable(args...)
@@ -298,6 +291,13 @@ function Fstat!(leo::LocalEstObj; H0 = theta0(leo), alpha=0.05)
     return waldtest, p, reject
 end
 
+function critval(alpha::Real=0.05, twosided::Bool=true)
+    0 < alpha < 1 || throw(DomainError(alpha))
+    alpha >= 0.5 && @warn "α = $alpha > 0.05"
+    a = twosided ? alpha/2 : alpha
+    return quantile(Normal(), a)
+end
+
 function coeftable(leo, alpha::Real=0.05)
     # see defn at
     # https://github.com/JuliaStats/StatsBase.jl/blob/da42557642046116097ddaca39fd5dc2c41402cc/src/statmodels.jl#L376-L401
@@ -305,7 +305,7 @@ function coeftable(leo, alpha::Real=0.05)
     cc = coef(leo)
     se = stderr(leo)
     tt = tstats(leo)
-    p = pvals(leo, alpha)
+    p = pvals(leo)
     ci = se .* critval(alpha, true)
 
     omlev100 = (1 - alpha)*100
