@@ -86,20 +86,24 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     βψ = theta_royalty_ψ(obs, theta)
     κ = theta_royalty_κ(obs, theta)
 
+    mapper = Mapper(M,10)
+    
     if issorted(κ)
-        @inbounds for m in OneTo(M)
-            zm  = xbeta + βψ * psi[m]
-            eta12 = η12(obs, theta, zm)
+        let xbeta=xbeta, βψ=βψ, obs=obs, theta=theta, dograd=dograd, mapper=mapper
+            @inbounds @threads for m in OneTo(M)
+                zm  = xbeta + βψ * psi[m]
+                eta12 = η12(obs, theta, zm)
 
-            if dograd == false
-                LLm[m] += loglik_royalty(obs, eta12)
-            else
-                η1, η2 = eta12
-                F,LL  = lik_loglik_royalty(obs, eta12)
-                LLm[m] += LL
-                am[m] = normpdf(η1) / F
-                bm[m] = normpdf(η2) / F
-                cm[m] = dlogcdf_trunc(η1, η2)
+                if dograd == false
+                    LLm[m] += loglik_royalty(obs, eta12)
+                else
+                    η1, η2 = eta12
+                    F,LL  = lik_loglik_royalty(obs, eta12)
+                    LLm[m] += LL
+                    am[m] = normpdf(η1) / F
+                    bm[m] = normpdf(η2) / F
+                    cm[m] = dlogcdf_trunc(η1, η2)
+                end
             end
         end
     else
@@ -174,9 +178,11 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
 
     update_xbeta!(data, beta)
 
-    for i in OneTo(n)
-        gtmp = uview(gradtmp, :, i)
-        LL[i] = ll_inner!(gtmp, data[i], dograd, θ)
+    let data=data, θ=θ, gradtmp=gradtmp, dograd=dograd, LL=LL
+        @threads for i in 1:n
+            gtmp = uview(gradtmp, :, i)
+            LL[i] = ll_inner!(gtmp, data[i], dograd, θ)
+        end
     end
     dograd && sum!(reshape(grad, ncoef, 1), gradtmp)
 

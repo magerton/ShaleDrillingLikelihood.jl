@@ -121,7 +121,7 @@ function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::AbstractDrillModel, θ::
     dubvp = reshape(dubVfullperm(tmpv), :, nk, nc)
     ubv   = reshape( ubVfull(tmpv),     :, nc)
 
-    for dp1 in dp1space(statespace(ddm), sidx)
+    @threads for dp1 in dp1space(statespace(ddm), sidx)
         @inbounds for (i, (z,ψ)) in enumerate(zψpdct)
             obs = ObservationDrill(ddm, ichars, z, dp1-1, sidx)
             grad = view(dubv, :, i, dp1)

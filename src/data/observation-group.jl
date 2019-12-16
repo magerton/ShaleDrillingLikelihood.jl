@@ -90,8 +90,10 @@ obslength(g::AbstractObservationGroup, k) = obslength(_data(g), getindex(groupra
 #------------------------------------------
 
 function update_over_obs(f!::Function, data::AbstractDataSet)
-    for j in OneTo(_num_obs(data))
-        f!( Observation(data, j) )
+    let data = data
+        @threads for j in OneTo(_num_obs(data))
+            f!( Observation(data, j) )
+        end
     end
     return nothing
 end
