@@ -4,7 +4,9 @@ export RemoteEstObj,
     update_reo!,
     reset_reo!,
     theta0, theta1, hess, invhess, grad,
-    getworkers
+    getworkers,
+    parallel_simloglik!,
+    update!
 
 "workers() but excluding master"
 getworkers() = filter(i -> i != 1, workers())
