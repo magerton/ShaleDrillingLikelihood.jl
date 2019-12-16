@@ -5,5 +5,5 @@ for i in 1 2 4 8 16 32 64
 do
     export JULIA_NUM_THREADS=$i
     julia "./full-model/optimize-dynamic-speedtest.jl"
-end
+done
 export JULIA_NUM_THREADS=$ORIGTHREADS
