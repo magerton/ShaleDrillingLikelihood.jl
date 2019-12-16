@@ -11,9 +11,9 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M
     n == length(q0) == checksquare(ztrans) || throw(DimensionMismatch())
 
     @inbounds for j in OneTo(n)
-      @simd for i in OneTo(n)
-        x = -ztrans[i,j] * β * q0[j]
-        IminusTVp[i,j] = i==j  ?  1+x  : x
+        @simd for i in OneTo(n)
+            x = -ztrans[i,j] * β * q0[j]
+            IminusTVp[i,j] = i==j  ?  1+x  : x
         end
     end
 end
@@ -43,7 +43,7 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M
         @simd for nzi in nzrange(IminusTVp, j)
             x = -ztrans_vals[nzi] * discount(ddm) * q0[j]
             i = IminusTVp_rows[nzi]
-            IminusTVp_vals[nzi] = j==i  ?  1+x  :  x
+            IminusTVp_vals[nzi] = i==j  ?  1+x  :  x
         end
     end
 

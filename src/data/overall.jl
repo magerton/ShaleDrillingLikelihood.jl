@@ -2,7 +2,8 @@ export DataSetofSets,
     DataFull,
     DataRoyaltyProduce,
     DataDrillOnly,
-    theta_linked
+    split_thetas,
+    merge_thetas
 
 # -------------------------------------------------
 # Data structure
@@ -65,7 +66,7 @@ coef_link_drill(d::DataSetofSets) = d.coef_link_drill
 coef_link_pdxn(d::DataSetofSets) = d.coef_link_pdxn
 coef_links(d::DataSetofSets) = zip(coef_link_pdxn(d), coef_link_drill(d))
 length(d::DataSetofSets) = 3
-num_i(d::DataSetofSets) = maximum(length.(d))
+num_i(d::DataSetofSets) = maximum(length.(data(d)))
 
 iterate(d::DataSetofSets, state...) = iterate(data(d), state...)
 Broadcast.broadcastable(d::DataSetofSets) = data(d)
@@ -97,11 +98,12 @@ idx_produce(data::DataSetofSets) = last(idx_royalty(data)) .+ idx_produce(produc
 
 # theta_ρ(data::DataSetofSets{EmptyDataSet,<:DataRoyalty}, theta) = theta[1]
 theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(data))]
-theta_ρ(data::DataRoyaltyProduce, theta) = theta[1]
+theta_ρ(data::DataSetofSets{<:EmptyDataSet}, theta) = theta[1]
 
 
 function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
-    length.(thetas) == _nparm.(data) || throw(DimensionMismatch())
+    length.(thetas) == _nparm.(data) ||
+        throw(DimensionMismatch("len thetas = $(length.(thetas)) but nparm = $(_nparm.(data))"))
     thet_d, thet_r, thet_p = thetas
 
     data_p = produce(data)
@@ -112,6 +114,8 @@ function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
 
     return vcat(thet_d, thet_r[2:end], thet_p_short)
 end
+
+merge_thetas(thetas, data) = vcat(thetas...)
 
 @deprecate theta_linked(thetas::NTuple{3,AbstractVector}, data::DataFull) merge_thetas(thetas,data)
 
@@ -151,3 +155,9 @@ function split_thetas(data::DataSetofSets, theta::AbstractVector)
 end
 
 @deprecate thetas(data::DataSetofSets, theta::AbstractVector) split_thetas(data,theta)
+@deprecate split_theta(data, theta) split_thetas(data, theta)
+
+function coefnames(data::DataSetofSets)
+    nms = coefnames.(data)
+    return merge_thetas(nms, data)
+end

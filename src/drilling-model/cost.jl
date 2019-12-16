@@ -39,6 +39,9 @@ struct DrillingCost_constant <: AbstractDrillingCost end
     end
     return d*θ[1]
 end
+coefnames(::DrillingCost_constant) = ["\\alpha_c",]
+
+
 
 "Drilling cost changes if `d>1`"
 struct DrillingCost_dgt1 <: AbstractDrillingCost end
@@ -58,6 +61,9 @@ struct DrillingCost_dgt1 <: AbstractDrillingCost end
     end
     return u::T
 end
+coefnames(::DrillingCost_dgt1) = ["\\alpha_{d=1}", "\\alpha_{d>1}"]
+
+
 
 "Time FE for 2008-2012"
 struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE
@@ -80,6 +86,12 @@ end
     end
     return r::T
 end
+function coefnames(x::DrillingCost_TimeFE)
+    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    return vcat(cfs, "\\alpha_{d>1}")
+end
+
+
 
 
 "Time FE for 2008-2012 with shifters for (D==0,d>1), (D>1,d==1), (D>1,d>1)"
@@ -105,6 +117,12 @@ end
     end
     return r::T
 end
+
+function coefnames(x::DrillingCost_TimeFE_costdiffs)
+    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    return vcat(cfs, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d=1}", "\\alpha_{D>0,d>1}")
+end
+
 
 
 
@@ -133,6 +151,13 @@ end
     return r
 end
 
+function coefnames(x::DrillingCost_TimeFE_rigrate)
+    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    return vcat(cfs, "\\alpha_{d>1}", "\\alpha_{rig}")
+end
+
+
+
 
 "Time FE for 2008-2012 with shifters for (D==0,d>1), (D>1,d==1), (D>1,d>1)"
 struct DrillingCost_TimeFE_rig_costdiffs <: AbstractDrillingCost_TimeFE
@@ -157,4 +182,9 @@ end
         grad[end]        = d * rig
     end
     return r
+end
+
+function coefnames(x::DrillingCost_TimeFE_rig_costdiffs)
+    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    return vcat(cfs, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d=1}", "\\alpha_{D>0,d>1}", "\\alpha_{rig}")
 end

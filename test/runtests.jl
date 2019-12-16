@@ -1,7 +1,4 @@
 using Revise
-using Base.Threads
-
-println("using $(nthreads()) threads")
 
 module CompileShaleDrillingLikelihood
     using ShaleDrillingLikelihood
@@ -27,9 +24,13 @@ include("drilling-model/dynamic-drilling-model.jl")
 include("drilling-model/picking-psi-in-ddm.jl")
 include("drilling-model/test-full-payoff.jl")
 include("drilling-model/dynamic-drilling-learning-versions.jl")
-
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
 
-include("full-model/data-simulation-comparative-statics.jl")
-include("full-model/data-simulation.jl")
+include("parameters/parameters.jl")
+include("parameters/make-models-test.jl")
+
+# include("full-model/data-simulation-comparative-statics.jl")
+# include("full-model/data-simulation.jl")
+# include("full-model/optimize-static.jl")
+# include("full-model/optimize-dynamic.jl")

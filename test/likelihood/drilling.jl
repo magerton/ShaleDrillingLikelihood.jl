@@ -17,6 +17,7 @@ using Optim
 using LinearAlgebra
 
 using LinearAlgebra: checksquare
+using Optim: minimizer
 
 using ShaleDrillingLikelihood: SimulationDraws,
     DataDrill,
@@ -35,9 +36,7 @@ using ShaleDrillingLikelihood: SimulationDraws,
     loglik_drill_unit!,
     simloglik_drill_unit!,
     simloglik_drill_data!,
-    _y,
-    update_theta!
-
+    _y
 
 println("testing drilling likelihood")
 
@@ -63,7 +62,6 @@ println("testing drilling likelihood")
     dtv = DrillingTmpVars(data)
 
     # fill!(grad, 0)
-    # update_theta!(DrillingTmpVars(data), theta)
     # update!(sim, theta_drill_ρ(_model(data), theta))
     # @code_warntype simloglik_drill_unit!(grad, data[1], theta, view(sim, 1), true)
     # simloglik_drill_unit!(grad, data[3], theta, view(sim, 3), false)
@@ -83,7 +81,6 @@ println("testing drilling likelihood")
     #     unit = data[1]
     #     lease = unit[InitialDrilling()][1]
     #     simi = view(sim, 1)
-    #     update_theta!(dtv, theta)
     #     @code_warntype loglik_drill_lease!(  grad, lease, theta, simi[1], dtv[threadid()], true)
     #     @code_warntype loglik_drill_unit!(   grad, data[1], theta, simi[1], dtv[threadid()], true)
     #     @code_warntype simloglik_drill_unit!(grad, unit, theta, simi, true)
@@ -153,18 +150,25 @@ println("testing drilling likelihood")
         tdfgh = TwiceDifferentiable(f, fg!, fg!, h!, theta)
         res = optimize(tdfgh, theta*0.5, BFGS(;initial_invH = invH0), Optim.Options(allow_f_increases=true, show_trace=true))
         @show res
-        @show res.minimizer, theta
+        @show minimizer(res), theta
 
         vcovinv = invH0(res.minimizer)
         se = sqrt.(diag(vcovinv))
-        tstats = res.minimizer ./ se
+        tstats = minimizer(res) ./ se
         pvals = cdf.(Normal(), -2*abs.(tstats))
-        coef_and_se = hcat(theta, res.minimizer, se, tstats, pvals)
+        coef_and_se = hcat(theta, minimizer(res), se, tstats, pvals)
 
         err = theta .- res.minimizer
         waldtest = err'*vcovinv*err
         @test ccdf(Chisq(length(theta)), waldtest) > 0.05
         @show coef_and_se
+
+        rhohat = last(minimizer(res))
+        rho_se = last(se)
+        rho_t = (rhohat - last(theta)) / rho_se
+        rho_p = ccdf(Normal(), -2*abs(rho_t))
+        @show rhohat, last(theta), rho_t, rho_p
+
         # Base.showarray(stdout, coef_and_se)
     end
 

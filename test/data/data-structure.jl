@@ -9,7 +9,7 @@ using InteractiveUtils
 using StatsFuns
 
 using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, SimulationDrawsVector,
-    ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, _num_choices, _num_x,
+    ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, num_choices, _num_x,
     DataProduce, _xsum, obs_ptr, group_ptr, _nu,
     groupstart, grouplength, grouprange, obsstart, obsrange, obslength,
     ObservationProduce, ObservationGroup,
@@ -52,13 +52,14 @@ end
 
     nobs = 10
     k = 3
-    L = 3
+    rates = [1/8, 3/16, 1/4]
+    L = length(rates)
 
     X = rand(k,nobs)
     y = collect(1:nobs)
     @views sample!(collect(1:L), y[L+1:end])
 
-    data = DataRoyalty(RoyaltyModel(), y, X)
+    data = DataRoyalty(RoyaltyModel(), y, X, rates)
 
     @test length(data) == nobs == _num_obs(data)
     @test _num_x(data) == k

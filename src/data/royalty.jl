@@ -1,4 +1,5 @@
-export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty
+export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty,
+    observed_choices
 
 # Model structure
 #---------------------------
@@ -17,25 +18,26 @@ struct ObservationRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:Abstra
     xbeta::T
     num_choices::I
     function ObservationRoyalty(model::M,y::I,x::V,xbeta::T,num_choices::I) where {M<:AbstractRoyaltyModel,I<:Integer, T<:Real, V<:AbstractVector{T}}
-        isfinite(xbeta) || throw(DomainError())
-        0 < y <= num_choices || throw(DomainError())
+        isfinite(xbeta) || throw(DomainError(xbeta, "$xbeta = xβ = $x * β not finite")) # FIXME
+        0 < y <= num_choices || throw(DomainError(y, "y = $y should be 1 <= y <= $num_choices"))
         return new{M,I,T,V}(model, y, x, xbeta, num_choices)
     end
 end
 
-struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer, T<:Real} <: AbstractDataSet
+struct DataRoyalty{M<:AbstractRoyaltyModel,I<:Integer,AV<:AbstractVector, T<:Real} <: AbstractDataSet
     model::M
     y::Vector{I}
     x::Matrix{T}
     xbeta::Vector{T}
-    num_choices::I
-    function DataRoyalty(model::M, y::Vector{I}, x::Matrix{T}) where {M<:AbstractRoyaltyModel,I,T}
+    choices::AV
+    function DataRoyalty(model::M, y::Vector{I}, x::Matrix{T},choices::AV) where {M,I,AV,T}
         k,n = size(x)
         length(y) == n  || throw(DimensionMismatch())
-        l,L = extrema(y)
-        l == 1 || throw(error())
-        L == length(countmap(y)) || throw(error())
-        return new{M,I,T}(model, y, x, Vector{T}(undef, n), L)
+        issorted(choices) || throw(error("choices not sorted"))
+        L = length(choices)
+        extrema(y) == (1,L) || throw(error("lowest royalty ID > 1"))
+        L == length(countmap(y)) || throw(error("highest royalty ID < L = $L"))
+        return new{M,I,AV,T}(model, y, x, Vector{T}(undef, n), choices)
     end
 end
 
@@ -47,7 +49,13 @@ const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,Observ
 #---------------------------
 
 _xbeta(      d::DataOrObsRoyalty) = d.xbeta
-_num_choices(d::DataOrObsRoyalty) = d.num_choices
+choices(d::DataRoyalty) = d.choices
+num_choices(d::ObservationRoyalty) = d.num_choices
+num_choices(d::DataRoyalty) = length(choices(d))
+
+observed_choices(d::DataRoyalty) = getindex(choices(d), _y(d))
+
+@deprecate _num_choices(d::DataOrObsRoyalty) num_choices(d)
 
 # DataRoyalty interface
 #---------------------------
@@ -57,8 +65,8 @@ group_ptr(d::DataRoyalty) = OneTo(length(d)+1)
 obs_ptr(  d::DataRoyalty) = OneTo(length(d)+1)
 
 function choice_in_model(d::DataOrObsRoyalty, l::Integer)
-    0 < l <= _num_choices(d) && return true
-    throw(DomainError(l, "$l outside of 1:$(_num_choices(d))"))
+    0 < l <= num_choices(d) && return true
+    throw(DomainError(l, "$l outside of 1:$(num_choices(d))"))
 end
 
 # Iteration over data
@@ -69,7 +77,7 @@ function Observation(d::DataRoyalty, k::Integer)
     y = getindex(_y(d), k)
     x = view(_x(d), :, k)
     xbeta = getindex(_xbeta(d), k)
-    return ObservationRoyalty(_model(d), y, x, xbeta, _num_choices(d))
+    return ObservationRoyalty(_model(d), y, x, xbeta, num_choices(d))
 end
 
 getindex(   g::ObservationGroupRoyalty, k) = Observation(_data(g), getindex(grouprange(g), k))
@@ -82,14 +90,14 @@ function ==(a::ObservationRoyalty, b::ObservationRoyalty)
     _y(a) == _y(b) &&
     _x(a) == _x(b) &&
     _xbeta(a) == _xbeta(b) &&
-    _num_choices(a) == _num_choices(b)
+    num_choices(a) == num_choices(b)
 end
 
 # Updating data
 #---------------------------
 
 function update_xbeta!(d::DataRoyalty, theta::AbstractVector)
-    length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
+    # length(theta) == _num_x(d) || throw(DimensionMismatch("theta: $(size(theta)) and x: $(size(_x(d)))"))
     mul!(_xbeta(d), _x(d)', theta)
     return nothing
 end
@@ -100,8 +108,11 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 #---------------------------
 
 # length of RoyaltyModel parameters & gradient
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModel})      = _num_x(d) + _num_choices(d) + 1
-_nparm(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) + _num_choices(d) - 1
+extra_parm(::RoyaltyModel) = 2
+extra_parm(::RoyaltyModelNoHet) = 0
+extra_parm(d::DataOrObsRoyalty{<:RoyaltyModel}) = extra_parm(_model(d))
+
+_nparm(d::DataOrObsRoyalty) = _num_x(d) + num_choices(d) - 1 + extra_parm(d)
 
 idx_royalty(d::Union{DataOrObsRoyalty,AbstractRoyaltyModel}) = OneTo(_nparm(d))
 theta_royalty(d, theta) = view(theta, idx_royalty(d))
@@ -110,7 +121,7 @@ theta_royalty(d, theta) = view(theta, idx_royalty(d))
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
 idx_royalty_ψ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}) = 1:0
 idx_royalty_β(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = (1:_num_x(d))
-idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:_num_choices(d)-1)
+idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:num_choices(d)-1)
 
 function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l::Integer)
     choice_in_model(d,l)
@@ -120,7 +131,7 @@ end
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 1
 idx_royalty_ψ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 2
 idx_royalty_β(d::DataOrObsRoyalty{RoyaltyModel}) = 2 .+ (1:_num_x(d))
-idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:_num_choices(d)-1)
+idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}) = 2 + _num_x(d) .+ (1:num_choices(d)-1)
 function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
     choice_in_model(d,l)
     return 2 + _num_x(d) + l
@@ -139,14 +150,31 @@ theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
 theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
 
+function coefnames(d::DataRoyalty)
+    nms = Vector{String}(undef, _nparm(d))
+    if _model(d) isa RoyaltyModel
+        nms[idx_royalty_ρ(d)] = "\\rho"
+        nms[idx_royalty_ψ(d)] = "\\psi^0"
+    end
+    for (i,nmi) in enumerate(idx_royalty_β(d))
+        nms[nmi] = "\\beta_$i"
+    end
+    for (i, nmi) in enumerate(idx_royalty_κ(d))
+        nms[nmi] = "\\kappa_$i"
+    end
+    return nms
+end
+
+
 """
     DataRoyalty(u,v,X,theta,L)
 
 Simulate dataset for `RoyaltyModel` using `u,v` to make `ψ1`
 """
-function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vector, L::Integer=3)
+function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vector, rates::AbstractVector)
 
     k,nobs = size(X)
+    L = length(rates)
     L >= 3 || throw(error("L = $L !>= 3"))
 
     k == length(theta) - (L-1) - 2 || throw(DimensionMismatch("dim mismatch b/w X: $(size(X)) and θ = $theta"))
@@ -163,10 +191,20 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vec
 
     rstar  = theta[2] .* ψ1 .+ X'*theta[2 .+ (1:k)] .+ eps
     l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
-    data = DataRoyalty(RoyaltyModel(),l,X)
+    data = DataRoyalty(RoyaltyModel(),l,X,rates)
 
     return data
 end
+
+function DataRoyalty(u, v, X, theta, L::Integer=3)
+    if L == 3
+        rates = [1/8, 3/16, 1/4]
+    else
+        throw(error("L != 3"))
+    end
+    return DataRoyalty(u,v,X,theta,rates)
+end
+
 
 """
     DataRoyalty(u,v,theta,L)

@@ -14,6 +14,12 @@ using AxisAlgorithms
 using Interpolations
 using LoopVectorization
 using ProgressMeter
+using GenGlobal
+using SharedArrays
+using Distributed
+using CountPlus
+using Optim
+using StatsBase
 
 using UnsafeArrays
 
@@ -24,7 +30,12 @@ import Base: length, size, iterate,
     fill!,string, show, convert, eltype,
     step
 
+import StatsBase: coeftable, coefnames
+
+export coefnames, print_in_binary_for_copy_paste
+
 # specific functions
+using Printf: @sprintf
 using Distributions: _F1
 using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
@@ -45,7 +56,13 @@ abstract type AbstractTmpVars end
 # models
 #---------------------
 
-export AbstractModel, NoModel, AbstractDrillModel, AbstractProductionModel, AbstractRoyaltyModel, _nparm
+export AbstractModel,
+    NoModel,
+    AbstractDrillModel, AbstractDynamicDrillModel, AbstractStaticDrillModel,
+    AbstractProductionModel,
+    AbstractRoyaltyModel,
+    _nparm,
+    _model
 
 # for modeling
 abstract type AbstractModel end
@@ -53,6 +70,7 @@ abstract type AbstractModel end
 "No model"
 struct NoModel <: AbstractModel end
 length(::NoModel) = 0
+_nparm(::NoModel) = 0
 
 abstract type AbstractProductionModel    <: AbstractModel end
 abstract type AbstractRoyaltyModel       <: AbstractModel end
@@ -68,7 +86,6 @@ abstract type AbstractModelVariations end
 
 # For data structures
 
-export EmptyDataSet
 
 
 # "Collection of data on a particular outcome for individuals `i`"
@@ -83,12 +100,17 @@ abstract type AbstractObservation      <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+_model(x::AbstractDataStructure) = x.model
+
+export EmptyDataSet
+
 "Empty Data Set"
 struct EmptyDataSet <: AbstractDataSet end
 length(d::EmptyDataSet) = 0
 eachindex(d::EmptyDataSet) = 1:typemax(Int)
 _nparm(d::EmptyDataSet) = 0
-
+_model(d::EmptyDataSet) = NoModel()
+coefnames(d::EmptyDataSet) = Vector{String}(undef,0)
 
 # useful functions
 #----------------------------
@@ -106,12 +128,19 @@ function showtypetree(T, level=0)
    end
 end
 
+function print_in_binary_for_copy_paste(x::Vector{<:Number})
+    xstr = reduce(*, @sprintf("%a, ", i) for i in x)
+    return "[" * xstr * "]"
+end
+
+
 # Overall structure
 #----------------------------
 
 include("utilities/threadutils.jl")
 include("utilities/sum-functions.jl")
 include("utilities/inplace-interpolation.jl")
+include("utilities/delegate-methods.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
@@ -151,8 +180,10 @@ include("drilling-model/dcdp-components/learning_transition.jl")
 include("drilling-model/dcdp-components/vfit.jl")
 include("drilling-model/dcdp-components/solve-all-vfit.jl")
 
+# simulation
 include("drilling-model/data-simulation.jl")
 
+# Likelihood / solution
 # ------------------------------------
 
 # likelihoods
@@ -160,5 +191,14 @@ include("likelihood/royalty.jl")
 include("likelihood/production.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
+
+# solution
+include("likelihood/nfxp.jl")
+include("likelihood/optimize.jl")
+include("likelihood/display-results.jl")
+
+# parameters, model generation
+include("SDLParameters/SDLParameters.jl")
+
 
 end # module

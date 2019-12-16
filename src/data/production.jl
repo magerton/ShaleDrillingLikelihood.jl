@@ -107,13 +107,11 @@ end
 function update_nu!(d::DataOrObsProduction, theta)
     length(theta) == _nparm(d) || throw(DimensionMismatch())
     _nu(d) .= _y(d) - _x(d)'*theta_produce_β(d,theta)
-    let d = d
-        for j in OneTo(_num_obs(d))
-            obs = Observation(d, j)
-            nu = _nu(obs)
-            setindex!(_nusum(d),   sum(nu),    j)
-            setindex!(_nusumsq(d), dot(nu,nu), j)
-        end
+    for j in OneTo(_num_obs(d))
+        obs = Observation(d, j)
+        nu = _nu(obs)
+        setindex!(_nusum(d),   sum(nu),    j)
+        setindex!(_nusumsq(d), dot(nu,nu), j)
     end
     return nothing
 end
@@ -146,6 +144,7 @@ theta_produce(d, theta) = view(theta, idx_produce(d))
 
 idx_produce_ψ(  d::Union{AbstractDataStructureProduction,ProductionModel}) = 1
 idx_produce_g(  d::Union{AbstractDataStructureProduction,ProductionModel}) = 2
+idx_produce_t(  d::Union{AbstractDataStructureProduction,ProductionModel}) = 3
 idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))
 idx_produce_σ2η(d::AbstractDataStructureProduction) = 2 + _num_x(d)
 idx_produce_σ2u(d::AbstractDataStructureProduction) = 3 + _num_x(d)
@@ -158,6 +157,17 @@ theta_produce_σ2u(d, theta) = theta[idx_produce_σ2u(d)]
 theta_produce_β(  d::ProductionModel, theta) = view(theta, 2:length(theta)-2)
 theta_produce_σ2η(d::ProductionModel, theta) = theta[end-1]
 theta_produce_σ2u(d::ProductionModel, theta) = theta[end]
+
+function coefnames(d::AbstractDataStructureProduction)
+    nms = Vector{String}(undef, _nparm(d))
+    nms[idx_produce_ψ(d)]   = "\\alpha_\\psi"
+    beta_idx = idx_produce_β(d) .- 1
+    nms[idx_produce_β(d)]  .= ["\\gamma_{$i}" for i in beta_idx]
+    nms[idx_produce_g(d)]   = "\\alpha_g"
+    nms[idx_produce_σ2η(d)] = "\\sigma^2_\\eta"
+    nms[idx_produce_σ2u(d)] = "\\sigma^2_u"
+    return nms
+end
 
 # Dataset generator
 #---------------------------

@@ -339,6 +339,13 @@ function flow!(grad, x::DrillingRevenue{Constrained}, d, obs, θ, sim, dograd::B
     return rev
 end
 
+coefnames(x::DrillingRevenue{Unconstrained, NoTrend}) =
+    ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\theta_\\rho"]
+coefnames(x::DrillingRevenue{Unconstrained, TimeTrend}) =
+    ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\alpha_t", "\\theta_\\rho"]
+coefnames(x::DrillingRevenue{Constrained}) =
+    ["\\alpha_0", "\\theta_\\rho"]
+
 # ----------------------------------------------------------------
 # dψ is the same across many functions
 # ----------------------------------------------------------------

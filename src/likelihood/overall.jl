@@ -1,9 +1,11 @@
 simloglik!(grad, grp::ObservationGroupEmpty, theta, sim, dograd) = nothing
 grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
+update!(d::Union{EmptyDataSet,ObservationGroupEmpty}, args...) = nothing
 
 
+# SML for unit i
 function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
-    thetas, idxs, sim::SimulationDrawsVector, dograd::Bool
+    thetas, idxs, sim::SimulationDrawsVector, dograd::Bool; kwargs...
 ) where {N}
 
     fill(_qm(sim), 0)
@@ -11,7 +13,7 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
     zips = zip(idxs, thetas, grptup)
 
     for (idx,theta,grp) in zips
-        @views simloglik!(grad[idx], grp, theta, sim, dograd)
+        @views simloglik!(grad[idx], grp, theta, sim, dograd; kwargs...)
     end
 
     LL = logsumexp!(_llm(sim)) - logM
@@ -25,9 +27,9 @@ function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
     return LL
 end
 
-
+# SML for entire dataset
 function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetofSets,
-    theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool
+    theta::AbstractVector, sim::SimulationDrawsMatrix, dograd::Bool; kwargs...
 )
     nparm, num_i = size(tmpgrad)
     nparm == length(grad) == checksquare(hess) || throw(DimensionMismatch())
@@ -52,7 +54,7 @@ function simloglik!(grad::Vector, hess::Matrix, tmpgrad::Matrix, data::DataSetof
         grptup = getindex.(data, i)
         simi = view(sim, i)
         fill!(_qm(sim), 0)
-        LL += simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd)
+        LL += simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd; kwargs...)
     end
 
     if dograd

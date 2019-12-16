@@ -14,64 +14,33 @@ struct DrillingTmpVars{T<:AbstractFloat} <: AbstractTmpVars
     dubv::Matrix{T}
     llj::Vector{T}
     grad::Vector{T}
-    theta::Vector{T}
     gradJ::Matrix{T}
-    function DrillingTmpVars(ubv, dubv, llj, grad, theta, gradJ)
-        k = length(theta)
-        k == length(grad)==size(gradJ,1) == size(dubv,1) || throw(DimensionMismatch())
+    function DrillingTmpVars(ubv, dubv, llj, grad, gradJ)
+        length(grad)==size(gradJ,1) == size(dubv,1) || throw(DimensionMismatch())
         length(ubv) == size(dubv,2) || throw(DimensionMismatch())
         T = eltype(ubv)
-        return new{T}(ubv, dubv, llj, grad, theta, gradJ)
+        return new{T}(ubv, dubv, llj, grad, gradJ)
     end
 end
-
-const DrillingTmpVarsAll{T} = Vector{DrillingTmpVars{T}}
-const DrillingTmpVarsThread = DrillingTmpVars
 
 _ubv(  dtv::DrillingTmpVars) = dtv.ubv
 _dubv( dtv::DrillingTmpVars) = dtv.dubv
 _llj(  dtv::DrillingTmpVars) = dtv.llj
 _grad( dtv::DrillingTmpVars) = dtv.grad
 _gradJ(dtv::DrillingTmpVars) = dtv.gradJ
-_theta(dtv::DrillingTmpVars) = dtv.theta
 
-# @deprecate _ubv(  dtv::DrillingTmpVarsAll, id) _ubv(  dtv[id])
-# @deprecate _llj(  dtv::DrillingTmpVarsAll, id) _llj(  dtv[id])
-# @deprecate _grad( dtv::DrillingTmpVarsAll, id) _grad( dtv[id])
-# @deprecate _gradJ(dtv::DrillingTmpVarsAll, id) _gradJ(dtv[id])
-# @deprecate _theta(dtv::DrillingTmpVarsAll, id) _theta(dtv[id])
 
 function DrillingTmpVars(J::Integer, maxchoices::Integer, k::Integer, T::Type=Float64)
-    tid = T(threadid())
-    ubv = fill(tid, maxchoices)
-    dubv = fill(tid, k, maxchoices)
-    llj = fill(tid, J)
-    grad = fill(tid, k)
-    theta = fill(tid, k)
-    gradJ = fill(tid, k, J)
-    return DrillingTmpVars(ubv, dubv, llj, grad, theta, gradJ)
+    ubv   = zeros(T, maxchoices)
+    dubv  = zeros(T, k, maxchoices)
+    llj   = zeros(T, J)
+    grad  = zeros(T, k)
+    gradJ = zeros(T, k, J)
+    return DrillingTmpVars(ubv, dubv, llj, grad, gradJ)
 end
 
-@noinline function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)
-    nth = nthreads()
+function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)
     maxchoices = num_choices(model)
     k = _nparm(model)
-
-    dtvs = Vector{DrillingTmpVars{T}}(undef, nth)
-
-    let J=J, maxchoices=maxchoices, k=k
-        @threads for id in OneTo(nth)
-            dtvs[id] = DrillingTmpVars(J, maxchoices, k, T)
-        end
-    end
-
-    return dtvs
-end
-
-update_theta!(dtv::DrillingTmpVarsThread, theta) = (_theta(dtv) .= theta)
-
-function update_theta!(dtv::DrillingTmpVarsAll, theta)
-    @threads for i in OneTo(nthreads())
-        update_theta!(dtv[i], theta)
-    end
+    return DrillingTmpVars(J, maxchoices, k, T)
 end

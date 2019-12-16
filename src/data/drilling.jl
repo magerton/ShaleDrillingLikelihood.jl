@@ -30,7 +30,7 @@ export DataDrill
 
 abstract type AbstractDataDrill <: AbstractDataSet end
 
-struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<:DrillingTmpVarsAll} <: AbstractDataDrill
+struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -48,7 +48,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
 
     # time indices
     zchars::ETV
-    dtv::DTV
+    dtv::DrillingTmpVars{Float64}
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
         jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
@@ -83,9 +83,8 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT, DTV<
 
         # construct tmpvars
         dtv = DrillingTmpVars(maxj1length(j1ptr), model, Float64)
-        DTV = typeof(dtv)
 
-        return new{M,ETV,ITup,XT,DTV}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
+        return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
     end
 end
 
@@ -158,6 +157,8 @@ ichars(  d::DataDrill) = d.ichars
 j1chars( d::DataDrill) = d.j1chars
 DrillingTmpVars(d::DataDrill) = d.dtv
 DrillingTmpVars(data) = DrillingTmpVars(_data(data))
+
+coefnames(x::DataDrill)  = coefnames(_model(x))
 
 # length of things
 hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
@@ -237,6 +238,9 @@ function max_state(grp::DrillUnit)
 end
 
 max_states(d::DataDrill) = [max_state(g) for g in d]
+
+total_wells_drilled(d::DataDrill) = [_D(statespace(_model(d)), max_state(g)) for g in d]
+
 
 # Regime (second layer of iteration)
 #------------------------------------------
@@ -369,22 +373,19 @@ end
 xsample(d::UnivariateDistribution, nobs::Integer) = rand(d, nobs)
 xsample(d::UnitRange, nobs::Integer) = sample(d, nobs)
 
-function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
+function DataDrill(u::Vector, v::Vector, _zchars::ExogTimeVars, _ichars::Vector{<:NTuple{N,Number}},
     m::AbstractDrillModel, theta::AbstractVector;
     minmaxleases::UnitRange=0:3, nper_initial::UnitRange=1:10,
     nper_development::UnitRange=0:10,
     tstart::UnitRange=5:15,
     xdomain::D=Normal()
-) where {D}
+) where {D,N}
 
     all(u .!= v) || throw(error("u,v must be different!"))
 
     num_i = length(u)
     num_i == length(v) || throw(DimensionMismatch())
     num_zt = length(_zchars)
-
-    # ichars
-    # _ichars = ichars_sample(m,num_i)
 
     # initial leases per unit
     initial_leases_per_unit = sample(minmaxleases, num_i)
