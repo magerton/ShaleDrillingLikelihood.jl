@@ -8,7 +8,9 @@ export RemoteEstObj,
     update_reo!,
     strderr!, tstats!, pvals!,
     strderr, tstats, pvals,
-    Fstat!
+    Fstat!,
+    reset_reo!,
+    _model
 
 export theta0, theta1, hess, invhess, grad, stderr, tstats, pvals, coef_and_se!, coeftable
 
@@ -82,6 +84,28 @@ function reset!(x::LocalEstObj)
     fill!(theta1(x),0)
 end
 
+
+@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
+    dat = data(reo)
+    thetas = split_thetas(dat, theta)
+    for (d, θ) in zip(dat, thetas)
+        update!(d, θ)
+    end
+    return nothing
+end
+
+update_reo!(theta::Vector) = update_reo!(get_g_RemoteEstObj(), theta)
+
+@noinline function reset_reo!(reo::RemoteEstObj)
+    data_drill = drill(data(reo))
+    ddm = _model(data_drill)
+    vf = value_function(ddm)
+    fill!(vf, 0)
+end
+
+reset_reo!() = reset_reo!(get_g_RemoteEstObj())
+
+
 function invhess!(x::LocalEstObj)
     invhess(x) .= inv(hess(x))
     return invhess(x)
@@ -128,9 +152,6 @@ function check_theta(ew::EstimationWrapper, theta)
     length(theta) == _nparm(ew) || throw(DimensionMismatch())
 end
 
-
-
-
 function update!(ew::EstimationWrapper, theta, dograd)
     l = LocalEstObj(ew)
     r = RemoteEstObj(ew)
@@ -170,18 +191,8 @@ end
 
 end
 
-@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
-    dat = data(reo)
-    thetas = split_thetas(dat, theta)
-    for (d, θ) in zip(dat, thetas)
-        update!(d, θ)
-    end
-    return nothing
-end
 
 simloglik!(i, theta, dograd) = simloglik!(i,theta,dograd,get_g_RemoteEstObj())
-update_reo!(theta::Vector) = update_reo!(get_g_RemoteEstObj(), theta)
-
 
 function serial_simloglik!(ew, theta, dograd)
     check_theta(ew,theta)
@@ -201,6 +212,13 @@ function parallel_simloglik!(ew, theta, dograd)
     return update!(ew, theta, dograd)
 end
 
+
+
+
+function test_parallel_simloglik!(ew, theta, dograd)
+    @everywhere reset_reo!()
+    parallel_simloglik!(ew, theta, dograd)
+end
 
 function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 
