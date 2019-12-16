@@ -1,10 +1,3 @@
-# module ShaleDrillingLikelihood_OptimizeSpeedtests
-# using Revise
-
-DOBTIME = false
-DOPROFILE = false
-DOPAR = true
-
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
 
@@ -12,7 +5,6 @@ using BenchmarkTools
 using Profile
 using Distributed
 using CountPlus
-using Juno
 using LinearAlgebra.BLAS: set_num_threads
 using Base.Threads: nthreads
 
