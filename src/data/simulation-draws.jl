@@ -169,7 +169,7 @@ end
 function update_ψ1!(ψ1::AA, u::AA, v::AA, θρ::Real) where {AA<:AbstractArray}
     size(ψ1) == size(u) == size(v) || throw(DimensionMismatch())
     ρ = _ρ(θρ)
-    0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
+    0 <= ρ <= 1 || @warn "0 <= ρ=$ρ <= 1 is false. Have θρ = $θρ"
     ψ1 .= _ψ1.(u, v, ρ)
     return nothing
 end
@@ -178,7 +178,7 @@ end
 function update_dψ1dθρ!(dψ1dθρ::A, u::A, v::A, θρ::Real) where {A<:AbstractArray}
     size(dψ1dθρ) == size(u) == size(v) || throw(DimensionMismatch())
     ρ = _ρ(θρ)
-    0 <= ρ <= 1 || @warn "0 <= ρ <= 1 is false"
+    0 <= ρ <= 1 || @warn "0 <= ρ=$ρ <= 1 is false. Have θρ = $θρ"
     dψ1dθρ .= _dψ1dθρ.(u,v,ρ,θρ)
     return nothing
 end
