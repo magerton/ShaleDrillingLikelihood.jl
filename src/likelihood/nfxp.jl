@@ -3,8 +3,11 @@ export RemoteEstObj,
     EstimationWrapper,
     update_reo!,
     reset_reo!,
-    theta0, theta1, hess, invhess, grad
+    theta0, theta1, hess, invhess, grad,
+    getworkers
 
+"workers() but excluding master"
+getworkers() = filter(i -> i != 1, workers())
 
 @GenGlobal g_RemoteEstObj
 
@@ -179,7 +182,8 @@ end
 end
 
 
-simloglik!(i, theta, dograd) = simloglik!(i,theta,dograd,get_g_RemoteEstObj())
+simloglik!(i, theta, dograd; kwargs...) =
+    simloglik!(i, theta, dograd, get_g_RemoteEstObj(); kwargs...)
 
 function serial_simloglik!(ew, theta, dograd; kwargs...)
     check_theta(ew,theta)
