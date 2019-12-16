@@ -61,7 +61,7 @@ version = "2.2.0"
 deps = ["Test"]
 git-tree-sha1 = "94d8cd03a5c1a3e81db697b0ed81bbacd9969399"
 repo-rev = "master"
-repo-url = "https://github.com/magerton/CountPlus.git"
+repo-url = "https://github.com/magerton/CountPlus"
 uuid = "fc19a607-4a1c-5e34-bf0d-7dd5ba9e7eda"
 version = "0.0.0"
 
@@ -137,7 +137,7 @@ version = "0.10.7"
 deps = ["Distributed", "LinearAlgebra", "SharedArrays", "StatsFuns", "Test"]
 git-tree-sha1 = "76e00b37161a04c2077bb4c23f514bb5ce5fa96a"
 repo-rev = "master"
-repo-url = "https://github.com/magerton/GenGlobal.jl.git"
+repo-url = "https://github.com/magerton/GenGlobal.jl"
 uuid = "e61441de-b3fa-5384-98e4-d7fd5b91285f"
 version = "0.0.0"
 
@@ -193,7 +193,7 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 [[LoopVectorization]]
 deps = ["MacroTools", "SIMDPirates", "SLEEFPirates", "VectorizationBase"]
 git-tree-sha1 = "6c2e961b4a5e719fb33f4994d6fdcc763780521e"
-repo-rev = "master"
+repo-rev = "63fccf4"
 repo-url = "https://github.com/chriselrod/LoopVectorization.jl"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
 version = "0.1.0"
@@ -354,16 +354,16 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SIMDPirates]]
 deps = ["MacroTools", "VectorizationBase"]
-git-tree-sha1 = "b3f6d7791acdfaa81624186ae54c1eb53138aee1"
-repo-rev = "master"
+git-tree-sha1 = "5b76f428f8496321ddac53aa6b998542b74e2bb0"
+repo-rev = "11e4587"
 repo-url = "https://github.com/chriselrod/SIMDPirates.jl"
 uuid = "21efa798-c60a-11e8-04d3-e1a92915a26a"
 version = "0.1.0"
 
 [[SLEEFPirates]]
 deps = ["SIMDPirates", "VectorizationBase"]
-git-tree-sha1 = "42cbc7f06b1f2063fc08b2aa2f8cd2e70d1e91bc"
-repo-rev = "master"
+git-tree-sha1 = "05ab2c6c112a2ac249951f847e5ccf448323e98a"
+repo-rev = "cfbffd8"
 repo-url = "https://github.com/chriselrod/SLEEFPirates.jl"
 uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
 version = "0.1.0"
@@ -438,8 +438,8 @@ version = "1.0.0"
 
 [[VectorizationBase]]
 deps = ["CpuId", "LinearAlgebra"]
-git-tree-sha1 = "913138bbc3e1892fbdd379fa48cafffe46a445c2"
-repo-rev = "master"
+git-tree-sha1 = "382b7098c1c4700eb772538bb94f89ca33179c1c"
+repo-rev = "b2c1b05"
 repo-url = "https://github.com/chriselrod/VectorizationBase.jl"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.1.0"
