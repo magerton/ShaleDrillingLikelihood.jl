@@ -61,7 +61,8 @@ export AbstractModel,
     AbstractDrillModel, AbstractDynamicDrillModel, AbstractStaticDrillModel,
     AbstractProductionModel,
     AbstractRoyaltyModel,
-    _nparm
+    _nparm,
+    _model
 
 # for modeling
 abstract type AbstractModel end
@@ -99,6 +100,7 @@ abstract type AbstractObservation      <: AbstractDataStructure end
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
+_model(x::AbstractDataStructure) = x.model
 
 export EmptyDataSet
 
@@ -178,8 +180,10 @@ include("drilling-model/dcdp-components/learning_transition.jl")
 include("drilling-model/dcdp-components/vfit.jl")
 include("drilling-model/dcdp-components/solve-all-vfit.jl")
 
+# simulation
 include("drilling-model/data-simulation.jl")
 
+# Likelihood / solution
 # ------------------------------------
 
 # likelihoods
@@ -187,9 +191,13 @@ include("likelihood/royalty.jl")
 include("likelihood/production.jl")
 include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
+
+# solution
+include("likelihood/nfxp.jl")
 include("likelihood/optimize.jl")
+include("likelihood/display-results.jl")
 
-
+# parameters, model generation
 include("SDLParameters/SDLParameters.jl")
 
 

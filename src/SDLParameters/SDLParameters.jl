@@ -19,7 +19,6 @@ using ShaleDrillingLikelihood: simulate,
     idx_drill_g,
     idx_produce_t,
     idx_drill_t,
-    _model,
     total_wells_drilled,
     DataDynamicDrill
 
