@@ -28,7 +28,7 @@ include("likelihood/drilling.jl")
 include("likelihood/overall.jl")
 
 include("parameters/parameters.jl")
-include("parameters/make-models.jl")
+include("parameters/make-models-test.jl")
 
 # include("full-model/data-simulation-comparative-statics.jl")
 # include("full-model/data-simulation.jl")

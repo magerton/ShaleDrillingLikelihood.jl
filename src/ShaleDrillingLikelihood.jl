@@ -58,7 +58,7 @@ abstract type AbstractTmpVars end
 
 export AbstractModel,
     NoModel,
-    AbstractDrillModel, AbstractDynamicDrillModel, AbstractStaticDrillModel, 
+    AbstractDrillModel, AbstractDynamicDrillModel, AbstractStaticDrillModel,
     AbstractProductionModel,
     AbstractRoyaltyModel,
     _nparm
@@ -190,7 +190,7 @@ include("likelihood/overall.jl")
 include("likelihood/optimize.jl")
 
 
-include("parameters/SDLParameters.jl")
+include("SDLParameters/SDLParameters.jl")
 
 
 end # module
