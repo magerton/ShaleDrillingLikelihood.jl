@@ -23,9 +23,6 @@ struct DrillingTmpVars{T<:AbstractFloat} <: AbstractTmpVars
     end
 end
 
-const DrillingTmpVarsAll{T} = Vector{DrillingTmpVars{T}}
-const DrillingTmpVarsThread = DrillingTmpVars
-
 _ubv(  dtv::DrillingTmpVars) = dtv.ubv
 _dubv( dtv::DrillingTmpVars) = dtv.dubv
 _llj(  dtv::DrillingTmpVars) = dtv.llj
@@ -34,26 +31,16 @@ _gradJ(dtv::DrillingTmpVars) = dtv.gradJ
 
 
 function DrillingTmpVars(J::Integer, maxchoices::Integer, k::Integer, T::Type=Float64)
-    tid = T(threadid())
-    ubv = fill(tid, maxchoices)
-    dubv = fill(tid, k, maxchoices)
-    llj = fill(tid, J)
-    grad = fill(tid, k)
-    gradJ = fill(tid, k, J)
+    ubv   = zeros(T, maxchoices)
+    dubv  = zeros(T, k, maxchoices)
+    llj   = zeros(T, J)
+    grad  = zeros(T, k)
+    gradJ = zeros(T, k, J)
     return DrillingTmpVars(ubv, dubv, llj, grad, gradJ)
 end
 
-@noinline function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)
-    nth = nthreads()
+function DrillingTmpVars(J::Integer, model::AbstractDrillModel, T::Type=Float64)
     maxchoices = num_choices(model)
     k = _nparm(model)
-    dtvs = Vector{DrillingTmpVars{T}}(undef, nth)
-
-    let J=J, maxchoices=maxchoices, k=k
-        @threads for id in OneTo(nth)
-            dtvs[id] = DrillingTmpVars(J, maxchoices, k, T)
-        end
-    end
-
-    return dtvs
+    return DrillingTmpVars(J, maxchoices, k, T)
 end

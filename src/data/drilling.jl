@@ -48,7 +48,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
 
     # time indices
     zchars::ETV
-    dtv::DrillingTmpVarsAll{Float64}
+    dtv::DrillingTmpVars{Float64}
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
         jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
