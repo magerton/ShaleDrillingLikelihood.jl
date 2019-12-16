@@ -157,7 +157,7 @@ function update!(ew::EstimationWrapper, theta, dograd)
 end
 
 
-@noinline function simloglik!(i, theta, dograd, reo::RemoteEstObj)
+@noinline function simloglik!(i, theta, dograd, reo::RemoteEstObj; kwargs...)
 
     gradi = view(scoremat(reo), :, i)
     grptup = getindex.(data(reo), i)
@@ -174,35 +174,38 @@ end
     idxs = theta_indexes(data(reo))
 
     llv = llvec(reo)
-    llv[i] = simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd)
+    llv[i] = simloglik!(gradi, grptup, thetasvw, idxs, simi, dograd; kwargs...)
 
 end
 
 
 simloglik!(i, theta, dograd) = simloglik!(i,theta,dograd,get_g_RemoteEstObj())
 
-function serial_simloglik!(ew, theta, dograd)
+function serial_simloglik!(ew, theta, dograd; kwargs...)
     check_theta(ew,theta)
     reo = RemoteEstObj(ew)
     update_reo!(reo, theta)
-    map(i -> simloglik!(i, theta, dograd, reo), OneTo(ew))
+    map(i -> simloglik!(i, theta, dograd, reo; kwargs...), OneTo(ew))
     return update!(ew, theta, dograd)
 end
 
-function parallel_simloglik!(ew, theta, dograd)
+function parallel_simloglik!(ew, theta, dograd; kwargs...)
     check_theta(ew,theta)
     wp = CachingPool(workers())
     @eval @everywhere update_reo!($theta)
-    let theta=theta, dograd=dograd
-        pmap(i -> simloglik!(i, theta, dograd), wp, OneTo(ew))
+    let theta=theta, dograd=dograd, kwargs=kwargs
+        pmap(i -> simloglik!(i, theta, dograd; kwargs...), wp, OneTo(ew))
     end
     return update!(ew, theta, dograd)
 end
 
 
-
-
-function test_parallel_simloglik!(ew, theta, dograd)
+function test_parallel_simloglik!(ew, theta, dograd; kwargs...)
     @everywhere reset_reo!()
-    parallel_simloglik!(ew, theta, dograd)
+    parallel_simloglik!(ew, theta, dograd; kwargs...)
+end
+
+function test_serial_simloglik!(ew, theta, dograd; kwargs...)
+    reset_reo!(RemoteEstObj(ew))
+    serial_simloglik!(ew, theta, dograd; kwargs...)
 end

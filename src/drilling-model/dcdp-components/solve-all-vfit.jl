@@ -187,7 +187,7 @@ end
 
 function solve_vf_and_update_itp!(ddm::DDM_AbstractVF, θ, ichar, dograd; kwargs...)
     t = DCDPTmpVars(ddm)
-    solve_vf_all!(t, ddm, θ, ichar, dograd)
+    solve_vf_all!(t, ddm, θ, ichar, dograd; kwargs...)
     vf = value_function(ddm)
     update_interpolation!(vf, dograd)
     return nothing
