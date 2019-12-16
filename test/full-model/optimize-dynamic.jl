@@ -13,7 +13,8 @@ println("print to keep from blowing up")
 
     DOPAR = true
     TESTGRAD = true
-    num_i = 15
+
+    num_i = 250
     M = 500
     nz = 21
     nψ = 21
@@ -56,13 +57,16 @@ println("print to keep from blowing up")
 
         resetcount!()
         startcount!([50, 500, 100000,], [1, 5, 100,])
-        opts = Optim.Options(show_trace=true, time_limit=2*60, allow_f_increases=true)
+        opts = Optim.Options(show_trace=true, time_limit=5*60, allow_f_increases=true)
         res = solve_model(ew, theta_peturb; OptimOpts=opts)
         println(res)
         @test minimizer(res) == theta1(leo)
 
-        print_in_binary_for_copy_paste(minimizer(res))
+        println(sprintf_binary(minimizer(res)))
         println(coeftable(leo))
+        print("True theta is\n\t")
+        println(t)
+        print("\n")
 
         # compare estimate to original coef vector, t
         @test last(Fstat!(leo; H0=t)) == false

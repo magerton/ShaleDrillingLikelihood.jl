@@ -62,7 +62,8 @@ export AbstractModel,
     AbstractProductionModel,
     AbstractRoyaltyModel,
     _nparm,
-    _model
+    _model,
+    sprintf_binary
 
 # for modeling
 abstract type AbstractModel end
@@ -128,11 +129,12 @@ function showtypetree(T, level=0)
    end
 end
 
-function print_in_binary_for_copy_paste(x::Vector{<:Number})
+function sprintf_binary(x::Vector{<:Number})
     xstr = reduce(*, @sprintf("%a, ", i) for i in x)
     return "[" * xstr * "]"
 end
 
+@deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
 
 # Overall structure
 #----------------------------
