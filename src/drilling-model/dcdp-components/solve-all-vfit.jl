@@ -30,11 +30,13 @@ function solve_vf_infill!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dograd
         @views dEV0 = view(dEV(evs), :, :, :, i)
 
         update_static_payoffs!(tvw, ddm, θ, i, ichar, dograd)
-        ubV(tvw) .+= discount(ddm) .* view(EV(evs), :, :, idxs)
+        _ubv = ubV(tvw)
+        _ubv .+= discount(ddm) .* view(EV(evs), :, :, idxs)
 
         if dograd
             fill!(dEV0, 0)
-            dubVperm(tvw) .+= discount(ddm) .* view(dEV(evs), :, :, :, idxs)
+            _dubv = dubVperm(tvw)
+            _dubv .+= discount(ddm) .* view(dEV(evs), :, :, :, idxs)
         end
 
         if horzn == :Finite
@@ -50,7 +52,7 @@ function solve_vf_infill!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dograd
 
             if dograd
                 # TODO: only allows 0-payoff if no action
-                ubV(tvw)[:,:,1] .= discount(ddm) .* EV0
+                _ubv[:,:,1] .= discount(ddm) .* EV0
                 gradinf!(dEV0, tvw, ddm)   # note: destroys ubV & dubV
             end
         else
