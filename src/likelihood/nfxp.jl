@@ -158,6 +158,7 @@ function update!(ew::EstimationWrapper, theta, dograd)
     end
     nll = negLL(r)
     countplus!(-nll,theta)
+    flush(stdout)
     return nll
 end
 
