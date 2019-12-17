@@ -1,17 +1,29 @@
+export ThetaConstrained
+
 ThetaRho() = 0.0
 AlphaPsi() = STARTING_α_ψ
 AlphaG() = STARTING_log_ogip
 AlphaT() = STARTING_α_t
 Alpha0() = -2.8
+BetaPsi() = 0.11805850128182346
 
+SigmaSq_eta() = 0.009368079566227127
+SigmaSq_u() = 0.10145638253519064
+Gamma0() = -14.951888468589365
 
 Theta(m, args...) = throw(error("Default Theta not assigned for $m"))
-Theta(m::AbstractDynamicDrillModel, args...) = Theta(reward(m), args...)
-function Theta(m::DrillReward, args...)
-    c = Theta(cost(m), args...)
-    e = Theta(extend(m), args...)
-    r = Theta(revenue(m), args...)
+Theta(m::AbstractDynamicDrillModel, args...; kwargs...) = Theta(reward(m), args...; kwargs...)
+function Theta(m::DrillReward, args...; kwargs...)
+    c = Theta(cost(m), args...; kwargs...)
+    e = Theta(extend(m), args...; kwargs...)
+    r = Theta(revenue(m), args...; kwargs...)
     return vcat(c,e,r)
+end
+
+function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
+    rwrd_c = ConstrainedProblem(m, theta)
+    thet_c = [x for (i,x) in enumerate(theta) if i ∉ ShaleDrillingLikelihood.ConstrainedIdx(m)]
+    return thet_c
 end
 
 
@@ -30,6 +42,29 @@ end
 # Test Drill
 function Theta(m::TestDrillModel; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
     return vcat(αψ, 2.0, -2.0, -0.75, θρ)
+end
+
+# from datasets
+# ---------
+
+function Theta(d::DataRoyalty; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
+    βψ = BetaPsi()
+    if num_choices(d) == 6 && _num_x(d) == 4
+        betas = [ 0.5966055028536498, 1.1822487035901503, -1.7017414563283797, 0.14048454874430671]
+        kappas = [3.8373126232392716, 4.172804362649826, 5.0264099395765385, 5.925934015361181, 6.501397017005945]
+        return vcat(θρ, βψ, betas, kappas)
+    end
+    throw(error("no starting values available"))
+end
+
+function Theta(d::DataProduce; αψ=AlphaPsi(), αg=AlphaG(), αt=AlphaT(),
+        σ2η=SigmaSq_eta(), σ2u=SigmaSq_u(), γ0=Gamma0(), kwargs...)
+    if _num_x(d) == 2
+        return vcat(αψ, αg, γ0,     σ2η, σ2u)
+    elseif _num_x(d) == 3
+        return vcat(αψ, αg, γ0, αt, σ2η, σ2u)
+    end
+    throw(error("no starting values available"))
 end
 
 
@@ -51,12 +86,24 @@ end
 
 # cost
 # ---------
-Theta(m::DrillingCost_constant, args...) = vcat(-5.5)
+
+Theta(m::DrillingCost_constant, args...; kwargs...) = vcat(-5.5)
+
+function Theta(m::DrillingCost_TimeFE, args...; kwargs...)
+    c2plus = 1.407
+    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+        timefe = [-9.48651914568503, -6.198466654405615, -4.859543515359247, -4.391926980826075, -4.464122201335934,]
+    else
+        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+    end
+    return vcat(timefe, c2plus)
+end
+
 
 # extension
 # ---------
-Theta(m::ExtensionCost_Zero    , args...) = zeros(0)
-Theta(m::ExtensionCost_Constant, args...) = vcat(-2.0)
+Theta(m::ExtensionCost_Zero    , args...; kwargs...) = zeros(0)
+Theta(m::ExtensionCost_Constant, args...; kwargs...) = vcat(-1.0)
 
 
 CoefLinks(r) = (zeros(Int,0), zeros(Int,0))

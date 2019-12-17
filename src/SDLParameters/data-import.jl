@@ -12,8 +12,6 @@ using ShaleDrillingLikelihood: DrillingRevenueTimeTrend,
 
 export FormulaProduce, FormulaRoyalty
 
-import ShaleDrillingLikelihood: DataRoyalty, DataProduce, DataDrillPrimitive
-
 using StatsBase: countmap
 using FileIO: load
 using Dates: year
@@ -41,14 +39,14 @@ const cols = Dict(
 
 # variables for regressions
 function FormulaProduce(::DrillReward{<:DrillingRevenueTimeTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + intercept + log_ogip + α_t + (1|i) + (1|iD))
-    full = @formula(logcumgas_r ~ 0 + intercept + log_ogip + α_t)
+    strt = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept + (1|i) + (1|iD))
+    full = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept)
     fm = startvalues ? strt : full
     return fm
 end
 function FormulaProduce(::DrillReward{<:DrillingRevenueNoTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + intercept + log_ogip  + (1|i) + (1|iD))
-    full = @formula(logcumgas_r ~ 0 + intercept + log_ogip)
+    strt = @formula(logcumgas_r ~ 0 + log_ogip + intercept  + (1|i) + (1|iD))
+    full = @formula(logcumgas_r ~ 0 + log_ogip + intercept)
     fm = startvalues ? strt : full
     return fm
 end
@@ -70,6 +68,8 @@ function DataProduce(rwrd::DrillReward, path; model=ProductionModel(), kwargs...
     qmf = ModelFrame(fm, _qchars)
     y = response(qmf)
     X = Matrix(modelmatrix(qmf)')
+
+    @assert all(@view(X[end,:]) .== 1)
 
     # data
     obs_ptr   = Int.(alldata[cols[:qptr]])
@@ -109,7 +109,7 @@ end
 # Drilling data primitives
 # ----------------------------
 
-itypes(r::DataFrameRow) = ( r[:log_ogip], Int(r[:royalty_id]) )
+itypes(r::DataFrameRow) = ( r[:log_ogip], r[:royalty_nearest], )
 
 # ----------------------------
 # Prices
@@ -118,9 +118,11 @@ itypes(r::DataFrameRow) = ( r[:log_ogip], Int(r[:royalty_id]) )
 validnum(x) = isfinite(x) && !ismissing(x)
 
 logprice(  r::DataFrameRow) = log(r[:well_revenue] / r[:ppi2009])
-logcost(   r::DataFrameRow) = log(r[:dayrate_c]    / r[:ppi2009])
+logrigrate(r::DataFrameRow) = log(r[:dayrate_c]    / r[:ppi2009])
 myyear(    r::DataFrameRow) = Int(floor(r[:qtrdate]))
 year_clamp(r::DataFrameRow, lb, ub) = clamp(myyear(r), lb, ub)
+
+@deprecate logcost(r) logrigrate(r)
 
 function year_clamp(r::DataFrameRow, d::DrillReward{R,<:AbstractDrillingCost_TimeFE}) where {R<:DrillingRevenue}
     c = cost(d)
@@ -138,7 +140,7 @@ function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_TimeFE, Dri
 end
 
 function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_TimeFE_rigrate, DrillingCost_TimeFE_rig_costdiffs}}
-    f(r) = (logprice(r), myyear(r), logcost(r), )
+    f(r) = (logprice(r), logrigrate(r), myyear(r), )
     return f
 end
 

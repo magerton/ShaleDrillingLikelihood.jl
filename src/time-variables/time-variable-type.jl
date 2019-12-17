@@ -1,4 +1,4 @@
-export Quarter, ExogTimeVars
+export Quarter, ExogTimeVars, _timevars
 
 struct ExogTimeVars{N, ZTup<:NTuple{N,Real}, OR<:OrdinalRange}
     timevars::Vector{ZTup}

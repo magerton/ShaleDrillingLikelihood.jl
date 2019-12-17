@@ -1,3 +1,5 @@
+export DataDrill, DataDrillPrimitive, zchars
+
 # Types to define Initial vs Development Drilling
 #------------------------------------------
 
@@ -25,9 +27,6 @@ isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 
 # DataSet
 #---------------------------
-
-export DataDrill, DataDrillPrimitive
-
 
 function x_in_statespace(x, wp::AbstractUnitProblem)
     setx = Set(x)
@@ -226,7 +225,7 @@ j1chars( d::AbstractDataDrill) = d.j1chars
 DrillingTmpVars(d::DataDrill) = d.dtv
 DrillingTmpVars(data) = DrillingTmpVars(_data(data))
 
-statespace(d::DataDrillPrimitive) = d.statespace
+statespace(d::DataDrillPrimitive) = d.wp
 statespace(d::DataDrill) = statespace(_model(d))
 
 coefnames(x::DataDrill)  = coefnames(_model(x))

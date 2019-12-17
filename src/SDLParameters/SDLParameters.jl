@@ -22,12 +22,16 @@ using ShaleDrillingLikelihood: simulate,
     idx_produce_t,
     idx_drill_t,
     total_wells_drilled,
-    DataDynamicDrill
+    DataDynamicDrill,
+    num_choices,
+    _num_x,
+    DrillingRevenueUnconstrained
 
 using Base: product
 using LinearAlgebra: checksquare
 
-import ShaleDrillingLikelihood: ichars
+import ShaleDrillingLikelihood: ichars, zchars,
+    DataRoyalty, DataProduce, DataDrillPrimitive, DataDrill
 
 include("thetas.jl")
 include("model-components.jl")

@@ -120,6 +120,7 @@ end
 
 const DEFAULT_SPLINE = BSpline(Quadratic(Free(OnGrid())))
 splinetype(r::AbstractRange, spline::Union{NoInterp,<:BSpline}=DEFAULT_SPLINE) = spline
+splinetype(r::UnitRange{Int64}, spline... ) = BSpline(Constant())
 splinetype(r::AbstractUnitRange, spline...) = NoInterp()
 
 function ValueFunction(ev, dev, reward, discount, statespace, zspace, ztransition, psispace, args...)

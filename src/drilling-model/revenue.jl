@@ -69,6 +69,9 @@ Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTIN
 @inline theta_ψ(x::Constrained) = x.α_ψ
 @inline theta_t(x::Constrained) = x.α_t
 
+const DrillingRevenueConstrained = DrillingRevenue{Constrained}
+const DrillingRevenueUnconstrained = DrillingRevenue{Unconstrained}
+
 # Technology
 # -----------------
 
@@ -145,14 +148,29 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_0(x::DrillingRevenue, θ) = θ[idx_0(x)]
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
-@inline theta_t(x::DrillingRevenue, θ) = θ[idx_t(x)]
+@inline theta_t(x::DrillingRevenueTimeTrend, θ) = θ[idx_t(x)]
 @inline theta_ρ(x, θ) = θ[idx_ρ(x)]
-
+function theta_t(x::DrillingRevenueNoTrend, θ)
+    @warn "No t in $x. setting to $STARTING_α_t"
+    return STARTING_α_t
+end
 @inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
 @inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
 
+function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
+    g   = theta_g(x, theta)
+    psi = theta_ψ(x, theta)
+    t   = theta_t(x, theta)
+    out = (log_ogip=g, α_ψ=psi, α_t=STARTING_α_t,)
+    return out
+end
 
+ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x, θ))
+
+ConstrainedIdx(x::DrillingRevenueTimeTrend) = idx_g(x), idx_ψ(x), idx_t(x)
+ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
+ConstrainedIdx(x::DrillReward) = ConstrainedIdx(revenue(x))
 
 # @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
 # @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
@@ -409,7 +427,7 @@ ConstrainedProblem(  x::DrillingRevenue; kwargs...) = DrillingRevenue(Constraine
 
 ConstrainedProblem(  x::DrillReward; kwargs...) = DrillReward(ConstrainedProblem(revenue(x); kwargs...), ConstrainedProblem(drill(x)), ConstrainedProblem(extend(x)))
 UnconstrainedProblem(x::DrillReward; kwargs...) = DrillReward(UnconstrainedProblem(revenue(x); kwargs...), UnconstrainedProblem(drill(x)), UnconstrainedProblem(extend(x)))
-
+ConstrainedProblem(x::DrillReward, theta::AbstractVector) = ConstrainedProblem(x; ConstrainedCoefs(x,theta)...)
 
 # Learning models
 NoLearningProblem(x::AbstractPayoffComponent, args...) = x
