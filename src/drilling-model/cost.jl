@@ -3,7 +3,10 @@ export     AbstractDrillingCost,
     DrillingCost_TimeFE,
     DrillingCost_TimeFE_rigrate,
     DrillingCost_constant,
-    DrillingCost_dgt1
+    DrillingCost_dgt1,
+    DrillingCost_TimeFE_costdiffs,
+    DrillingCost_TimeFE_rig_costdiffs
+
 
 @inline flowdψ(::AbstractDrillingCost, d, obs, theta, sim) = azero(theta)
 @inline function flow!(grad, u::AbstractPayoffFunction, d, obs, θ, sim)
