@@ -20,6 +20,7 @@ using Distributed
 using CountPlus
 using Optim
 using StatsBase
+using ClusterManagers
 
 using UnsafeArrays
 
