@@ -29,6 +29,20 @@ isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 export DataDrill, DataDrillPrimitive
 
 
+function x_in_statespace(x, wp::AbstractUnitProblem)
+    setx = Set(x)
+    nS = length(wp)
+    if all(x .== 0)
+        check = true
+    else
+        check = issubset( setx, 1:nS )
+    end
+    check || throw(error("not all x ∈ $setx are in $wp"))
+    return check
+end
+
+x_in_statespace(x, wp) = true
+
 function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp)
 
     # check i
@@ -58,7 +72,7 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
             throw(error("don't have z for all times implied by jtstart"))
     end
 
-    issubset(Set(x), OneTo(length(wp))) || throw(error("not all x in $wp"))
+    x_in_statespace(x,wp)
 
     return true
 end
