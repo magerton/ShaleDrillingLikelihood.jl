@@ -15,7 +15,15 @@ export NormalOGIP, logOGIP,
     CoefLinks,
     ThetaRho, AlphaPsi, AlphaG, AlphaT, Alpha0,
     Theta,
-    DefaultDrillReward
+    DefaultDrillReward,
+    BaseYear
+
+
+# ----------------------------
+# Time
+# ----------------------------
+
+BaseYear() = ShaleDrillingLikelihood.TIME_TREND_BASE
 
 # ----------------------------
 # Geology
