@@ -16,7 +16,7 @@ using ShaleDrillingLikelihood: ar,
     condvar,
     lrvar,
     lrmean,
-    approxgrid,
+    MakeGrid,
     zero_out_small_probs
 
 @testset "tauchen approximations to ar1" begin
@@ -37,7 +37,7 @@ using ShaleDrillingLikelihood: ar,
     ngridpts = 21
     P = tauchen_1d(ar1, ngridpts)
     @test all(sum(P, dims=2) .≈ 1)
-    xgrid = approxgrid(ar1, ngridpts)
+    xgrid = MakeGrid(ar1, ngridpts)
 
     num_outside = length(y) - sum(first(xgrid) .<= y .<= last(xgrid) )
     @test num_outside / length(y) - normcdf(-3.0)*2 < 0.0002
@@ -50,7 +50,7 @@ using ShaleDrillingLikelihood: ar,
 end
 
 @testset "random walk" begin
-    rw = RandomWalkProcess(1.0)
+    rw = RandomWalk(1.0)
     y = simulate(rw, 1000)
     @test var(y) > var(y[1:100])
 end

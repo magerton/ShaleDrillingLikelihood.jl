@@ -87,15 +87,6 @@ function TestPriceProcess(; process=TestAR1Process(), nsim=150, ngrid=13)
     return PriceProcess(process, grid, etv, transition)
 end
 
-extend_minmax_factor(x; n) = minimum(x)/n, maximum(x)*n
-
-function BivariateBrownianPriceProcess(etv; extendn=3, np=13, nr=13, )
-    p, r, t = Vector.(collect(zip(_timevars(etv)))
-    prng = range(extend_minmax_factor)
-
-end
-
-
 # ----------------------------
 # Lease problem
 # ----------------------------

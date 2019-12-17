@@ -4,10 +4,10 @@ using Distributions
 using ShaleDrillingLikelihood
 using Dates
 using SparseArrays
-using LinearAlgebra: checksquare
+using LinearAlgebra
 using Random
-using StatsModels: @formula
 
+using StatsModels: @formula
 
 using ShaleDrillingLikelihood: simulate,
     cost, extend, revenue,
@@ -25,12 +25,14 @@ using ShaleDrillingLikelihood: simulate,
     DataDynamicDrill
 
 using Base: product
+using LinearAlgebra: checksquare
 
 import ShaleDrillingLikelihood: ichars
 
 include("thetas.jl")
 include("model-components.jl")
 include("make-models.jl")
+include("grids.jl")
 include("data-import.jl")
 
 end

@@ -185,6 +185,7 @@ include("utilities/delegate-methods.jl")
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
 include("time-variables/time-variable-type.jl")
+include("time-variables/time-series-processes.jl")
 
 # data structures
 include("data/observation-group.jl")

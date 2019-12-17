@@ -1,11 +1,7 @@
 export tauchen_2d!,
     tauchen_1d!,
     tauchen_2d,
-    tauchen_1d,
-    AR1process,
-    TimeSeriesProcess,
-    RandomWalkProcess,
-    AbstractAR1Process
+    tauchen_1d
 
 function bvn_upperlower_cdf(xlim, ylim, r)
     xl,xu = xlim
@@ -72,103 +68,19 @@ function tauchen_2d!(P::AbstractMatrix, S::Base.Iterators.ProductIterator, μ::F
     end
 end
 
-abstract type TimeSeriesProcess end
-abstract type AbstractAR1Process{T<:Real} <: TimeSeriesProcess end
 
-struct AR1process{T<:Real} <: AbstractAR1Process{T}
-    mu::T
-    ar::T
-    sigsq::T
-    function AR1process(mu::T,ar::T,sigsq::T) where {T}
-        -1 < ar < 1 || @warn("nonstationary: |ar| parameter >= 1")
-        sigsq > 0 || throw(DomainError(sigsq))
-        return new{T}(mu,ar,sigsq)
-    end
-end
+minp_default() = 1e-5
 
-export BivariateBrownian
-
-struct BivariateBrownian{T<:Real} <: TimeSeriesProcess end
-    Sigma::Matrix{T}
-    function BivariateBrownian(Sigma::Matrix{T}) where {T}
-        checksquare(Sigma) == 2 || throw(error())
-        issymmetric(Sigma) || throw(error())
-        isposdef(Sigma) || throw(error())
-        return new{T}(Sigma)
-    end
-end
-
-
-mu(x::AR1process) = x.mu
-ar(x::AR1process) = x.ar
-sigsq(x::AbstractAR1Process) = x.sigsq
-condvar(x::AbstractAR1Process) = sigsq(x)
-condstd(x::AbstractAR1Process) = sqrt(condvar(x))
-lrvar(x::AR1process) = sigsq(x) / (1 - ar(x)^2)
-lrstd(x::AR1process) = sqrt(lrvar(x))
-condmean(x::AbstractAR1Process, yt) = mu(x) + ar(x)*yt
-lrmean(x::AR1process) = mu(x)/(1-ar(x))
-
-
-struct RandomWalkProcess{T} <: AbstractAR1Process{T}
-    sigsq::T
-    function RandomWalkProcess(sigsq::T) where {T}
-        sigsq > 0 || throw(DomainError(sigsq))
-        return new{T}(sigsq)
-    end
-end
-
-ar(x::RandomWalkProcess) = 1
-mu(x::RandomWalkProcess) = 0
-
-# TODO: fix name?
-function approxgrid(x::AR1process, n; m=3)
-    lrstdev = sqrt(lrvar(x))
-    centered = range(-m*lrstdev; stop=m*lrstdev, length=n)
-    return lrmean(x) .+ centered
-end
-
-
-function tauchen_1d(x::AbstractAR1Process, xgrid::AbstractRange)
-    return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
-end
-
-function tauchen_1d(x::AR1process, n::Integer; kwargs...)
-    xgrid = approxgrid(x, n; kwargs...)
-    return tauchen_1d(xgrid, xt -> condmean(x,xt), condvar(x))
-end
-
-starting_dist(ar1::AR1process) = Normal(lrmean(ar1), lrstd(ar1))
-starting_dist(ar1::RandomWalkProcess) = Normal(0, condstd(ar1))
-
-function simulate(ar1::AbstractAR1Process{T}, y0::Real, n::Integer) where {T}
-    dist_cond   = Normal(zero(T), condstd(ar1))
-    y = Vector{T}(undef,n)
-    y[1] = y0
-    Distributions.rand!(dist_cond, view(y, 2:n))
-    for t in 2:n
-        y[t] += condmean(ar1, y[t-1])
-    end
-    return y
-end
-
-function simulate(ar1::AbstractAR1Process, n::Integer)
-    dist_uncond = starting_dist(ar1)
-    y0 = rand(dist_uncond)
-    simulate(ar1, y0, n)
-end
-
-
-function zero_out_small_probs(P::AbstractMatrix, minp::Real)
-    checksquare(P)
+function zero_out_small_probs!(Q::AbstractMatrix, P::AbstractMatrix, minp::Real)
+    checksquare(P) == checksquare(Q) || throw(DimensionMismatch())
     @assert all(sum(P, dims=2) .≈ 1)
-
-    Q = deepcopy(P)
-    for i in eachindex(Q)
-        if Q[i] < minp
-            Q[i] = 0
-        end
+    for i in eachindex(P)
+        p = P[i]
+        Q[i] = p > minp ? p : 0
     end
     Q ./= sum(Q, dims=2)
     return Q
 end
+
+zero_out_small_probs!(P,minp) = zero_out_small_probs!(P,P,minp)
+zero_out_small_probs( P,minp) = zero_out_small_probs!(similar(P), P, minp)
