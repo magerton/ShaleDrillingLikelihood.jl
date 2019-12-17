@@ -6,12 +6,35 @@ export RemoteEstObj,
     theta0, theta1, hess, invhess, grad,
     getworkers,
     parallel_simloglik!,
-    update!
+    update!,
+    start_up_workers
 
 "workers() but excluding master"
 getworkers() = filter(i -> i != 1, workers())
 
+function start_up_workers(ENV::Base.EnvDict)
+    # send primitives to workers
+    oldworkers = getworkers()
+    println_time_flush("removing workers $oldworkers")
+    rmprocs(oldworkers)
+    flush(stdout)
+    if "SLURM_JOBID" in keys(ENV)
+        num_cpus_to_request = parse(Int, ENV["SLURM_TASKS_PER_NODE"])
+        println("requesting $(num_cpus_to_request) cpus from slurm.")
+        flush(stdout)
+        pids = addprocs_slurm(num_cpus_to_request)
+    else
+        pids = addprocs()
+    end
+    println_time_flush("Workers added: $pids")
+    return pids
+end
+
+# ----------------------------------
+
 @GenGlobal g_RemoteEstObj
+
+# ----------------------------------
 
 abstract type AbstractEstimationObjects end
 

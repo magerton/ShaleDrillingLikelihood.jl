@@ -74,8 +74,7 @@ dataset_cnstr = DataSetofSets(data_cnstr, EmptyDataSet(), EmptyDataSet())
 
 # ------------------- set up workers -----------------------
 
-rmprocs(getworkers())
-pids = addprocs()
+pids = start_up_workers(ENV)
 @everywhere using ShaleDrillingLikelihood
 
 res, ew = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
