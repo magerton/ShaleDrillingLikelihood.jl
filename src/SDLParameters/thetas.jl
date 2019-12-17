@@ -22,7 +22,8 @@ end
 
 function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
     rwrd_c = ConstrainedProblem(m, theta)
-    thet_c = [x for (i,x) in enumerate(theta) if i ∉ ShaleDrillingLikelihood.ConstrainedIdx(m)]
+    theta_rev = ShaleDrillingLikelihood.vw_revenue(m, theta)
+    thet_c = [x for (i,x) in enumerate(theta_rev) if i ∉ ShaleDrillingLikelihood.ConstrainedIdx(m)]
     return thet_c
 end
 

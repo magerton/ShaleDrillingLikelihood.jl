@@ -159,6 +159,7 @@ end
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
 
 function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
+    @assert length(theta) == _nparm(x)
     g   = theta_g(x, theta)
     psi = theta_ψ(x, theta)
     t   = theta_t(x, theta)
