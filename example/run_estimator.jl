@@ -6,7 +6,7 @@ using ShaleDrillingLikelihood.SDLParameters
 if "SLURM_JOBID" in keys(ENV)
     using ClusterManagers
 end
-using CountPlus, Distributed, JLD2
+using CountPlus, Distributed
 using Optim: minimizer, Options
 
 # ------------------- number of simulations ----------------------
@@ -34,7 +34,8 @@ EXTEND_GRID = log(3)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
-DATADIR = "~/haynesville/intermediate_data"
+DATADIR = "D:/projects/haynesville/intermediate_data"
+# DATADIR = "~/haynesville/intermediate_data"
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
@@ -77,28 +78,30 @@ rmprocs(getworkers())
 pids = addprocs()
 @everywhere using ShaleDrillingLikelihood
 
-let d=dataset_cnstr, theta=theta0_cnstr, M=M_cnstr, maxtime=maxtime_cnstr
-    # estimation objects
-    leo = LocalEstObj(d, theta)
-    reo = RemoteEstObj(leo, M)
-    ew = EstimationWrapper(leo, reo)
-    leograd = ShaleDrillingLikelihood.grad(leo)
-    @eval @everywhere set_g_RemoteEstObj($reo)
+res, ew = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
 
-    resetcount!()
-    startcount!([100, 500, 100000,], [1, 5, 100,])
-    opts = Optim.Options(show_trace=true, time_limit=maxtime, allow_f_increases=true)
-
-    res = solve_model(ew, theta; OptimOpts=opts)
-
-    # println(res)
-    println("Recomputing final gradient / hessian")
-    let dograd=true, theta=minimizer(res)
-        parallel_simloglik!(ew, theta, dograd)
-        update!(ew, theta, dograd)
-    end
-    println(coeftable(leo))
-    print("Parameter estimates are\n\t")
-    print(sprintf_binary(minimizer(res)))
-    print("\n")
-end
+# let d=dataset_cnstr, theta=theta0_cnstr, M=M_cnstr, maxtime=maxtime_cnstr
+#     # estimation objects
+#     leo = LocalEstObj(d, theta)
+#     reo = RemoteEstObj(leo, M)
+#     ew = EstimationWrapper(leo, reo)
+#     leograd = ShaleDrillingLikelihood.grad(leo)
+#     @eval @everywhere set_g_RemoteEstObj($reo)
+#
+#     resetcount!()
+#     startcount!([100, 500, 100000,], [1, 5, 100,])
+#     opts = Optim.Options(show_trace=true, time_limit=maxtime, allow_f_increases=true)
+#
+#     res = solve_model(ew, theta; OptimOpts=opts)
+#
+#     # println(res)
+#     println("Recomputing final gradient / hessian")
+#     let dograd=true, theta=minimizer(res)
+#         parallel_simloglik!(ew, theta, dograd)
+#         update!(ew, theta, dograd)
+#     end
+#     println(coeftable(leo))
+#     print("Parameter estimates are\n\t")
+#     print(sprintf_binary(minimizer(res)))
+#     print("\n")
+# end

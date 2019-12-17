@@ -71,3 +71,30 @@ function coeftable(leo, alpha::Real=0.05)
     pvalcol = 4
     return CoefTable(tbl, cols, rows, pvalcol)
 end
+
+
+function solve_model(d::DataSetofSets, theta, M, maxtime)
+    leo = LocalEstObj(d, theta)
+    reo = RemoteEstObj(leo, M)
+    ew = EstimationWrapper(leo, reo)
+    leograd = grad(leo)
+    @eval @everywhere set_g_RemoteEstObj($reo)
+
+    resetcount!()
+    startcount!([100, 500, 100000,], [1, 5, 100,])
+    opts = Optim.Options(show_trace=true, time_limit=maxtime, allow_f_increases=true)
+
+    res = solve_model(ew, theta; OptimOpts=opts)
+
+    # println(res)
+    println("Recomputing final gradient / hessian")
+    let dograd=true, theta=minimizer(res)
+        parallel_simloglik!(ew, theta, dograd)
+        update!(ew, theta, dograd)
+    end
+    println(coeftable(leo))
+    print("Parameter estimates are\n\t")
+    print(sprintf_binary(minimizer(res)))
+    print("\n")
+    return res, ew
+end
