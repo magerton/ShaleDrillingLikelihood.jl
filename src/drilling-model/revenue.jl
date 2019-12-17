@@ -80,6 +80,13 @@ struct TimeTrend <: AbstractTechChange
 end
 TimeTrend() = TimeTrend(TIME_TREND_BASE)
 @inline baseyear(x::TimeTrend) = x.baseyear
+function baseyear(x::NoTrend)
+    yr = TIME_TREND_BASE
+    @warn "No base year defined for $x. using $yr"
+    return yr
+end
+baseyear(x::DrillingRevenue) = baseyear(tech(x))
+baseyear(x::DrillReward) = baseyear(revenue(x))
 
 const DrillingRevenueTimeTrend = DrillingRevenue{Cn,TimeTrend} where {Cn}
 const DrillingRevenueNoTrend   = DrillingRevenue{Cn,NoTrend} where {Cn}
