@@ -86,6 +86,19 @@ struct AR1process{T<:Real} <: AbstractAR1Process{T}
     end
 end
 
+export BivariateBrownian
+
+struct BivariateBrownian{T<:Real} <: TimeSeriesProcess end
+    Sigma::Matrix{T}
+    function BivariateBrownian(Sigma::Matrix{T}) where {T}
+        checksquare(Sigma) == 2 || throw(error())
+        issymmetric(Sigma) || throw(error())
+        isposdef(Sigma) || throw(error())
+        return new{T}(Sigma)
+    end
+end
+
+
 mu(x::AR1process) = x.mu
 ar(x::AR1process) = x.ar
 sigsq(x::AbstractAR1Process) = x.sigsq
