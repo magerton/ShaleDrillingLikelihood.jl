@@ -1,7 +1,8 @@
 export tauchen_2d!,
     tauchen_1d!,
     tauchen_2d,
-    tauchen_1d
+    tauchen_1d,
+    minp_default
 
 function bvn_upperlower_cdf(xlim, ylim, r)
     xl,xu = xlim
