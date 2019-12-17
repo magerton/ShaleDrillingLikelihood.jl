@@ -6,6 +6,8 @@ using Dates
 using SparseArrays
 using LinearAlgebra: checksquare
 using Random
+using StatsModels: @formula
+
 
 using ShaleDrillingLikelihood: simulate,
     cost, extend, revenue,
@@ -29,5 +31,6 @@ import ShaleDrillingLikelihood: ichars
 include("thetas.jl")
 include("model-components.jl")
 include("make-models.jl")
+include("data-import.jl")
 
 end
