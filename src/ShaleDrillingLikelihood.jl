@@ -63,7 +63,13 @@ export AbstractModel,
     AbstractRoyaltyModel,
     _nparm,
     _model,
-    sprintf_binary
+    sprintf_binary,
+    AbstractPayoffFunction,
+    AbstractStaticPayoff,
+    AbstractPayoffComponent,
+    AbstractDrillingRevenue,
+    AbstractDrillingCost,
+    AbstractExtensionCost
 
 # for modeling
 abstract type AbstractModel end
@@ -81,13 +87,27 @@ abstract type AbstractStaticDrillModel   <: AbstractDrillModel end
 
 abstract type AbstractModelVariations end
 
+# Static Payoff
+abstract type AbstractPayoffFunction end
+abstract type AbstractStaticPayoff   <: AbstractPayoffFunction end
+abstract type AbstractPayoffComponent <: AbstractPayoffFunction end
+
+# payoff components
+abstract type AbstractDrillingRevenue <: AbstractPayoffComponent end
+abstract type AbstractDrillingCost    <: AbstractPayoffComponent end
+abstract type AbstractExtensionCost   <: AbstractPayoffComponent end
+
+# also needed
+abstract type AbstractStateSpace end
+abstract type AbstractUnitProblem <: AbstractStateSpace end
+
 
 # data structures
 #---------------------
 
 # For data structures
 
-
+export AbstractDataDrill
 
 # "Collection of data on a particular outcome for individuals `i`"
 # "What we feed into a likelihood"
@@ -98,6 +118,9 @@ abstract type AbstractDataSetofSets    <: AbstractDataStructure end
 abstract type AbstractDataSet          <: AbstractDataStructure end
 abstract type AbstractObservationGroup <: AbstractDataStructure end
 abstract type AbstractObservation      <: AbstractDataStructure end
+
+abstract type AbstractDataDrill <: AbstractDataSet end
+
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 

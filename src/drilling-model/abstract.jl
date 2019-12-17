@@ -1,31 +1,10 @@
-export AbstractPayoffFunction,
-    AbstractStaticPayoff,
-    AbstractPayoffComponent,
-    AbstractDrillingRevenue,
-    AbstractDrillingCost,
-    AbstractExtensionCost,
-    AbstractStaticPayoff,
-    DrillReward,
+export DrillReward,
     flow, dflow!, flowdψ
 
 
 # -------------------------------------------
 # abstract types
 # -------------------------------------------
-
-# Static Payoff
-abstract type AbstractPayoffFunction end
-abstract type AbstractStaticPayoff    <: AbstractPayoffFunction end
-abstract type AbstractPayoffComponent <: AbstractPayoffFunction end
-
-# payoff components
-abstract type AbstractDrillingRevenue <: AbstractPayoffComponent end
-abstract type AbstractDrillingCost    <: AbstractPayoffComponent end
-abstract type AbstractExtensionCost   <: AbstractPayoffComponent end
-
-# also needed
-abstract type AbstractStateSpace end
-abstract type AbstractUnitProblem <: AbstractStateSpace end
 
 # generic functions to access coefs
 idx_drill(d) = OneTo(_nparm(d))
