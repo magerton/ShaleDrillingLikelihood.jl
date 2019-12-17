@@ -35,7 +35,7 @@ MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
 # DATADIR = "D:/projects/haynesville/intermediate_data"
-DATADIR = "~/haynesville/intermediate_data"
+DATADIR = "/home/magerton/haynesville/intermediate_data"
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
