@@ -109,7 +109,7 @@ println("print to keep from blowing up")
     θ_produce = vcat(αψ, αg, 0.2, 0.3, 0.4)
 
     θ = vcat(θ_drill, θ_royalty[2:end], θ_produce[2:end])
-    print_in_binary_for_copy_paste(θ)
+    println(sprintf_binary(θ))
 
     M = 250
     num_i = 300
