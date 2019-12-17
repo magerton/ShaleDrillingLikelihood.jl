@@ -188,10 +188,11 @@ const ObservationStaticDrill = ObservationDrill{ <:AbstractStaticDrillModel}
 # zchars
 zchars(obs::ObservationDrill) = obs.z
 @deprecate _z(     obs::ObservationDrill) zchars(obs)
-@inline logprice(obs::ObservationDrill) = first(zchars(obs))
-@inline price(   obs::ObservationDrill) = exp(logprice(obs))
-@inline rigrate( obs::ObservationDrill) = exp(getindex(zchars(obs), 2))
-@inline year(    obs::ObservationDrill) = last(zchars(obs))
+@inline logprice(  obs::ObservationDrill) = logprice(  zchars(obs))
+@inline logrigrate(obs::ObservationDrill) = logrigrate(zchars(obs))
+@inline year(      obs::ObservationDrill) = year(      zchars(obs))
+@inline price(     obs::ObservationDrill) = exp(logprice(obs))
+@inline rigrate(   obs::ObservationDrill) = exp(logrigrate(obs))
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())

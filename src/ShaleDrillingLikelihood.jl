@@ -136,6 +136,21 @@ _nparm(d::EmptyDataSet) = 0
 _model(d::EmptyDataSet) = NoModel()
 coefnames(d::EmptyDataSet) = Vector{String}(undef,0)
 
+# price / cost  / year
+#----------------------------
+
+# access Zchars
+const PriceTuple         = Tuple{Float64}
+const PriceYearTuple     = Tuple{Float64, <:Integer}
+const PriceCostYearTuple = Tuple{Float64, Float64, <:Integer}
+const PriceCostTuple     = Tuple{Float64, Float64}
+
+# zchars
+second(z::Tuple) = getindex(z,2)
+logprice(  z::NTuple{N,Real}) where {N} = first(z)
+logrigrate(z::NTuple{N,Real}) where {N} = second(z)
+year(      z::NTuple{N,Real}) where {N} = last(z)
+
 # useful functions
 #----------------------------
 
