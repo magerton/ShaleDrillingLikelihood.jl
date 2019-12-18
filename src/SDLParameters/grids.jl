@@ -21,7 +21,7 @@ function PriceGrid(z::Vector{PriceTuple}, delta, len)
     prng = range(minimum(x)-delta, maximum(x)+delta; length=len)
     sigsq = var(diff(x))
     P = tauchen_1d(prng, identity, sigsq)
-    return tuple(prng), P
+    return prng, P
 end
 
 function PriceCostGrid(z::Vector{T}, delta, len) where {T<:Union{PriceCostTuple, PriceCostYearTuple}}
@@ -62,7 +62,7 @@ end
 function GridTransition(z::Vector{<:PriceTuple}, delta, len; minp=minp_default())
     rng, P = PriceGrid(z,delta,len)
     zero_out_small_probs!(P, minp)
-    return rng, sparse(P)
+    return tuple(rng), sparse(P)
 end
 
 function GridTransition(z::Vector{<:PriceCostTuple}, delta, len; minp=minp_default())
