@@ -12,7 +12,7 @@ using Optim: minimizer, Options, BFGS, NelderMead
 # ------------------- number of simulations ----------------------
 
 M_cnstr = 250
-M_full  = 250
+M_full  = 1000
 
 DO_CNSTR = false # true
 DO_FULL  = true
