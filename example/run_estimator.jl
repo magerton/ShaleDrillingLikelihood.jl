@@ -17,8 +17,8 @@ M_full  = 500
 do_cnstr = true
 do_full  = true
 
-maxtime_cnstr = 1 * 60^2
-maxtime_full  = 1 * 60^2
+maxtime_cnstr = 2 * 60^2
+maxtime_full  = 3 * 60^2
 
 REWARD = DrillReward(
     DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
@@ -26,7 +26,7 @@ REWARD = DrillReward(
     ExtensionCost_Constant()
 )
 
-ANTICIPATE = true
+ANTICIPATE = false
 PSI = PsiSpace(21)
 NUM_P = 21
 NUM_C = 13
@@ -34,7 +34,7 @@ EXTEND_GRID = log(3)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
-# DATADIR = "D:/projects/haynesville/intermediate_data"
+# DATADIR = "E:/projects/haynesville/intermediate_data"
 DATADIR = "/home/magerton/haynesville/intermediate_data"
 DATAPATH = "data_all_leases.RData"
 
@@ -52,7 +52,6 @@ thetarho0 = 1.178623255316409
 theta0_royalty = Theta(data_royalty; θρ = thetarho0)
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
-theta0s = (theta0_drill, theta0_royalty, theta0_produce)
 
 # transition matrices
 zrng, ztrans = GridTransition(data_drill_prim, EXTEND_GRID, NUM_P; minp=MINP)
@@ -64,7 +63,6 @@ data_drill = DataDrill(ddm, data_drill_prim)
 
 # full dataset
 dataset_full = DataSetofSets(data_drill, data_royalty, data_produce, CoefLinks(data_drill))
-theta0_full = merge_thetas(theta0s, dataset_full)
 
 # constrained model
 rwrd_cnstr = ConstrainedProblem(REWARD, theta0_drill)
@@ -77,7 +75,15 @@ dataset_cnstr = DataSetofSets(data_cnstr, EmptyDataSet(), EmptyDataSet())
 pids = start_up_workers(ENV)
 @everywhere using ShaleDrillingLikelihood
 
-res, ew = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
+# Solve constrained simpler model
+res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
+
+updateThetaUnconstrained!(REWARD, theta0_drill, minimizer(res_c))
+theta0s = (theta0_drill, theta0_royalty, theta0_produce)
+theta0_full = merge_thetas(theta0s, dataset_full)
+
+# Solve unconstrained full model
+res_u, ew_u = solve_model(dataset_cnstr, theta0_full, M_full, maxtime_full)
 
 # let d=dataset_cnstr, theta=theta0_cnstr, M=M_cnstr, maxtime=maxtime_cnstr
 #     # estimation objects
