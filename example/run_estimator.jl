@@ -11,32 +11,33 @@ using Optim: minimizer, Options
 
 # ------------------- number of simulations ----------------------
 
-M_cnstr = 50
-M_full  = 50
+M_cnstr = 500
+M_full  = 500
 
-do_cnstr = false
+do_cnstr = true
 do_full  = true
 
-maxtime_cnstr = 2 * 60^2
-maxtime_full  = 3 * 60^2
+maxtime_cnstr = 6 * 60^2
+maxtime_full  = 6 * 60^2
 
 REWARD = DrillReward(#
-    DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
+    DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
+    DrillingCost_TimeFE_rigrate(2008,2012),
     # DrillingCost_TimeFE(2008,2012),
-    DrillingCost_constant(),
+    # DrillingCost_constant(),
     ExtensionCost_Constant()
 )
 
 ANTICIPATE = false
-PSI = PsiSpace(21)
-NUM_P = 21
+PSI = PsiSpace(15)
+NUM_P = 15
 NUM_C = 13
-EXTEND_GRID = log(3)
+EXTEND_GRID = log(2)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
-DATADIR = "E:/projects/haynesville/intermediate_data"
-# DATADIR = "/home/magerton/haynesville/intermediate_data"
+# DATADIR = "E:/projects/haynesville/intermediate_data"
+DATADIR = "/home/magerton/haynesville/intermediate_data"
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
