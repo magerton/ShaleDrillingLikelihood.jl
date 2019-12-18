@@ -174,6 +174,7 @@ function sprintf_binary(x::Vector{<:Number})
     return "[" * xstr * "]"
 end
 
+check_finite(x::AbstractArray) = all(isfinite.(x)) || throw(error("x not finite!"))
 check_finite(x::AbstractVector) = all(isfinite.(x)) || throw(error("x not finite! $x"))
 check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
 
