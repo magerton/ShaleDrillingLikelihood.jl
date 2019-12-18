@@ -21,7 +21,7 @@ function PriceGrid(z::Vector{PriceTuple}, delta, len)
     prng = range(minimum(x)-delta, maximum(x)+delta; length=len)
     sigsq = var(diff(x))
     P = tauchen_1d(prng, identity, sigsq)
-    return prng, P
+    return tuple(prng), P
 end
 
 function PriceCostGrid(z::Vector{T}, delta, len) where {T<:Union{PriceCostTuple, PriceCostYearTuple}}
