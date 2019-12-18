@@ -52,7 +52,8 @@ const OptimOpts = Optim.Options(allow_f_increases=true, show_trace=true, time_li
 # see https://github.com/JuliaNLSolvers/LineSearches.jl/tree/master/src
 bfgs(ew) =  Optim.BFGS(;
     # linesearch = Optim.BackTracking(order=3),
-    linesearch = Optim.MoreThuente(),
+    # linesearch = Optim.HagerZhang(),
+    # linesearch = Optim.MoreThuente(),
     initial_invH = x -> invhessian!(ew, x)
 )
 
