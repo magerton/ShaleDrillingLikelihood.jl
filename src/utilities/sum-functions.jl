@@ -128,7 +128,7 @@ Uses temporary array `tmp`
         1 == stride1(q) == stride1(x) || throw(error("Arrays not strided"))
 
         isempty(x) && throw(error("x empty"))
-        all(isfinite.(x)) || throw(error("x not finite"))
+        check_finite(x)
 
         maximum!(add_1_dim(tmpmax), x)
         fill!(lse, zero(T))

@@ -6,14 +6,14 @@ export solve_model
 function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
 
     function f(x::Vector)
-        all(isfinite.(x)) || throw(error("theta not finite! $x"))
+        check_finite(x)
         reset!(LocalEstObj(ew))
         return parallel_simloglik!(ew, x, false)
         # return serial_simloglik!(ew, x, false)
     end
 
     function fg!(g::Vector,x::Vector)
-        all(isfinite.(x)) || throw(error("theta not finite! $x"))
+        check_finite(x)
         nll = parallel_simloglik!(ew, x, true)
         # nll = serial_simloglik!(ew, x, true)
         g .= grad(LocalEstObj(ew))
@@ -57,7 +57,7 @@ bfgs(ew) =  Optim.BFGS(;
 nelder() = Optim.NelderMead()
 
 function solve_model(ew, theta; OptimOpts=OptimOpts, OptimMethod=bfgs(ew))
-    all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
+    check_finite(theta)
     leo = LocalEstObj(ew)
     theta0(leo) .= theta
     odfg  = OnceDifferentiable(ew, theta)

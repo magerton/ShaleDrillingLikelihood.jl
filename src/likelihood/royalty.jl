@@ -81,7 +81,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     l = _y(obs)
     xbeta = _xbeta(obs)
 
-    all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
+    check_finite(theta)
 
     βψ = theta_royalty_ψ(obs, theta)
     κ = theta_royalty_κ(obs, theta)
@@ -103,7 +103,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
             end
         end
     else
-        @warn "royalty κ = $κ not sorted"
+        # @warn "royalty κ = $κ not sorted"
         fill!(LLm, -Inf)
     end
     return nothing
@@ -170,7 +170,7 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
     LL      = Vector{Float64}(undef, n)
 
     beta = theta_royalty_β(data, θ)
-    all(isfinite.(beta)) || throw(error("royalty β = $beta not finite!"))
+    check_finite(beta)
 
     update_xbeta!(data, beta)
 

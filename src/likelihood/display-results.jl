@@ -74,7 +74,7 @@ end
 
 
 function solve_model(d::DataSetofSets, theta, M, maxtime)
-    all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
+    check_finite(theta)
     leo = LocalEstObj(d, theta)
     reo = RemoteEstObj(leo, M)
     ew = EstimationWrapper(leo, reo)

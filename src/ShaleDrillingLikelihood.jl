@@ -174,6 +174,10 @@ function sprintf_binary(x::Vector{<:Number})
     return "[" * xstr * "]"
 end
 
+check_finite(x::AbstractVector) = all(isfinite.(x)) || throw(error("x not finite! $x"))
+check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
+
+
 @deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
 
 # Overall structure
