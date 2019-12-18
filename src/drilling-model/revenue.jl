@@ -171,7 +171,11 @@ ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x
 
 ConstrainedIdx(x::DrillingRevenueTimeTrend) = idx_g(x), idx_ψ(x), idx_t(x)
 ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
-ConstrainedIdx(x::DrillReward) = ConstrainedIdx(revenue(x))
+
+function UnconstrainedFmConstrainedIdx(x::DrillingRevenueConstrained)
+    xu = UnconstrainedProblem(x)
+    idxu = [idx_0(xu), idx_ρ(xu)]
+end
 
 # @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
 # @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)

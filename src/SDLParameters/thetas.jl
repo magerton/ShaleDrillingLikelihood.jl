@@ -1,4 +1,8 @@
-export ThetaConstrained
+using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
+    DrillingRevenueUnconstrained, DrillingRevenueConstrained,
+    ConstrainedIdx, UnconstrainedFmConstrainedIdx, updateThetaUnconstrained
+
+export updateThetaUnconstrained!, ThetaConstrained
 
 ThetaRho() = 0.0
 AlphaPsi() = STARTING_α_ψ
@@ -22,13 +26,32 @@ end
 
 function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
     rwrd_c = ConstrainedProblem(m, theta)
-    theta_rev = ShaleDrillingLikelihood.vw_revenue(m, theta)
-    r = [x for (i,x) in enumerate(theta_rev) if i ∉ ShaleDrillingLikelihood.ConstrainedIdx(m)]
-    c = ShaleDrillingLikelihood.vw_cost(m,theta)
-    e = ShaleDrillingLikelihood.vw_extend(m,theta)
+    theta_rev = vw_revenue(m, theta)
+    r = [x for (i,x) in enumerate(theta_rev) if i ∉ ConstrainedIdx(revenue(m))]
+    c = vw_cost(m,theta)
+    e = vw_extend(m,theta)
     return vcat(c,e,r)
 end
 
+function updateThetaUnconstrained!(m::DrillReward{<:DrillingRevenueConstrained}, thetau, thetac)
+    rwrd_u = UnconstrainedProblem(m)
+    _nparm(m) == length(thetac) ||
+        throw(DimensionMismatch("_nparm(m) = $(_nparm(m)) != length(thetac) = $(length(thetac))"))
+    _nparm(rwrd_u) == length(thetau) ||
+        throw(DimensionMismatch("_nparm(rwrd_u) = $(_nparm(rwrd_u)) != length(thetau) = $(length(thetau))"))
+    vw_cost(rwrd_u, thetau) .= vw_cost(m, thetac)
+    vw_extend(rwrd_u, thetau) .= vw_extend(m, thetac)
+
+    revidx = UnconstrainedFmConstrainedIdx(revenue(m))
+    thetarev_u = vw_revenue(rwrd_u, thetau)
+    thetarev_u[revidx] .= vw_revenue(m, thetac)
+    return thetau
+end
+
+function updateThetaUnconstrained!(m::DrillReward{<:DrillingRevenueUnconstrained}, thetau, thetac)
+    rwrd_c = ConstrainedProblem(m)
+    return updateThetaUnconstrained!(rwrd_c, thetau, thetac)
+end
 
 # Royalty
 function Theta(m::RoyaltyModel; θρ=ThetaRho(), kwargs...)
