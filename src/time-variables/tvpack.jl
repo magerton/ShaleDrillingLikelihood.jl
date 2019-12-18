@@ -431,4 +431,4 @@ function bvnuppercdf(dh::T, dk::T, r::T)::T where {T<:Float64}
 end
 
 "Pr( X < dh && Y < dk | ρ(X,Y) = r)"
-bvncdf(dh, dk, r) = bvnuppercdf(-dh, -dk, r)
+bvncdf(dh::T, dk::T, r::T) where {T<:Real} = bvnuppercdf(-dh, -dk, r)
