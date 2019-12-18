@@ -18,6 +18,7 @@ function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
         nll = parallel_simloglik!(ew, x, true)
         # nll = serial_simloglik!(ew, x, true)
         g .= grad(LocalEstObj(ew))
+        check_finite(g)
         return nll
     end
 
