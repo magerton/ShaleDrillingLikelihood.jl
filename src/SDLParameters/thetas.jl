@@ -5,8 +5,8 @@ using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
 export updateThetaUnconstrained!, ThetaConstrained
 
 ThetaRho() = 0.0
-AlphaPsi() = STARTING_α_ψ
-AlphaG() = STARTING_log_ogip
+AlphaPsi() = 0.3630951648523468
+AlphaG() = 0.5465520954590734
 AlphaT() = STARTING_α_t
 Alpha0() = -2.8
 BetaPsi() = 0.11805850128182346
