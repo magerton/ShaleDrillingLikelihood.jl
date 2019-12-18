@@ -14,19 +14,19 @@ using Optim: minimizer, Options, BFGS, NelderMead
 M_cnstr = 500
 M_full  = 250
 
-do_cnstr = false
+do_cnstr = true
 do_full  = true
 
 COMPUTE_INITIAL_VALUES = true
 
-maxtime_cnstr = 6 * 60^2
-maxtime_full  = 1* 60^2
+maxtime_cnstr = 1 * 60^2
+maxtime_full  = 1 * 60^2
 
 REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
     # DrillingCost_TimeFE_rigrate(2008,2012),
     DrillingCost_TimeFE(2008,2012),
-    # DrillingCost_constant(),
+    # DrillingCost_dgt1(),
     ExtensionCost_Constant()
 )
 
@@ -95,8 +95,12 @@ pids = start_up_workers(ENV)
 # Solve constrained simpler model
 if do_cnstr
     res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
-    updateThetaUnconstrained!(REWARD, theta0_drill, minimizer(res_c))
+    theta1_cnstr = minimizer(res_c)
+else
+    theta1_cnstr = [-0x1.aa7304a116f4ap+3, -0x1.2ba87c235a2f1p+3, -0x1.00759e1a5db57p+3, -0x1.d5c1f7b28424p+2, -0x1.ac628bffcfc0ep+2, 0x1.89909c23fb40ap+0, -0x1.e12af8551c9a1p+0, -0x1.6644de071c184p+1, 0x1.427b6a6fdeb06p-3, ]
 end
+
+updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 
 # Solve unconstrained full model
 if do_full
