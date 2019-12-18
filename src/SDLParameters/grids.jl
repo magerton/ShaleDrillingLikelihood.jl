@@ -83,7 +83,7 @@ end
 
 function GridTransition(z::Vector{<:PriceCostYearTuple}, delta, len; minp=minp_default())
     pcrng, pcP = PriceCostGrid(z,delta,len)
-    yrng, yP = YearGrid(ShaleDrillingLikelihood.year.(z))
+    yrng, yP = YearGrid(z)
     rng = (pcrng..., yrng)
     P = kron(yP, pcP)
     zero_out_small_probs!(P, minp)
