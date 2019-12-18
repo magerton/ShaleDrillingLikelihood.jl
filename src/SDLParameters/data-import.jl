@@ -90,7 +90,7 @@ function ThetaProduceStarting(rwrd::DrillReward, path)
     fm = FormulaProduce(rwrd, startingvals)
     res = fit!(LinearMixedModel(fm, _qchars))
     σwell, σψ, σϵ = vcat(std(res)...)
-    qcoef = vcat(σψ, coef(res)..., σϵ^2, σwell^2)
+    qcoef = vcat(σψ, coef(res)..., σϵ, σwell)
     return qcoef
 end
 
