@@ -107,7 +107,7 @@ end
 
 function Theta(m::DrillingRevenue{Unconstrained, TimeTrend};
     θρ=ThetaRho(), αψ=AlphaPsi(), αg=AlphaG(), αT=AlphaT(), α0=Alpha0(), kwargs...)
-    return vcat(α0, αg, αψ, αt, θρ)
+    return vcat(α0, αg, αψ, αT, θρ)
 end
 
 # cost
@@ -123,6 +123,17 @@ function Theta(m::DrillingCost_TimeFE, args...; kwargs...)
         throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
     end
     return vcat(timefe, c2plus)
+end
+
+function Theta(m::DrillingCost_TimeFE_rigrate, args...; kwargs...)
+    c2plus = 1.407
+    crig = -1.0
+    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+        timefe = [-9.48651914568503, -6.198466654405615, -4.859543515359247, -4.391926980826075, -4.464122201335934,]
+    else
+        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+    end
+    return vcat(timefe, c2plus, crig)
 end
 
 
@@ -141,7 +152,7 @@ CoefLinks(r::DrillingRevenue{Unconstrained, TimeTrend}) =
     [
         (idx_produce_ψ, idx_drill_ψ,),
         (idx_produce_g, idx_drill_g),
-        (idx_produce_g, idx_drill_g),
+        (idx_produce_t, idx_drill_t),
     ]
 
 CoefLinks(r::DrillReward) = CoefLinks(revenue(r))
