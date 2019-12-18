@@ -14,9 +14,9 @@ using Optim: minimizer, Options, BFGS, NelderMead
 M_cnstr = 250
 M_full  = 250
 
-DO_CNSTR = true
+DO_CNSTR = false # true
 DO_FULL  = true
-DO_NELDER = true
+DO_NELDER = false
 
 COMPUTE_INITIAL_VALUES = true
 
@@ -26,9 +26,9 @@ maxtime_full  = 3 * 60^2
 
 REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
-    # DrillingCost_TimeFE(2008,2012),
+    DrillingCost_TimeFE(2008,2012),
     # DrillingCost_TimeFE_rigrate(2008,2012),
-    DrillingCost_dgt1(),
+    # DrillingCost_dgt1(),
     ExtensionCost_Constant()
 )
 
@@ -98,10 +98,10 @@ pids = start_up_workers(ENV)
 if DO_CNSTR
     res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
     theta1_cnstr = minimizer(res_c)
-    updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 else
-    # theta1_cnstr = [-0x1.aa7304a116f4ap+3, -0x1.2ba87c235a2f1p+3, -0x1.00759e1a5db57p+3, -0x1.d5c1f7b28424p+2, -0x1.ac628bffcfc0ep+2, 0x1.89909c23fb40ap+0, -0x1.e12af8551c9a1p+0, -0x1.6644de071c184p+1, 0x1.427b6a6fdeb06p-3, ]
+    theta1_cnstr = [-0x1.92e9287eaa0bp+3, -0x1.1f6b921d223ep+3, -0x1.ee1ec0acdb8e8p+2, -0x1.c76a3171bf78bp+2, -0x1.accd32a09433p+2, 0x1.9095a5a9b3f03p+0, -0x1.b1fe523465919p+0, -0x1.7332a38946ffcp+1, 0x1.51a64e52a723p-1, ]
 end
+updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 
 
 # Solve unconstrained full model

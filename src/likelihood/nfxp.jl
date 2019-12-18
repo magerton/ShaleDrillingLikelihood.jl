@@ -177,6 +177,7 @@ function update!(ew::EstimationWrapper, theta, dograd)
         g = grad(l)
         mul!(h, score, score')
         sum!(reshape(g, :, 1), score)
+        println("gradient = $g")
         g .*= -1
     end
     nll = negLL(r)
