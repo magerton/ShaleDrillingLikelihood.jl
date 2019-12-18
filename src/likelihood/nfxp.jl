@@ -188,6 +188,8 @@ end
 
 @noinline function simloglik!(i, theta, dograd, reo::RemoteEstObj; kwargs...)
 
+    all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
+
     gradi = view(scoremat(reo), :, i)
     grptup = getindex.(data(reo), i)
     simi = view(sim(reo), i)
@@ -197,6 +199,7 @@ end
     fill!(gradi, 0)
 
     # do updates
+    @assert isfinite(θρ)
     update!(simi, θρ)
 
     thetasvw = split_thetas(data(reo), theta)
@@ -220,11 +223,13 @@ function serial_simloglik!(ew, theta, dograd; kwargs...)
 end
 
 function parallel_simloglik!(ew, theta, dograd; kwargs...)
+    all(isfinite.(theta)) || throw(error("theta not finite! $theta"))
+
     check_theta(ew,theta)
     wp = CachingPool(workers())
     @eval @everywhere update_reo!($theta)
-    let theta=theta, dograd=dograd, kwargs=kwargs
-        pmap(i -> simloglik!(i, theta, dograd; kwargs...), wp, OneTo(ew))
+    let x=theta, dograd=dograd, kwargs=kwargs
+        pmap(i -> simloglik!(i, x, dograd; kwargs...), wp, OneTo(ew))
     end
     return update!(ew, theta, dograd)
 end
