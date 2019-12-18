@@ -94,7 +94,7 @@ function solve_model(d::DataSetofSets, theta, M, maxtime)
     end
     println(coeftable(leo))
     print("Parameter estimates are\n\t")
-    print(sprintf_binary(minimizer(res)))
+    print(sprintf_binary(Optim.minimizer(res)))
     print("\n")
     return res, ew
 end

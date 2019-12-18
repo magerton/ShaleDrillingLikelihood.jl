@@ -42,6 +42,7 @@ using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
 using Dates: Month
 using LinearAlgebra: checksquare, stride1
+using Optim: minimizer
 
 using InteractiveUtils: subtypes
 
