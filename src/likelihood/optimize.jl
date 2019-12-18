@@ -4,6 +4,7 @@ export solve_model
 
 
 function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
+    check_finite(theta)
 
     function f(x::Vector)
         check_finite(x)
