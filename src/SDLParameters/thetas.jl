@@ -115,6 +115,8 @@ end
 
 Theta(m::DrillingCost_constant, args...; kwargs...) = vcat(-5.5)
 
+Theta(m::DrillingCost_dgt1, args...; kwargs...) = vcat(-5.5, 1.0)
+
 function Theta(m::DrillingCost_TimeFE, args...; kwargs...)
     c2plus = 1.407
     if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012

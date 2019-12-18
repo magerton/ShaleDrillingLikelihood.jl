@@ -11,22 +11,24 @@ using Optim: minimizer, Options, BFGS, NelderMead
 
 # ------------------- number of simulations ----------------------
 
-M_cnstr = 500
+M_cnstr = 250
 M_full  = 250
 
-do_cnstr = true
-do_full  = true
+DO_CNSTR = true
+DO_FULL  = true
+DO_NELDER = true
 
 COMPUTE_INITIAL_VALUES = true
 
 maxtime_cnstr = 1 * 60^2
-maxtime_full  = 1 * 60^2
+maxtime_nelder = 1 * 60^2
+maxtime_full  = 3 * 60^2
 
 REWARD = DrillReward(#
-    DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
+    DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
+    # DrillingCost_TimeFE(2008,2012),
     # DrillingCost_TimeFE_rigrate(2008,2012),
-    DrillingCost_TimeFE(2008,2012),
-    # DrillingCost_dgt1(),
+    DrillingCost_dgt1(),
     ExtensionCost_Constant()
 )
 
@@ -93,19 +95,25 @@ pids = start_up_workers(ENV)
 @everywhere using ShaleDrillingLikelihood
 
 # Solve constrained simpler model
-if do_cnstr
+if DO_CNSTR
     res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
     theta1_cnstr = minimizer(res_c)
+    updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 else
-    theta1_cnstr = [-0x1.aa7304a116f4ap+3, -0x1.2ba87c235a2f1p+3, -0x1.00759e1a5db57p+3, -0x1.d5c1f7b28424p+2, -0x1.ac628bffcfc0ep+2, 0x1.89909c23fb40ap+0, -0x1.e12af8551c9a1p+0, -0x1.6644de071c184p+1, 0x1.427b6a6fdeb06p-3, ]
+    # theta1_cnstr = [-0x1.aa7304a116f4ap+3, -0x1.2ba87c235a2f1p+3, -0x1.00759e1a5db57p+3, -0x1.d5c1f7b28424p+2, -0x1.ac628bffcfc0ep+2, 0x1.89909c23fb40ap+0, -0x1.e12af8551c9a1p+0, -0x1.6644de071c184p+1, 0x1.427b6a6fdeb06p-3, ]
 end
 
-updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 
 # Solve unconstrained full model
-if do_full
+if DO_FULL
     theta0s = (theta0_drill, theta0_royalty, theta0_produce)
     theta0_full = merge_thetas(theta0s, dataset_full)
-    # alg = ShaleDrillingLikelihood.nelder
-    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full)
+    if DO_NELDER
+        alg = ShaleDrillingLikelihood.nelder
+        res_u_n, ew_u_n = solve_model(dataset_full, theta0_full, M_full, maxtime_nelder, alg)
+        theta1_full = minimizer(res_u_n)
+    else
+        theta1_full = copy(theta0_full)
+    end
+    res_u, ew_u = solve_model(dataset_full, theta1_full, M_full, maxtime_full)
 end
