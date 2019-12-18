@@ -202,3 +202,21 @@ function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroupRoyalty, dograd
     end
     return LL
 end
+
+function solve_model(data::DataRoyalty{RoyaltyModelNoHet}, theta)
+
+    grad = similar(theta)
+    f(parm) = - llthreads!(grad, parm, data, false)
+    function fg!(g, parm)
+        LL = llthreads!(g, parm, data, true)
+        g .*= -1
+        return -LL
+    end
+
+    odfg = OnceDifferentiable(f, fg!, fg!, theta)
+
+    # check that it solves
+    opts = Optim.Options(time_limit = 60, allow_f_increases=true)
+    res = optimize(odfg, theta, BFGS(), opts)
+    return res
+end

@@ -8,6 +8,8 @@ using LinearAlgebra
 using Random
 
 using StatsModels: @formula
+using CategoricalArrays: CategoricalVector
+using MixedModels
 
 using ShaleDrillingLikelihood: simulate,
     cost, extend, revenue,

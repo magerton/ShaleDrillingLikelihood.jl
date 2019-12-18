@@ -10,7 +10,7 @@ using ShaleDrillingLikelihood: DrillingRevenueTimeTrend,
     j1chars
 
 
-export FormulaProduce, FormulaRoyalty
+export FormulaProduce, FormulaRoyalty, ThetaProduceStarting
 
 using StatsBase: countmap
 using FileIO: load
@@ -39,13 +39,13 @@ const cols = Dict(
 
 # variables for regressions
 function FormulaProduce(::DrillReward{<:DrillingRevenueTimeTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept + (1|i) + (1|iD))
+    strt = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept + (1|icat) + (1|iD))
     full = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept)
     fm = startvalues ? strt : full
     return fm
 end
 function FormulaProduce(::DrillReward{<:DrillingRevenueNoTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + log_ogip + intercept  + (1|i) + (1|iD))
+    strt = @formula(logcumgas_r ~ 0 + log_ogip + intercept  + (1|icat) + (1|iD))
     full = @formula(logcumgas_r ~ 0 + log_ogip + intercept)
     fm = startvalues ? strt : full
     return fm
@@ -76,6 +76,22 @@ function DataProduce(rwrd::DrillReward, path; model=ProductionModel(), kwargs...
     group_ptr = Int.(alldata[cols[:iwptr]])
     data = DataProduce(y, X, obs_ptr, group_ptr)
     return data
+end
+
+function ThetaProduceStarting(rwrd::DrillReward, path)
+
+    alldata = load(path)
+    _qchars = alldata[cols[:qchars]]
+    _qchars[!,:intercept] .= 1
+    _qchars[!,:α_t]  .= year.(_qchars[!,:well_start_date]) .- baseyear(rwrd)
+    _qchars[!,:icat] .= CategoricalVector(_qchars[!,:i])
+
+    startingvals = true
+    fm = FormulaProduce(rwrd, startingvals)
+    res = fit!(LinearMixedModel(fm, _qchars))
+    σwell, σψ, σϵ = vcat(std(res)...)
+    qcoef = vcat(σψ, coef(res)..., σϵ^2, σwell^2)
+    return qcoef
 end
 
 # ----------------------------

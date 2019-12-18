@@ -45,6 +45,10 @@ const DataOrObsRoyalty = Union{ObservationRoyalty{M},DataRoyalty{M}} where {M}
 const ObservationGroupRoyalty = ObservationGroup{<:DataRoyalty}
 const AbstractDataStructureRoyalty = Union{ObservationRoyalty,DataRoyalty,ObservationGroupRoyalty}
 
+function DataRoyalty(m::AbstractRoyaltyModel, d::DataRoyalty)
+    DataRoyalty(m, _y(d), _x(d), choices(d))
+end
+
 # Common interfaces
 #---------------------------
 
@@ -110,7 +114,7 @@ update!(d::DataRoyalty, theta) = update_xbeta!(d,theta_royalty_β(d,theta))
 # length of RoyaltyModel parameters & gradient
 extra_parm(::RoyaltyModel) = 2
 extra_parm(::RoyaltyModelNoHet) = 0
-extra_parm(d::DataOrObsRoyalty{<:RoyaltyModel}) = extra_parm(_model(d))
+extra_parm(d::DataOrObsRoyalty{<:AbstractRoyaltyModel}) = extra_parm(_model(d))
 
 _nparm(d::DataOrObsRoyalty) = _num_x(d) + num_choices(d) - 1 + extra_parm(d)
 

@@ -7,24 +7,25 @@ if "SLURM_JOBID" in keys(ENV)
     using ClusterManagers
 end
 using CountPlus, Distributed
-using Optim: minimizer, Options
+using Optim: minimizer, Options, BFGS, NelderMead
 
 # ------------------- number of simulations ----------------------
 
 M_cnstr = 500
-M_full_nelder = 250
-M_full  = 500
+M_full  = 250
 
 do_cnstr = false
 do_full  = true
+
+COMPUTE_INITIAL_VALUES = true
 
 maxtime_cnstr = 6 * 60^2
 maxtime_full  = 1* 60^2
 
 REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
-    DrillingCost_TimeFE_rigrate(2008,2012),
-    # DrillingCost_TimeFE(2008,2012),
+    # DrillingCost_TimeFE_rigrate(2008,2012),
+    DrillingCost_TimeFE(2008,2012),
     # DrillingCost_constant(),
     ExtensionCost_Constant()
 )
@@ -37,8 +38,11 @@ EXTEND_GRID = log(2)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
-# DATADIR = "E:/projects/haynesville/intermediate_data"
-DATADIR = "/home/magerton/haynesville/intermediate_data"
+if "SLURM_JOBID" in keys(ENV)
+    DATADIR = "/home/magerton/haynesville/intermediate_data"
+else
+    DATADIR = "E:/projects/haynesville/intermediate_data"
+end
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
@@ -73,6 +77,16 @@ theta0_cnstr = ThetaConstrained(REWARD, theta0_drill)
 data_cnstr = DataDrill(DynamicDrillModel(rwrd_cnstr, ddm), data_drill)
 dataset_cnstr = DataSetofSets(data_cnstr, EmptyDataSet(), EmptyDataSet())
 
+# ------------------- get initial values -----------------------
+
+if COMPUTE_INITIAL_VALUES
+    roy_short = DataRoyalty(RoyaltyModelNoHet(), data_royalty)
+    res_royalty = solve_model(roy_short, theta0_royalty[3:end])
+    theta0_royalty[3:end], minimizer(res_royalty)
+
+    theta0_produce .= ThetaProduceStarting(REWARD, rdatapath)
+end
+
 # ------------------- set up workers -----------------------
 
 pids = start_up_workers(ENV)
@@ -88,6 +102,6 @@ end
 if do_full
     theta0s = (theta0_drill, theta0_royalty, theta0_produce)
     theta0_full = merge_thetas(theta0s, dataset_full)
-    alg = ShaleDrillingLikelihood.nelder
-    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full, alg)
+    # alg = ShaleDrillingLikelihood.nelder
+    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full)
 end
