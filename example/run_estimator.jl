@@ -11,18 +11,19 @@ using Optim: minimizer, Options
 
 # ------------------- number of simulations ----------------------
 
-M_cnstr = 250
-M_full  = 500
+M_cnstr = 50
+M_full  = 50
 
 do_cnstr = true
 do_full  = true
 
-maxtime_cnstr = 2 * 60^2
-maxtime_full  = 3 * 60^2
+maxtime_cnstr = 1 # 2 * 60^2
+maxtime_full  = 1 # 3 * 60^2
 
-REWARD = DrillReward(
+REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
-    DrillingCost_TimeFE(2008,2012), # DrillingCost_constant(),
+    # DrillingCost_TimeFE(2008,2012),
+    DrillingCost_constant(),
     ExtensionCost_Constant()
 )
 
@@ -34,8 +35,8 @@ EXTEND_GRID = log(3)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
-# DATADIR = "E:/projects/haynesville/intermediate_data"
-DATADIR = "/home/magerton/haynesville/intermediate_data"
+DATADIR = "E:/projects/haynesville/intermediate_data"
+# DATADIR = "/home/magerton/haynesville/intermediate_data"
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
@@ -76,14 +77,17 @@ pids = start_up_workers(ENV)
 @everywhere using ShaleDrillingLikelihood
 
 # Solve constrained simpler model
-res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
-
-updateThetaUnconstrained!(REWARD, theta0_drill, minimizer(res_c))
-theta0s = (theta0_drill, theta0_royalty, theta0_produce)
-theta0_full = merge_thetas(theta0s, dataset_full)
+if do_cnstr
+    res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
+    updateThetaUnconstrained!(REWARD, theta0_drill, minimizer(res_c))
+end
 
 # Solve unconstrained full model
-res_u, ew_u = solve_model(dataset_cnstr, theta0_full, M_full, maxtime_full)
+if do_full
+    theta0s = (theta0_drill, theta0_royalty, theta0_produce)
+    theta0_full = merge_thetas(theta0s, dataset_full)
+    res_u, ew_u = solve_model(dataset_cnstr, theta0_full, M_full, maxtime_full)
+end
 
 # let d=dataset_cnstr, theta=theta0_cnstr, M=M_cnstr, maxtime=maxtime_cnstr
 #     # estimation objects
