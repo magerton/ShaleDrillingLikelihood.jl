@@ -82,11 +82,9 @@ if do_cnstr
     updateThetaUnconstrained!(REWARD, theta0_drill, minimizer(res_c))
 end
 
-
-
 # Solve unconstrained full model
-# if do_full
+if do_full
     theta0s = (theta0_drill, theta0_royalty, theta0_produce)
     theta0_full = merge_thetas(theta0s, dataset_full)
     res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full)
-# end
+end
