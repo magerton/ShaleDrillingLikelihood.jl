@@ -12,13 +12,14 @@ using Optim: minimizer, Options
 # ------------------- number of simulations ----------------------
 
 M_cnstr = 500
+M_full_nelder = 250
 M_full  = 500
 
-do_cnstr = true
+do_cnstr = false
 do_full  = true
 
 maxtime_cnstr = 6 * 60^2
-maxtime_full  = 6 * 60^2
+maxtime_full  = 1* 60^2
 
 REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
@@ -87,5 +88,6 @@ end
 if do_full
     theta0s = (theta0_drill, theta0_royalty, theta0_produce)
     theta0_full = merge_thetas(theta0s, dataset_full)
-    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full)
+    alg = ShaleDrillingLikelihood.nelder
+    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full, alg)
 end
