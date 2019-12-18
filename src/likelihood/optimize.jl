@@ -56,7 +56,7 @@ bfgs(ew) =  Optim.BFGS(;
     initial_invH = x -> invhessian!(ew, x)
 )
 
-nelder() = Optim.NelderMead()
+nelder(ew) = Optim.NelderMead()
 
 function solve_model(ew, theta; OptimOpts=OptimOpts, OptimMethod=bfgs(ew))
     check_finite(theta)
