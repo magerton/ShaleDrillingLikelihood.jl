@@ -148,9 +148,9 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_0(x::DrillingRevenue, θ) = θ[idx_0(x)]
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
-@inline theta_t(x::DrillingRevenueTimeTrend, θ) = θ[idx_t(x)]
+@inline theta_t(x::DrillingRevenue{Unconstrained, TimeTrend}, θ) = θ[idx_t(x)]
 @inline theta_ρ(x, θ) = θ[idx_ρ(x)]
-function theta_t(x::DrillingRevenueNoTrend, θ)
+function theta_t(x::DrillingRevenue{Unconstrained, NoTrend}, θ)
     @warn "No t in $x. setting to $STARTING_α_t"
     return STARTING_α_t
 end
