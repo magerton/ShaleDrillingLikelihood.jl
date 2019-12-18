@@ -1,6 +1,6 @@
 using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
     DrillingRevenueUnconstrained, DrillingRevenueConstrained,
-    ConstrainedIdx, UnconstrainedFmConstrainedIdx, updateThetaUnconstrained
+    ConstrainedIdx, UnconstrainedFmConstrainedIdx
 
 export updateThetaUnconstrained!, ThetaConstrained
 
