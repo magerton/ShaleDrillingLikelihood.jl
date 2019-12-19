@@ -26,8 +26,8 @@ maxtime_full  = 8 * 60^2
 
 REWARD = DrillReward(
     DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
-    DrillingCost_TimeFE(2008,2012),
-    # DrillingCost_TimeFE_rigrate(2008,2012),
+    # DrillingCost_TimeFE(2008,2012),
+    DrillingCost_TimeFE_rigrate(2008,2012),
     # DrillingCost_dgt1(),
     ExtensionCost_Constant()
 )
@@ -36,10 +36,10 @@ println(REWARD)
 println("")
 
 ANTICIPATE = false
-PSI = PsiSpace(21)
-NUM_P = 21
-NUM_C = 15
-EXTEND_GRID = log(3)
+PSI = PsiSpace(13)
+NUM_P = 13
+NUM_C = 13
+EXTEND_GRID = log(2.5)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 println("Psi-space is\n\t$PSI")
