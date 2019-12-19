@@ -20,6 +20,7 @@ function PriceGrid(z::Vector{PriceTuple}, delta, len)
     x = first.(z)
     prng = range(minimum(x)-delta, maximum(x)+delta; length=len)
     sigsq = var(diff(x))
+    println("Var(logprice) = $sigsq and sd(logprice) = $(sqrt(sigsq))")
     P = tauchen_1d(prng, identity, sigsq)
     return prng, P
 end
@@ -40,7 +41,12 @@ function PriceCostGrid(z::Vector{T}, delta, len) where {T<:Union{PriceCostTuple,
     # sigma
     dpc = diff(pc; dims=1)
 
-    P = tauchen_2d(pcprod, identity, cov(dpc))
+    Sigma = cov(dpc)
+    stdvs = sqrt.(diag(Sigma))
+    sigcor = Sigma[2,1] / prod(stdvs)
+    println("Sigma(logprice, logrigrate) = $Sigma.\nStdv(logprice, logrigrate) = $(round.(stdvs;digits=5)) and correlation = $(round(sigcor;digits=4))")
+
+    P = tauchen_2d(pcprod, identity, Sigma)
     return pcrng, P
 end
 
