@@ -60,6 +60,14 @@ beta_1minusbeta(ddm::DynamicDrillModel) = discount(ddm) / (1-discount(ddm))
 
 theta_drill_ρ(d::DynamicDrillModel, theta) = theta[_nparm(reward(d))]
 
+function DynamicDrillModel(rwrd::DrillReward, ddm::DynamicDrillModel)
+    ddmnew = DynamicDrillModel(
+        rwrd, discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm),
+        psispace(ddm), anticipate_t1ev(ddm)
+    )
+    return ddmnew
+end
+
 # -----------------------------------------
 # Outer constructors for VF from DDM
 # -----------------------------------------

@@ -1,3 +1,5 @@
+export DataDrill, DataDrillPrimitive, zchars
+
 # Types to define Initial vs Development Drilling
 #------------------------------------------
 
@@ -26,9 +28,93 @@ isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 # DataSet
 #---------------------------
 
-export DataDrill
+function x_in_statespace(x, wp::AbstractUnitProblem)
+    setx = Set(x)
+    nS = length(wp)
+    if all(x .== 0)
+        check = true
+    else
+        check = issubset( setx, 1:nS )
+    end
+    check || throw(error("not all x ∈ $setx are in $wp"))
+    return check
+end
 
-abstract type AbstractDataDrill <: AbstractDataSet end
+x_in_statespace(x, wp) = true
+
+function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp)
+
+    # check i
+    length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
+        throw(DimensionMismatch("Lengths of ichars, j2ptr, and j1ptr must agree"))
+
+    # check j
+    last(j1ptr) == first(j2ptr)                          ||
+        throw(error("j1ptr and j2ptr must be conts"))
+
+    # check t
+    last(j2ptr) == length(jtstart) == length(tptr)-1     ||
+        throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
+
+    # check tchars
+    length(y) == length(x) == last(tptr)-1 ||
+        throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
+
+    # pointers are sorted
+    issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
+        throw(error("Pointers not sorted"))
+
+    # time vars are OK
+    for j in 1:length(tptr)-1
+        0 < jtstart[j] || throw("jtstart[$j] = $(jtstart[j]) <= 0")
+        jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
+            throw(error("don't have z for all times implied by jtstart"))
+    end
+
+    x_in_statespace(x,wp)
+
+    return true
+end
+
+struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractUnitProblem} <: AbstractDataDrill
+    reward::R
+
+    j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
+    j2ptr::UnitRange{Int}          # tptr, jchars is in  j2ptr[i]
+    tptr::Vector{Int}              # tchars       is in  tptr[j] : tptr[j+1]-1
+    jtstart::Vector{Int}           # zvars for lease j start at zchars[jtstart(data,j)]
+
+    # leases per unit
+    j1chars::Vector{Float64}       # weights for lease observations
+
+    # drilling histories
+    ichars::Vector{ITup}
+    y::Vector{Int}
+    x::Vector{XT}
+
+    # time indices
+    zchars::ETV
+    wp::UP
+
+    function DataDrillPrimitive(
+        reward::R, j1ptr, j2ptr, tptr, jtstart,
+        jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV, wp::UP
+    ) where {
+        R, ETV, ITup, XT, UP
+    }
+
+        chk = DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp)
+        if chk == false
+            throw(error("data didn't check out!"))
+        end
+
+        return new{R,ETV,ITup,XT,UP}(
+            reward, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp
+        )
+    end
+end
+
+
 
 struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
@@ -52,33 +138,12 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
 
     function DataDrill(model::M, j1ptr, j2ptr, tptr, jtstart,
         jchars, ichars::Vector{ITup}, y, x::Vector{XT}, zchars::ETV
-    ) where {M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT}
+    ) where {M, ETV, ITup, XT}
 
-        # check i
-        length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
-            throw(DimensionMismatch("Lengths of ichars, j2ptr, and j1ptr must agree"))
-
-        # check j
-        last(j1ptr) == first(j2ptr)                          ||
-            throw(error("j1ptr and j2ptr must be conts"))
-
-        # check t
-        last(j2ptr) == length(jtstart) == length(tptr)-1     ||
-            throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
-
-        # check tchars
-        length(y) == length(x) == last(tptr)-1 ||
-            throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
-
-        # pointers are sorted
-        issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
-            throw(error("Pointers not sorted"))
-
-        # time vars are OK
-        for j in 1:length(tptr)-1
-            0 < jtstart[j] || throw(DomainError())
-            jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
-                throw(error("don't have z for all times implied by jtstart"))
+        wp = statespace(model)
+        chk = DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp)
+        if chk == false
+            throw(error("data didn't check out!"))
         end
 
         # construct tmpvars
@@ -88,10 +153,11 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
     end
 end
 
-DataDrill(d::AbstractDataDrill) = _data(d)
+DataDrill(d::DataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
-function DataDrill(m::AbstractDrillModel, d::DataDrill)
+function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
+    statespace(d) == statespace(m) || throw(error("state space not same"))
     return DataDrill(
         m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
         j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
@@ -114,17 +180,18 @@ const ObservationStaticDrill = ObservationDrill{ <:AbstractStaticDrillModel}
 
 # ichars
 @inline ichars(obs::ObservationDrill) = obs.ichars
-@deprecate _ichars(obs::ObservationDrill) ichars(obs)
+# @deprecate _ichars(obs::ObservationDrill) ichars(obs)
 @inline geology(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = first(ichars(obs))
 @inline royalty(obs::ObservationDrill{<:AbstractDrillModel,<:NTuple{2,Real}}) = last(ichars(obs))
 
 # zchars
 zchars(obs::ObservationDrill) = obs.z
 @deprecate _z(     obs::ObservationDrill) zchars(obs)
-@inline logprice(obs::ObservationDrill) = first(zchars(obs))
-@inline price(   obs::ObservationDrill) = exp(logprice(obs))
-@inline rigrate( obs::ObservationDrill) = exp(getindex(zchars(obs), 2))
-@inline year(    obs::ObservationDrill) = last(zchars(obs))
+@inline logprice(  obs::ObservationDrill) = logprice(  zchars(obs))
+@inline logrigrate(obs::ObservationDrill) = logrigrate(zchars(obs))
+@inline year(      obs::ObservationDrill) = year(      zchars(obs))
+@inline price(     obs::ObservationDrill) = exp(logprice(obs))
+@inline rigrate(   obs::ObservationDrill) = exp(logrigrate(obs))
 
 function Observation(d::AbstractDataDrill, i::Integer, j::Integer, t::Integer)
     0 < i <= length(d) || throw(BoundsError())
@@ -148,15 +215,18 @@ hasj1ptr(   j1ptr::Vector{Int}) = length(j1ptr) > 0
 maxj1length(j1ptr::Vector{Int}) = hasj1ptr(j1ptr) ? maximum( diff(j1ptr) ) : 1
 
 # access DataDrill fields
-j1ptr(   d::DataDrill) = d.j1ptr
-j2ptr(   d::DataDrill) = d.j2ptr
-tptr(    d::DataDrill) = d.tptr
-zchars(  d::DataDrill) = d.zchars
-jtstart( d::DataDrill) = d.jtstart
-ichars(  d::DataDrill) = d.ichars
-j1chars( d::DataDrill) = d.j1chars
+j1ptr(   d::AbstractDataDrill) = d.j1ptr
+j2ptr(   d::AbstractDataDrill) = d.j2ptr
+tptr(    d::AbstractDataDrill) = d.tptr
+zchars(  d::AbstractDataDrill) = d.zchars
+jtstart( d::AbstractDataDrill) = d.jtstart
+ichars(  d::AbstractDataDrill) = d.ichars
+j1chars( d::AbstractDataDrill) = d.j1chars
 DrillingTmpVars(d::DataDrill) = d.dtv
 DrillingTmpVars(data) = DrillingTmpVars(_data(data))
+
+statespace(d::DataDrillPrimitive) = d.wp
+statespace(d::DataDrill) = statespace(_model(d))
 
 coefnames(x::DataDrill)  = coefnames(_model(x))
 

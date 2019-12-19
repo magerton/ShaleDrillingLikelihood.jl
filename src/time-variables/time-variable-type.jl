@@ -1,4 +1,4 @@
-export Quarter, ExogTimeVars
+export Quarter, ExogTimeVars, _timevars
 
 struct ExogTimeVars{N, ZTup<:NTuple{N,Real}, OR<:OrdinalRange}
     timevars::Vector{ZTup}
@@ -35,6 +35,12 @@ function DateQuarter(y::Integer, q::Integer)
     return Date(y, 3*(q-1)+1)
 end
 
+function DateQuarter(yq::Real)
+    y0, q0 = divrem(yq,1)
+    y = Int(y0)
+    q = Int(q0*4)+1
+    return DateQuarter(y,q)
+end
 
 function Quarter(i::Integer)
     1 <= i <= 4 || throw(DomainError())

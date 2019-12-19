@@ -10,7 +10,7 @@ using ShaleDrillingLikelihood: condvar,
     lrmean,
     simulate,
     zero_out_small_probs,
-    approxgrid
+    MakeGrid
 
 
 @testset "Exog Time Vars: simulation + tauchen" begin
@@ -39,7 +39,7 @@ using ShaleDrillingLikelihood: condvar,
             nprice = 51
 
             let x = price_process
-                lrvar(x), lrmean(x), approxgrid(x, nprice)
+                lrvar(x), lrmean(x), MakeGrid(x, nprice)
             end
 
             prices = simulate(price_process, nt)
@@ -64,7 +64,7 @@ using ShaleDrillingLikelihood: condvar,
             pmean = 1.3613524
             psd = 0.09380708
 
-            rw = RandomWalkProcess(psd^2)
+            rw = RandomWalk(psd^2)
 
             prices = simulate(rw, pmean, nt)
             etv = ExogTimeVars(tuple.(prices), daterange)

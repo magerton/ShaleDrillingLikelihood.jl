@@ -341,7 +341,7 @@ const bvncdf_x_array = [-0.9324695142031522e+00 -0.9815606342467191e+00 -0.99312
 "Pr( X > dh && Y > dk | ρ(X,Y) = r)"
 function bvnuppercdf(dh::T, dk::T, r::T)::T where {T<:Float64}
 
-	if r < -one(T) || r > one(T)
+	if r < -1 || r > 1
 		throw(DomainError("r must be ∈ [-1,1]"))
 	end
 
@@ -431,4 +431,4 @@ function bvnuppercdf(dh::T, dk::T, r::T)::T where {T<:Float64}
 end
 
 "Pr( X < dh && Y < dk | ρ(X,Y) = r)"
-bvncdf(dh, dk, r) = bvnuppercdf(-dh, -dk, r)
+bvncdf(dh::T, dk::T, r::T) where {T<:Real} = bvnuppercdf(-dh, -dk, r)

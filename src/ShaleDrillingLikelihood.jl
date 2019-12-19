@@ -20,6 +20,7 @@ using Distributed
 using CountPlus
 using Optim
 using StatsBase
+using ClusterManagers
 
 using UnsafeArrays
 
@@ -41,6 +42,7 @@ using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
 using Dates: Month
 using LinearAlgebra: checksquare, stride1
+using Optim: minimizer
 
 using InteractiveUtils: subtypes
 
@@ -62,7 +64,14 @@ export AbstractModel,
     AbstractProductionModel,
     AbstractRoyaltyModel,
     _nparm,
-    _model
+    _model,
+    sprintf_binary,
+    AbstractPayoffFunction,
+    AbstractStaticPayoff,
+    AbstractPayoffComponent,
+    AbstractDrillingRevenue,
+    AbstractDrillingCost,
+    AbstractExtensionCost
 
 # for modeling
 abstract type AbstractModel end
@@ -80,13 +89,27 @@ abstract type AbstractStaticDrillModel   <: AbstractDrillModel end
 
 abstract type AbstractModelVariations end
 
+# Static Payoff
+abstract type AbstractPayoffFunction end
+abstract type AbstractStaticPayoff   <: AbstractPayoffFunction end
+abstract type AbstractPayoffComponent <: AbstractPayoffFunction end
+
+# payoff components
+abstract type AbstractDrillingRevenue <: AbstractPayoffComponent end
+abstract type AbstractDrillingCost    <: AbstractPayoffComponent end
+abstract type AbstractExtensionCost   <: AbstractPayoffComponent end
+
+# also needed
+abstract type AbstractStateSpace end
+abstract type AbstractUnitProblem <: AbstractStateSpace end
+
 
 # data structures
 #---------------------
 
 # For data structures
 
-
+export AbstractDataDrill
 
 # "Collection of data on a particular outcome for individuals `i`"
 # "What we feed into a likelihood"
@@ -97,6 +120,9 @@ abstract type AbstractDataSetofSets    <: AbstractDataStructure end
 abstract type AbstractDataSet          <: AbstractDataStructure end
 abstract type AbstractObservationGroup <: AbstractDataStructure end
 abstract type AbstractObservation      <: AbstractDataStructure end
+
+abstract type AbstractDataDrill <: AbstractDataSet end
+
 
 const DataOrObs = Union{AbstractDataSet,AbstractObservation}
 
@@ -111,6 +137,21 @@ eachindex(d::EmptyDataSet) = 1:typemax(Int)
 _nparm(d::EmptyDataSet) = 0
 _model(d::EmptyDataSet) = NoModel()
 coefnames(d::EmptyDataSet) = Vector{String}(undef,0)
+
+# price / cost  / year
+#----------------------------
+
+# access Zchars
+const PriceTuple         = Tuple{Float64}
+const PriceYearTuple     = Tuple{Float64, <:Integer}
+const PriceCostYearTuple = Tuple{Float64, Float64, <:Integer}
+const PriceCostTuple     = Tuple{Float64, Float64}
+
+# zchars
+second(z::Tuple) = getindex(z,2)
+logprice(  z::NTuple{N,Real}) where {N} = first(z)
+logrigrate(z::NTuple{N,Real}) where {N} = second(z)
+year(      z::NTuple{N,Real}) where {N} = last(z)
 
 # useful functions
 #----------------------------
@@ -128,11 +169,17 @@ function showtypetree(T, level=0)
    end
 end
 
-function print_in_binary_for_copy_paste(x::Vector{<:Number})
+function sprintf_binary(x::Vector{<:Number})
     xstr = reduce(*, @sprintf("%a, ", i) for i in x)
     return "[" * xstr * "]"
 end
 
+check_finite(x::AbstractArray) = all(isfinite.(x)) || throw(error("x not finite!"))
+check_finite(x::AbstractVector) = all(isfinite.(x)) || throw(error("x not finite! $x"))
+check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
+
+
+@deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
 
 # Overall structure
 #----------------------------
@@ -145,6 +192,7 @@ include("utilities/delegate-methods.jl")
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
 include("time-variables/time-variable-type.jl")
+include("time-variables/time-series-processes.jl")
 
 # data structures
 include("data/observation-group.jl")

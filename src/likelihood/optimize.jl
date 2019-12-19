@@ -4,17 +4,21 @@ export solve_model
 
 
 function OnceDifferentiable(ew::EstimationWrapper, theta::Vector)
+    check_finite(theta)
 
     function f(x::Vector)
+        check_finite(x)
         reset!(LocalEstObj(ew))
         return parallel_simloglik!(ew, x, false)
         # return serial_simloglik!(ew, x, false)
     end
 
     function fg!(g::Vector,x::Vector)
+        check_finite(x)
         nll = parallel_simloglik!(ew, x, true)
         # nll = serial_simloglik!(ew, x, true)
         g .= grad(LocalEstObj(ew))
+        check_finite(g)
         return nll
     end
 
@@ -52,9 +56,10 @@ bfgs(ew) =  Optim.BFGS(;
     initial_invH = x -> invhessian!(ew, x)
 )
 
-nelder() = Optim.NelderMead()
+nelder(ew) = Optim.NelderMead()
 
 function solve_model(ew, theta; OptimOpts=OptimOpts, OptimMethod=bfgs(ew))
+    check_finite(theta)
     leo = LocalEstObj(ew)
     theta0(leo) .= theta
     odfg  = OnceDifferentiable(ew, theta)

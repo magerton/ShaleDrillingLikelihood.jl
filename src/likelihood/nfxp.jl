@@ -3,10 +3,38 @@ export RemoteEstObj,
     EstimationWrapper,
     update_reo!,
     reset_reo!,
-    theta0, theta1, hess, invhess, grad
+    theta0, theta1, hess, invhess, grad,
+    getworkers,
+    parallel_simloglik!,
+    update!,
+    start_up_workers
 
+"workers() but excluding master"
+getworkers() = filter(i -> i != 1, workers())
+
+function start_up_workers(ENV::Base.EnvDict)
+    # send primitives to workers
+    oldworkers = getworkers()
+    println_time_flush("removing workers $oldworkers")
+    rmprocs(oldworkers)
+    flush(stdout)
+    if "SLURM_JOBID" in keys(ENV)
+        num_cpus_to_request = parse(Int, ENV["SLURM_TASKS_PER_NODE"])
+        println("requesting $(num_cpus_to_request) cpus from slurm.")
+        flush(stdout)
+        pids = addprocs_slurm(num_cpus_to_request)
+    else
+        pids = addprocs()
+    end
+    println_time_flush("Workers added: $pids")
+    return pids
+end
+
+# ----------------------------------
 
 @GenGlobal g_RemoteEstObj
+
+# ----------------------------------
 
 abstract type AbstractEstimationObjects end
 
@@ -149,15 +177,23 @@ function update!(ew::EstimationWrapper, theta, dograd)
         g = grad(l)
         mul!(h, score, score')
         sum!(reshape(g, :, 1), score)
+        # println("gradient = $g")
         g .*= -1
     end
     nll = negLL(r)
-    countplus!(-nll,theta)
+    if dograd
+        countplus!(-nll,theta,g)
+    else
+        countplus!(-nll,theta)
+    end
+    flush(stdout)
     return nll
 end
 
 
 @noinline function simloglik!(i, theta, dograd, reo::RemoteEstObj; kwargs...)
+
+    check_finite(theta)
 
     gradi = view(scoremat(reo), :, i)
     grptup = getindex.(data(reo), i)
@@ -168,6 +204,7 @@ end
     fill!(gradi, 0)
 
     # do updates
+    @assert isfinite(θρ)
     update!(simi, θρ)
 
     thetasvw = split_thetas(data(reo), theta)
@@ -179,7 +216,8 @@ end
 end
 
 
-simloglik!(i, theta, dograd) = simloglik!(i,theta,dograd,get_g_RemoteEstObj())
+simloglik!(i, theta, dograd; kwargs...) =
+    simloglik!(i, theta, dograd, get_g_RemoteEstObj(); kwargs...)
 
 function serial_simloglik!(ew, theta, dograd; kwargs...)
     check_theta(ew,theta)
@@ -190,11 +228,12 @@ function serial_simloglik!(ew, theta, dograd; kwargs...)
 end
 
 function parallel_simloglik!(ew, theta, dograd; kwargs...)
+    check_finite(theta)
     check_theta(ew,theta)
     wp = CachingPool(workers())
     @eval @everywhere update_reo!($theta)
-    let theta=theta, dograd=dograd, kwargs=kwargs
-        pmap(i -> simloglik!(i, theta, dograd; kwargs...), wp, OneTo(ew))
+    let x=theta, dograd=dograd, kwargs=kwargs
+        pmap(i -> simloglik!(i, x, dograd; kwargs...), wp, OneTo(ew))
     end
     return update!(ew, theta, dograd)
 end

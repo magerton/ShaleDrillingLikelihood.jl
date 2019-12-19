@@ -25,6 +25,19 @@ end
 
 PerpetualProblem(dmax,Dmax,τ0max,τ1max,ext) = PerpetualProblem(dmax,Dmax)
 
+function ==(x::AbstractUnitProblem, y::AbstractUnitProblem)
+    x.dmax == y.dmax &&
+    x.Dmax == y.Dmax &&
+    x.τ0max == y.τ0max &&
+    x.τ1max == y.τ1max &&
+    x.ext == y.ext
+end
+
+function ==(x::PerpetualProblem, y::PerpetualProblem)
+    x.dmax == y.dmax &&
+    x.Dmax == y.Dmax
+end
+
 # see https://stackoverflow.com/questions/40160120/generic-constructors-for-subtypes-of-an-abstract-type
 (::Type{T})(wp::AbstractUnitProblem) where {T<:AbstractUnitProblem} = T(_dmax(wp), _Dmax(wp), _τ0max(wp), _τ1max(wp), _ext(wp))
 function (::Type{T})(wp::PerpetualProblem) where {T<:Union{LeasedProblem,LeasedProblemContsDrill}}
@@ -169,6 +182,11 @@ function state_idx(wp::PerpetualProblem, t1::Integer, t0::Integer, D::Integer, d
     D==0         && return end_ex0(wp)
     D<=_Dmax(wp) && return end_lrn(wp) + D
     throw(error("invalid state"))
+end
+
+function state_idx(wp, args::Number... )
+    t1,t0,D,d1 = map(Int, args)
+    state_idx(wp, t1, t0, D, d1)
 end
 
 # ----------------------------------

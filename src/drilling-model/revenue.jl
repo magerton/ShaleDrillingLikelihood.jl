@@ -69,6 +69,9 @@ Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTIN
 @inline theta_ψ(x::Constrained) = x.α_ψ
 @inline theta_t(x::Constrained) = x.α_t
 
+const DrillingRevenueConstrained = DrillingRevenue{Constrained}
+const DrillingRevenueUnconstrained = DrillingRevenue{Unconstrained}
+
 # Technology
 # -----------------
 
@@ -80,6 +83,13 @@ struct TimeTrend <: AbstractTechChange
 end
 TimeTrend() = TimeTrend(TIME_TREND_BASE)
 @inline baseyear(x::TimeTrend) = x.baseyear
+function baseyear(x::NoTrend)
+    yr = TIME_TREND_BASE
+    # @warn "No base year defined for $x. using $yr"
+    return yr
+end
+baseyear(x::DrillingRevenue) = baseyear(tech(x))
+baseyear(x::DrillReward) = baseyear(revenue(x))
 
 const DrillingRevenueTimeTrend = DrillingRevenue{Cn,TimeTrend} where {Cn}
 const DrillingRevenueNoTrend   = DrillingRevenue{Cn,NoTrend} where {Cn}
@@ -138,14 +148,34 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_0(x::DrillingRevenue, θ) = θ[idx_0(x)]
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
-@inline theta_t(x::DrillingRevenue, θ) = θ[idx_t(x)]
+@inline theta_t(x::DrillingRevenue{Unconstrained, TimeTrend}, θ) = θ[idx_t(x)]
 @inline theta_ρ(x, θ) = θ[idx_ρ(x)]
-
+function theta_t(x::DrillingRevenue{Unconstrained, NoTrend}, θ)
+    # @warn "No t in $x. setting to $STARTING_α_t"
+    return STARTING_α_t
+end
 @inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
 @inline theta_ψ(x::DrillingRevenue{Constrained}, θ) = theta_ψ(constr(x))
 @inline theta_t(x::DrillingRevenue{Constrained}, θ) = theta_t(constr(x))
 
+function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
+    @assert length(theta) == _nparm(x)
+    g   = theta_g(x, theta)
+    psi = theta_ψ(x, theta)
+    t   = theta_t(x, theta)
+    out = (log_ogip=g, α_ψ=psi, α_t=STARTING_α_t,)
+    return out
+end
 
+ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x, θ))
+
+ConstrainedIdx(x::DrillingRevenueTimeTrend) = idx_g(x), idx_ψ(x), idx_t(x)
+ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
+
+function UnconstrainedFmConstrainedIdx(x::DrillingRevenueConstrained)
+    xu = UnconstrainedProblem(x)
+    idxu = [idx_0(xu), idx_ρ(xu)]
+end
 
 # @deprecate α_0(     x::DrillingRevenue, θ) theta_0(x, θ)
 # @deprecate _σ(      x::DrillingRevenue, θ) theta_ρ(x, θ)
@@ -402,7 +432,7 @@ ConstrainedProblem(  x::DrillingRevenue; kwargs...) = DrillingRevenue(Constraine
 
 ConstrainedProblem(  x::DrillReward; kwargs...) = DrillReward(ConstrainedProblem(revenue(x); kwargs...), ConstrainedProblem(drill(x)), ConstrainedProblem(extend(x)))
 UnconstrainedProblem(x::DrillReward; kwargs...) = DrillReward(UnconstrainedProblem(revenue(x); kwargs...), UnconstrainedProblem(drill(x)), UnconstrainedProblem(extend(x)))
-
+ConstrainedProblem(x::DrillReward, theta::AbstractVector) = ConstrainedProblem(x; ConstrainedCoefs(x,theta)...)
 
 # Learning models
 NoLearningProblem(x::AbstractPayoffComponent, args...) = x

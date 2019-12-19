@@ -128,5 +128,21 @@ function grad_simloglik_produce!(
             end
         end
     end
-    return LL
+    grad .*= -1
+    return -LL
+end
+
+
+function solve_model(data::DataProduce, theta; M=500, alg=BFGS())
+    sim = SimulationDraws(M, length(data))
+
+    zvec = zeros(length(theta))
+
+    ff(x)          = grad_simloglik_produce!(zvec, data, x, sim, false)
+    ffgg!(grad, x) = grad_simloglik_produce!(grad, data, x, sim, true)
+
+    odfg = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
+    opts = Optim.Options(time_limit = 60, allow_f_increases=true)
+    res = optimize(odfg, theta, alg, opts)
+    return res
 end
