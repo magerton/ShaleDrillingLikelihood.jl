@@ -66,7 +66,7 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
 
     # time vars are OK
     for j in 1:length(tptr)-1
-        0 < jtstart[j] || throw(DomainError())
+        0 < jtstart[j] || throw("jtstart[$j] = $(jtstart[j]) <= 0")
         jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
             throw(error("don't have z for all times implied by jtstart"))
     end
