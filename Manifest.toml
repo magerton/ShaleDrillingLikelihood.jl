@@ -113,7 +113,7 @@ version = "2.2.0"
 
 [[CountPlus]]
 deps = ["Test"]
-git-tree-sha1 = "94d8cd03a5c1a3e81db697b0ed81bbacd9969399"
+git-tree-sha1 = "9e186748ea0144004154cc03e52114018e232840"
 repo-rev = "master"
 repo-url = "https://github.com/magerton/CountPlus"
 uuid = "fc19a607-4a1c-5e34-bf0d-7dd5ba9e7eda"
