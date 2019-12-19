@@ -2,18 +2,21 @@ using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
     DrillingRevenueUnconstrained, DrillingRevenueConstrained,
     ConstrainedIdx, UnconstrainedFmConstrainedIdx
 
-export updateThetaUnconstrained!, ThetaConstrained
+export updateThetaUnconstrained!, ThetaConstrained, ThetaRho
 
-ThetaRho() = 0.0
-AlphaPsi() = 0.3630951648523468
-AlphaG() = 0.5465520954590734
+ThetaRho() = 0.76
+AlphaPsi() = 0x1.55b10dcc51d5fp-2
+AlphaG() = 0x1.075c51cf96449p-1
 AlphaT() = STARTING_α_t
 Alpha0() = -2.8
 BetaPsi() = 0.11805850128182346
 
-SigmaSq_eta() = 0.009368079566227127
-SigmaSq_u() = 0.10145638253519064
-Gamma0() = -14.951888468589365
+Sigma_eta() = 0x1.8c7275fb0e3d2p-4
+Sigma_u() = 0x1.2ca92ef5843d8p-2
+Gamma0() = -0x1.c98f8c57dd39bp+3
+
+@deprecate SigmaSq_eta() Sigma_eta()
+@deprecate SigmaSq_u() Sigma_u()
 
 Theta(m, args...) = throw(error("Default Theta not assigned for $m"))
 Theta(m::AbstractDynamicDrillModel, args...; kwargs...) = Theta(reward(m), args...; kwargs...)
@@ -84,11 +87,11 @@ function Theta(d::DataRoyalty; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
 end
 
 function Theta(d::DataProduce; αψ=AlphaPsi(), αg=AlphaG(), αt=AlphaT(),
-        σ2η=SigmaSq_eta(), σ2u=SigmaSq_u(), γ0=Gamma0(), kwargs...)
+        ση=Sigma_eta(), σu=Sigma_u(), γ0=Gamma0(), kwargs...)
     if _num_x(d) == 2
-        return vcat(αψ, αg, γ0,     σ2η, σ2u)
+        return vcat(αψ, αg, γ0,     ση, σu)
     elseif _num_x(d) == 3
-        return vcat(αψ, αg, γ0, αt, σ2η, σ2u)
+        return vcat(αψ, αg, αt, γ0, ση, σu)
     end
     throw(error("no starting values available"))
 end
