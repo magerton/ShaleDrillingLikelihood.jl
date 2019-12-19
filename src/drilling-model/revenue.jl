@@ -85,7 +85,7 @@ TimeTrend() = TimeTrend(TIME_TREND_BASE)
 @inline baseyear(x::TimeTrend) = x.baseyear
 function baseyear(x::NoTrend)
     yr = TIME_TREND_BASE
-    @warn "No base year defined for $x. using $yr"
+    # @warn "No base year defined for $x. using $yr"
     return yr
 end
 baseyear(x::DrillingRevenue) = baseyear(tech(x))
@@ -151,7 +151,7 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline theta_t(x::DrillingRevenue{Unconstrained, TimeTrend}, θ) = θ[idx_t(x)]
 @inline theta_ρ(x, θ) = θ[idx_ρ(x)]
 function theta_t(x::DrillingRevenue{Unconstrained, NoTrend}, θ)
-    @warn "No t in $x. setting to $STARTING_α_t"
+    # @warn "No t in $x. setting to $STARTING_α_t"
     return STARTING_α_t
 end
 @inline theta_g(x::DrillingRevenue{Constrained}, θ) = theta_g(constr(x))
