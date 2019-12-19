@@ -8,7 +8,7 @@ if "SLURM_JOBID" in keys(ENV)
 end
 using CountPlus, Distributed
 using Optim: minimizer, Options, BFGS, NelderMead
-using ShaleDrillingLikelihood: value_function, EVobj
+using ShaleDrillingLikelihood: value_function, EVobj, cost
 using SparseArrays: nonzeros
 using Formatting: generate_formatter
 
@@ -25,28 +25,33 @@ DO_FULL  = true
 
 COMPUTE_INITIAL_VALUES = false
 
-maxtime_cnstr = 3 * 60^2
-maxtime_nelder = 1 * 60^2
-maxtime_full  = 8 * 60^2
+MAXTIME_CNSTR = 3 * 60^2
+MAXTIME_FULL  = 24 * 60^2
 
 THETA0_FULL_OVERRIDE = [-0x1.83eeb26cf8c0ap+3, -0x1.132e0f9f3028fp+3, -0x1.d5722d44dbff4p+2, -0x1.b056c3b1a2c2bp+2, -0x1.9a3b02a2d1a13p+2, 0x1.9afb35c44ca89p+0, -0x1.6fc292fb3cd44p+0, -0x1.7ceca35ba26a9p+1, 0x1.432180d09e432p-1, 0x1.6afab14ff30b8p-2, 0x1.0a2eeb8d6028p-6, 0x1.a166348636691p-1, 0x1.8d7ec5555bee9p-4, 0x1.342ab1e3e2f02p-1, 0x1.2e7710107fcfcp+0, -0x1.b04c826c14fc9p+0, 0x1.1de044f6d8731p-3, 0x1.f453b2afd8d4dp+1, 0x1.0f97722983fd3p+2, 0x1.461dafb20c6ddp+2, 0x1.7f91f4a8ad68p+2, 0x1.a44fb95709805p+2, -0x1.ddb9c1dd1de8bp+3, 0x1.8c726cf59ccfcp-4, 0x1.3f5dd41de8e1cp-2, ]
 
-REWARD = DrillReward(
-    DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() ),
-    DrillingCost_TimeFE(2008,2012),
-    # DrillingCost_TimeFE_rigrate(2008,2012),
-    # DrillingCost_dgt1(),
-    ExtensionCost_Constant()
-)
-println("Model is\n")
-println(REWARD)
-println("")
+COST = DrillingCost_TimeFE(2008,2012)
+EXT = ExtensionCost_Constant()
+REV = DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() )
+REWARD = DrillReward(REV, COST, EXT)
+println("Model is\n\t$REWARD\n")
+
+
+if cost(REWARD) isa DrillingCost_TimeFE
+    PSI = PsiSpace(51)
+    NUM_P = 51
+    EXTEND_GRID = log(3)
+    MINP = minp_default()
+elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
+    PSI = PsiSpace(15)
+    NUM_P = 15
+    EXTEND_GRID = log(2.5)
+    MINP = 5e-5
+end
 
 ANTICIPATE = false
-PSI = PsiSpace(51)
-NUM_P = 51
-EXTEND_GRID = log(3)
-MINP = minp_default()
+println("Firms anticipate T1EV shocks? $ANTICIPATE")
+
 DISCOUNT = RealDiscountRate()
 println("Psi-space is\n\t$PSI with length $(length(PSI))")
 
@@ -58,8 +63,6 @@ end
 DATAPATH = "data_all_leases.RData"
 
 # --------------- create data ---------------
-
-# constrained version of reward function
 
 # load in data from disk
 rdatapath = joinpath(DATADIR, DATAPATH)
@@ -115,7 +118,7 @@ println_time_flush("Library loaded on workers")
 
 # Solve constrained simpler model
 if DO_CNSTR
-    res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, maxtime_cnstr)
+    res_c, ew_c = solve_model(dataset_cnstr, theta0_cnstr, M_cnstr, MAXTIME_CNSTR)
     theta1_cnstr = minimizer(res_c)
     updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 end
@@ -130,5 +133,5 @@ end
 
 if DO_FULL
     println("Starting full model solution")
-    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, maxtime_full)
+    res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, MAXTIME_FULL)
 end
