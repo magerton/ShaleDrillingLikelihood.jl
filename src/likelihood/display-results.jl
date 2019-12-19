@@ -87,7 +87,7 @@ function solve_model(d::DataSetofSets, theta, M, maxtime, OptimMethod=bfgs)
 
     res = solve_model(ew, theta; OptimOpts=opts, OptimMethod=OptimMethod(ew))
 
-    # println(res)
+    println(res)
     println("Recomputing final gradient / hessian")
     let dograd=true, theta=Optim.minimizer(res)
         parallel_simloglik!(ew, theta, dograd)
