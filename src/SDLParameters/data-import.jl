@@ -212,10 +212,19 @@ function DataDrillPrimitive(rwrd::DrillReward, path; kwargs...)
     _j2ptr   = rdata[ cols[:j2ptr] ]
     _j1chars = rdata[ cols[:j1chars] ]
     _ichars  = rdata[ cols[:ichars] ]
+    _qchars  = rdata[ cols[:qchars] ]
+
+    last_well_drill_year = year(maximum(_qchars[!,:well_start_date]))
+    first_tchars, last_tchars = extrema(tchars[!,:qtrdate])
+    last_year = max(last_well_drill_year, floor(last_tchars))
 
     prices  = rdata[ cols[:prices] ] |>
-        @filter( validnum(_.dayrate_c) && validnum(_.well_revenue) ) |>
-        DataFrame
+        @filter(
+            validnum(_.dayrate_c) &&
+            validnum(_.well_revenue) &&
+            floor(first_tchars) <= _.qtrdate &&
+            _.qtrdate < last_year+1
+        ) |> DataFrame
 
     z = map(ztuple(rwrd), eachrow(prices))
     minqtr, maxqtr = extrema(prices[!,:qtrdate])
