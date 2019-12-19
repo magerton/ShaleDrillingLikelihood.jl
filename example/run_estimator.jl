@@ -11,18 +11,18 @@ using Optim: minimizer, Options, BFGS, NelderMead
 
 # ------------------- number of simulations ----------------------
 
-M_cnstr = 250
+M_cnstr = 500
 M_full  = 1000
 
 DO_CNSTR = false # true
-DO_FULL  = true
 DO_NELDER = false
+DO_FULL  = true
 
 COMPUTE_INITIAL_VALUES = true
 
 maxtime_cnstr = 1 * 60^2
 maxtime_nelder = 1 * 60^2
-maxtime_full  = 3 * 60^2
+maxtime_full  = 12 * 60^2
 
 REWARD = DrillReward(#
     DrillingRevenue(Unconstrained(), NoTrend(), GathProcess() ),
@@ -33,10 +33,10 @@ REWARD = DrillReward(#
 )
 
 ANTICIPATE = false
-PSI = PsiSpace(15)
-NUM_P = 15
+PSI = PsiSpace(31)
+NUM_P = 51
 NUM_C = 13
-EXTEND_GRID = log(2)
+EXTEND_GRID = log(3)
 MINP = minp_default()
 DISCOUNT = RealDiscountRate()
 
@@ -78,6 +78,7 @@ rwrd_cnstr = ConstrainedProblem(REWARD, theta0_drill)
 theta0_cnstr = ThetaConstrained(REWARD, theta0_drill)
 data_cnstr = DataDrill(DynamicDrillModel(rwrd_cnstr, ddm), data_drill)
 dataset_cnstr = DataSetofSets(data_cnstr, EmptyDataSet(), EmptyDataSet())
+println_time_flush("Data created")
 
 # ------------------- get initial values -----------------------
 
@@ -87,6 +88,7 @@ if COMPUTE_INITIAL_VALUES
     theta0_royalty[3:end], minimizer(res_royalty)
 
     theta0_produce .= ThetaProduceStarting(REWARD, rdatapath)
+    println_time_flush("Pdxn / Royalty starting values done")
 end
 
 # ------------------- set up workers -----------------------
@@ -105,9 +107,10 @@ updateThetaUnconstrained!(REWARD, theta0_drill, theta1_cnstr)
 
 
 # Solve unconstrained full model
+theta0s = (theta0_drill, theta0_royalty, theta0_produce)
+theta0_full = merge_thetas(theta0s, dataset_full)
+theta0_full .= [-0x1.9888015dc5e94p+3, -0x1.1eed252dfb0c2p+3, -0x1.e85a523a01567p+2, -0x1.c179cf4c98a4ep+2, -0x1.a0bb331b87f7p+2, 0x1.969dc0f15861ep+0, -0x1.88937177cf68cp+0, -0x1.4c5466cfc5e66p+1, 0x1.25aa7e67d4537p-1, 0x1.67f9929622178p-2, 0x1.581b47832f695p-2, 0x1.f2a9386c76f97p-4, 0x1.32db1364f88dfp-1, 0x1.2ed17e3a861c4p+0, -0x1.b3a5b2101c6bcp+0, 0x1.1e29f17d740f6p-3, 0x1.ee9af8421103cp+1, 0x1.0cbff947c745fp+2, 0x1.4365ea57b349bp+2, 0x1.7d05807825dfep+2, 0x1.a1defc1da86f4p+2, -0x1.d39937253c272p+3, 0x1.8c72785ac04dep-4, 0x1.47faa3985dcb7p-2, ]
 if DO_FULL
-    theta0s = (theta0_drill, theta0_royalty, theta0_produce)
-    theta0_full = merge_thetas(theta0s, dataset_full)
     if DO_NELDER
         alg = ShaleDrillingLikelihood.nelder
         res_u_n, ew_u_n = solve_model(dataset_full, theta0_full, M_full, maxtime_nelder, alg)
@@ -115,5 +118,6 @@ if DO_FULL
     else
         theta1_full = copy(theta0_full)
     end
+    println("Starting full model solution")
     res_u, ew_u = solve_model(dataset_full, theta1_full, M_full, maxtime_full)
 end
