@@ -172,6 +172,31 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         @test j == length(tptr(data))-1
         @test t == length(_y(data))
 
+        dataso = DataDrillStartsOnly(data)
+        @show trange(dataso, 2)
+        du = getindex(dataso, 1)
+        @test du isa DrillUnit
+        dr1 = getindex(du, InitialDrilling())
+        dr2 = getindex(du, DevelopmentDrilling())
+        @test dr1 isa DrillInitial
+        @test dr2 isa DrillDevelopment
+        @show eachindex(dr1)
+        @show eachindex(dr2)
+        @test DataDrill(dr1) isa DataDrillStartsOnly
+        @test DataDrill(dr2) isa DataDrillStartsOnly
+
+        ii = 0
+        for (unitd, units) in zip(data, dataso)
+            for (regimed, regimes) in zip(unitd, units)
+                for (ld, ls) in zip(regimed, regimes)
+                    ii += 1
+                    # @test length(_x(ls)) == 1
+                    @test first(_x(ld)) == first(_x(ls))
+                end
+            end
+        end
+        @test ii >0
+
     end # testset: random drilling data
 
 end # overall testset

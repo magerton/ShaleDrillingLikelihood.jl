@@ -1,4 +1,4 @@
-export DataDrill, DataDrillPrimitive, zchars
+export DataDrill, DataDrillPrimitive, zchars, DataDrillStartsOnly
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------
@@ -108,7 +108,7 @@ end
 #---------------------------
 
 "includes all info about data but not full model"
-struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractUnitProblem} <: AbstractDataDrill
+struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractStateSpace} <: AbstractDataDrill
     reward::R
 
     j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -186,7 +186,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
 end
 
 "Data with ONLY first observation"
-struct DataDrillStartsOnly{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, UP<:AbstractUnitProblem} <: AbstractDataDrill
+struct DataDrillStartsOnly{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, UP<:AbstractStateSpace,XT} <: AbstractDataDrill
     reward::R
 
     j1ptr::Vector{Int}     # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
@@ -198,7 +198,7 @@ struct DataDrillStartsOnly{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tup
 
     # drilling histories
     ichars::Vector{ITup}
-    x::Vector{Int}
+    x::Vector{XT}
 
     # time indices
     zchars::ETV
@@ -206,23 +206,22 @@ struct DataDrillStartsOnly{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tup
 
     function DataDrillStartsOnly(
         reward::R, j1ptr, j2ptr, jtstart,
-        j1chars, ichars::Vector{ITup}, x, zchars::ETV, wp::UP
+        j1chars, ichars::Vector{ITup}, x::Vector{XT}, zchars::ETV, wp::UP
     ) where {
-        R, ETV, ITup, UP
+        R, ETV, ITup, UP, XT
     }
-
         chk1 = DataDrillCheckStarts(j1ptr, j2ptr, jtstart, j1chars, ichars, x, wp)
         chk2 = DataDrillCheck_xstarts(jtstart, x, zchars)
         chk1 && chk2 || throw(error("data didn't check out!"))
 
-        return new{R,ETV,ITup,UP}(
+        return new{R,ETV,ITup,UP,XT}(
             reward, j1ptr, j2ptr, jtstart, j1chars, ichars, x, zchars, wp
         )
     end
 end
 
 
-DataDrill(d::DataDrill) = _data(d)
+DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
 function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
@@ -230,6 +229,18 @@ function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
     return DataDrill(
         m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
         j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
+    )
+end
+
+function DataDrillStartsOnly(d::DataDrill)
+    rwrd = reward(_model(d))
+    tpt = tptr(d)
+    tvw = @view(tpt[1:end-1])
+    firstx = getindex(_x(d), tvw)
+    return DataDrillStartsOnly(
+        rwrd, j1ptr(d), j2ptr(d), jtstart(d), j1chars(d), ichars(d),
+        firstx,
+        zchars(d), statespace(_model(d))
     )
 end
 
@@ -313,6 +324,7 @@ j1ptr(  d::AbstractDataDrill, i) = getindex(j1ptr(d),   i)
 j2ptr(  d::AbstractDataDrill, i) = getindex(j2ptr(d),   i)
 
 tptr(   d::AbstractDataDrill, j) = getindex(tptr(d),    j)
+tptr(   d::DataDrillStartsOnly, j) = j
 jtstart(d::AbstractDataDrill, j) = getindex(jtstart(d), j)
 j1chars(d::AbstractDataDrill, j) = getindex(j1chars(d), j)
 
