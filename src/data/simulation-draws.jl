@@ -139,6 +139,8 @@ _num_sim(s::SimulationDraws) = size(_u(s),1)
 num_i(s::SimulationDrawsMatrix) = size(_u(s),2)
 num_i(s::SimulationDrawsVector) = 1
 
+_num_sim(M::Integer) = M
+
 # manipulate like array
 tup(s::SimulationDraws) = _u(s), _v(s), _ψ1(s), _dψ1dθρ(s)
 size(s::SimulationDraws) = size(_u(s))
