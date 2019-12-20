@@ -163,13 +163,15 @@ end
 DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
-function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
+function DataDrill(d::AbstractDataDrill, m::AbstractDrillModel)
     statespace(d) == statespace(m) || throw(error("state space not same"))
     return DataDrill(
         m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
         j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
     )
 end
+
+@deprecate DataDrill(m::AbstractDrillModel, d::AbstractDataDrill) DataDrill(d,m)
 
 # What is an observation?
 #------------------------------------------

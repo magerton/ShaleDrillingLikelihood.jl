@@ -39,7 +39,7 @@ end
 @testset "Creation of data for xfer to workers for simulations" begin
     ddm_novf = DDM_NoVF(_model(ddata))
     data_dso = DataDrillStartOnly(ddata)
-    data_for_xfer = DataDrill(ddm_novf, data_dso)
+    data_for_xfer = DataDrill(data_dso, ddm_novf)
 end
 
 end # module
