@@ -60,9 +60,9 @@ beta_1minusbeta(ddm::DynamicDrillModel) = discount(ddm) / (1-discount(ddm))
 
 theta_drill_ρ(d::DynamicDrillModel, theta) = theta[_nparm(reward(d))]
 
-function DynamicDrillModel(rwrd::DrillReward, ddm::DynamicDrillModel)
+function DynamicDrillModel(rwrd::DrillReward, ddm::DynamicDrillModel, wp = statespace(ddm))
     ddmnew = DynamicDrillModel(
-        rwrd, discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm),
+        rwrd, discount(ddm), wp, zspace(ddm), ztransition(ddm),
         psispace(ddm), anticipate_t1ev(ddm)
     )
     return ddmnew
@@ -76,6 +76,8 @@ const DDM_NoVF       = DynamicDrillModel{T,APF,AM,AUP,TT,AR, Nothing}           
 const DDM_VFAO       = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:ValueFunctionArrayOnly} where {T,APF,AM,AUP,TT,AR}
 const DDM_VF         = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:ValueFunction}          where {T,APF,AM,AUP,TT,AR}
 const DDM_AbstractVF = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:AbstractValueFunction}  where {T,APF,AM,AUP,TT,AR}
+
+DDM_NoVF(rwrd, beta, wp, z, ztrans, psi, t1ev) = DynamicDrillModel(rwrd, beta, wp, z, ztrans, psi, t1ev,  (args...) -> nothing)
 
 ValueFunctionArrayOnly(ddm::DDM_NoVF) = ValueFunctionArrayOnly(reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
 ValueFunction(         ddm::DDM_NoVF) = ValueFunction(         reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
