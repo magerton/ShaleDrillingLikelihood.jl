@@ -1,4 +1,4 @@
-export DataDrill, DataDrillPrimitiveStartOnly, zchars
+export DataDrill, DataDrillStartOnly, zchars
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------
@@ -526,7 +526,7 @@ end
 # DataDrlll - start only
 # ---------------------------
 
-function DataDrillPrimitiveStartOnly(d::AbstractDataDrill)
+function DataDrillStartOnly(d::AbstractDataDrill)
     _tptr = zero(tptr(d))
     _tptr[1] = 1
 
@@ -555,9 +555,30 @@ function DataDrillPrimitiveStartOnly(d::AbstractDataDrill)
         end
     end
 
-    return DataDrillPrimitive(
-        reward(_model(d)),
+    return DataDrill(
+        _model(d),
         j1ptr(d), j2ptr(d), _tptr, jtstart(d), j1chars(d),
-        ichars(d), y, x, zchars(d), statespace(d)
+        ichars(d), y, x, zchars(d)
     )
+end
+
+# create new DataDrill with different reward & statespace
+function DataDrill(d::DataDrill, rwrd::AbstractStaticPayoff, wp::AbstractStateSpace)
+
+    # create new DDM from old
+    ddm = DynamicDrillModel(_model(d), rwrd, wp)
+
+    if wp == statespace(d)
+        newx = _x(d)
+    else
+        states = map(x -> state(statespace(d), x), _x(d))
+        newx = map(s -> state_idx(wp, s), states)
+    end
+
+    dnew = DataDrill(
+        ddm,
+        j1ptr(d), j2ptr(d), tptr(d), jtstart(d), j1chars(d),
+        ichars(d), _y(d), newx, zchars(d)
+    )
+    return dnew
 end

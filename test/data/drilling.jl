@@ -173,7 +173,7 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         @test t == length(_y(data))
 
         @testset "Drilling Start Only" begin
-            dso = DataDrillPrimitiveStartOnly(data)
+            dso = DataDrillStartOnly(data)
             for (ud, us) in zip(data, dso)
                 for (rd, rs) in zip(ud, us)
                     for (ld, ls) in zip(rd, rs)
