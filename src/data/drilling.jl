@@ -25,8 +25,7 @@ isless(::FinishedDrilling, ::Union{InitialDrilling,DevelopmentDrilling})  = fals
 isless(::DevelopmentDrilling, ::InitialDrilling)  = false
 isless(::DevelopmentDrilling, ::FinishedDrilling) = true
 
-#---------------------------
-# Checks for data consistency
+# DataSet
 #---------------------------
 
 function x_in_statespace(x, wp::AbstractUnitProblem)
@@ -43,13 +42,8 @@ end
 
 x_in_statespace(x, wp) = true
 
-function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, j1chars, ichars, y, x, zchars, wp)
-    DataDrillCheckStarts(j1ptr, j2ptr,       jtstart, j1chars, ichars,    x,         wp)
-    DataDrillCheck_tptr_x_y(           tptr, jtstart,                  y, x, zchars)
-    return true
-end
+function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, wp)
 
-function DataDrillCheckStarts(j1ptr, j2ptr, jtstart, j1chars, ichars, x, wp)
     # check i
     length(j1ptr)-1 == length(ichars) == length(j2ptr)   ||
         throw(DimensionMismatch("Lengths of ichars, j2ptr, and j1ptr must agree"))
@@ -58,26 +52,8 @@ function DataDrillCheckStarts(j1ptr, j2ptr, jtstart, j1chars, ichars, x, wp)
     last(j1ptr) == first(j2ptr)                          ||
         throw(error("j1ptr and j2ptr must be conts"))
 
-    last(j1ptr)-1 == length(j1chars) ||
-        throw(error("j1chars len and j1ptr not consistent"))
-
     # check t
-    last(j2ptr) == length(jtstart) ||
-        throw(DimensionMismatch("lengths of j2ptr, jtstart must be consistent"))
-
-    # pointers are sorted
-    issorted(j1ptr) && issorted(j2ptr) || throw(error("Pointers not sorted"))
-
-    x_in_statespace(x,wp)
-
-    return true
-
-end
-
-
-function DataDrillCheck_tptr_x_y(tptr, jtstart, y, x, zchars)
-    # check t
-    length(jtstart) == length(tptr)-1     ||
+    last(j2ptr) == length(jtstart) == length(tptr)-1     ||
         throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
 
     # check tchars
@@ -85,7 +61,8 @@ function DataDrillCheck_tptr_x_y(tptr, jtstart, y, x, zchars)
         throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
 
     # pointers are sorted
-    issorted(tptr) || throw(error("tptr not sorted"))
+    issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
+        throw(error("Pointers not sorted"))
 
     # time vars are OK
     for j in 1:length(tptr)-1
@@ -93,21 +70,12 @@ function DataDrillCheck_tptr_x_y(tptr, jtstart, y, x, zchars)
         jtstart[j] + tptr[j+1] - 1 - tptr[j] <= length(zchars) ||
             throw(error("don't have z for all times implied by jtstart"))
     end
+
+    x_in_statespace(x,wp)
+
     return true
 end
 
-function DataDrillCheck_xstarts(jtstart, x, zchars)
-    length(jtstart) == length(x) || throw(DimensionMismatch())
-    minjt, maxjt = extrema(jtstart)
-    0 < minjt < maxjt < length(zchars) || throw(error())
-    return true
-end
-
-#---------------------------
-# Data structures
-#---------------------------
-
-"includes all info about data but not full model"
 struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractUnitProblem} <: AbstractDataDrill
     reward::R
 
@@ -147,7 +115,7 @@ struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tupl
 end
 
 
-"Comprehensive data + model for estimation"
+
 struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
 
@@ -184,43 +152,6 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
         return new{M,ETV,ITup,XT}(model, j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zchars, dtv)
     end
 end
-
-"Data with ONLY first observation"
-struct DataDrillStartsOnly{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, UP<:AbstractUnitProblem} <: AbstractDataDrill
-    reward::R
-
-    j1ptr::Vector{Int}     # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
-    j2ptr::UnitRange{Int}  # tptr, jchars is in  j2ptr[i]
-    jtstart::Vector{Int}   # zvars for lease j start at zchars[jtstart(data,j)]
-
-    # leases per unit
-    j1chars::Vector{Float64}       # weights for lease observations
-
-    # drilling histories
-    ichars::Vector{ITup}
-    x::Vector{Int}
-
-    # time indices
-    zchars::ETV
-    wp::UP
-
-    function DataDrillStartsOnly(
-        reward::R, j1ptr, j2ptr, jtstart,
-        j1chars, ichars::Vector{ITup}, x, zchars::ETV, wp::UP
-    ) where {
-        R, ETV, ITup, UP
-    }
-
-        chk1 = DataDrillCheckStarts(j1ptr, j2ptr, jtstart, j1chars, ichars, x, wp)
-        chk2 = DataDrillCheck_xstarts(jtstart, x, zchars)
-        chk1 && chk2 || throw(error("data didn't check out!"))
-
-        return new{R,ETV,ITup,UP}(
-            reward, j1ptr, j2ptr, jtstart, j1chars, ichars, x, zchars, wp
-        )
-    end
-end
-
 
 DataDrill(d::DataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
