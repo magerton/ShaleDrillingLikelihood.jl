@@ -1,4 +1,4 @@
-export DataDrill, DataDrillPrimitive, zchars
+export DataDrill, DataDrillPrimitiveStartOnly, zchars
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------
@@ -57,9 +57,13 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
         throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
 
     # check tchars
-    length(y) == length(x) == last(tptr)-1 ||
-        throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
-
+    if length(y) == length(x) == last(tptr)-1
+    else
+        leny = length(y)
+        lenx = length(x)
+        tlast = last(tptr)-1
+        throw(DimensionMismatch("length(y) = $leny, length(x) = $lenx, last(tptr)-1=$tlast"))
+    end
     # pointers are sorted
     issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
         throw(error("Pointers not sorted"))
@@ -76,16 +80,19 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
     return true
 end
 
-struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractUnitProblem} <: AbstractDataDrill
+struct DataDrillPrimitive{
+        R<:AbstractStaticPayoff, ETV<:ExogTimeVars,
+        ITup<:Tuple, XT, UP<:AbstractStateSpace
+        } <: AbstractDataDrill
     reward::R
 
-    j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
-    j2ptr::UnitRange{Int}          # tptr, jchars is in  j2ptr[i]
-    tptr::Vector{Int}              # tchars       is in  tptr[j] : tptr[j+1]-1
-    jtstart::Vector{Int}           # zvars for lease j start at zchars[jtstart(data,j)]
+    j1ptr::Vector{Int}    # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
+    j2ptr::UnitRange{Int} # tptr, jchars is in  j2ptr[i]
+    tptr::Vector{Int}     # tchars       is in  tptr[j] : tptr[j+1]-1
+    jtstart::Vector{Int}  # zvars for lease j start at zchars[jtstart(data,j)]
 
     # leases per unit
-    j1chars::Vector{Float64}       # weights for lease observations
+    j1chars::Vector{Float64} # weights for lease observations
 
     # drilling histories
     ichars::Vector{ITup}
@@ -512,4 +519,45 @@ function DataDrill(u, v, m, theta; num_zt=30, kwargs...)
     num_i = length(u)
     _ichars = ichars_sample(m,num_i)
     return DataDrill(u,v,_zchars, _ichars,m,theta;kwargs...)
+end
+
+
+# ---------------------------
+# DataDrlll - start only
+# ---------------------------
+
+function DataDrillPrimitiveStartOnly(d::AbstractDataDrill)
+    _tptr = zero(tptr(d))
+    _tptr[1] = 1
+
+    for unit in d
+        for regime in unit
+            for lease in regime
+                _tptr[_i(lease)+1] = length(lease) > 0
+            end
+        end
+    end
+    cumsum!(_tptr, _tptr)
+
+    XT = eltype(_x(d))
+    x = Vector{XT}(undef, last(_tptr)-1)
+    y = Vector{Int}(undef, length(x))
+
+    for unit in d
+        for regime in unit
+            for lease in regime
+                if length(lease) > 0
+                    trng = range_i_to_ip1(_tptr, _i(lease))
+                    x[trng] .= first(_x(lease))
+                    y[trng] .= first(_y(lease))
+                end
+            end
+        end
+    end
+
+    return DataDrillPrimitive(
+        reward(_model(d)),
+        j1ptr(d), j2ptr(d), _tptr, jtstart(d), j1chars(d),
+        ichars(d), y, x, zchars(d), statespace(d)
+    )
 end
