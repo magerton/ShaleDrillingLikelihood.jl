@@ -1,5 +1,6 @@
 export DynamicDrillModel,
-    reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev
+    reward, discount, statespace, zspace, ztransition, psispace, anticipate_t1ev,
+    DDM_NoVF
 
 # -----------------------------------------
 # Model
@@ -60,13 +61,17 @@ beta_1minusbeta(ddm::DynamicDrillModel) = discount(ddm) / (1-discount(ddm))
 
 theta_drill_ρ(d::DynamicDrillModel, theta) = theta[_nparm(reward(d))]
 
-function DynamicDrillModel(rwrd::DrillReward, ddm::DynamicDrillModel, wp = statespace(ddm))
+function DynamicDrillModel(ddm::DynamicDrillModel, rwrd::DrillReward, wp = statespace(ddm))
     ddmnew = DynamicDrillModel(
         rwrd, discount(ddm), wp, zspace(ddm), ztransition(ddm),
         psispace(ddm), anticipate_t1ev(ddm)
     )
     return ddmnew
 end
+
+@deprecate DynamicDrillModel(
+    rwrd::DrillReward, ddm::DynamicDrillModel, wp::AbstractStateSpace
+    ) DynamicDrillModel(ddm, rwrd, wp)
 
 # -----------------------------------------
 # Outer constructors for VF from DDM
@@ -78,6 +83,9 @@ const DDM_VF         = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:ValueFunction}   
 const DDM_AbstractVF = DynamicDrillModel{T,APF,AM,AUP,TT,AR, <:AbstractValueFunction}  where {T,APF,AM,AUP,TT,AR}
 
 DDM_NoVF(rwrd, beta, wp, z, ztrans, psi, t1ev) = DynamicDrillModel(rwrd, beta, wp, z, ztrans, psi, t1ev,  (args...) -> nothing)
+DDM_NoVF(m::DynamicDrillModel) = DDM_NoVF(
+        reward(m), discount(m), statespace(m), zspace(m), ztransition(m),
+        psispace(m), anticipate_t1ev(m)  )
 
 ValueFunctionArrayOnly(ddm::DDM_NoVF) = ValueFunctionArrayOnly(reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
 ValueFunction(         ddm::DDM_NoVF) = ValueFunction(         reward(ddm), discount(ddm), statespace(ddm), zspace(ddm), ztransition(ddm), psispace(ddm))
