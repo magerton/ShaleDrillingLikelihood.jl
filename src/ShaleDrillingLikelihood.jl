@@ -248,5 +248,8 @@ include("likelihood/display-results.jl")
 # parameters, model generation
 include("SDLParameters/SDLParameters.jl")
 
+# counterfactuals
+include("counterfactuals/helper-functions.jl")
+# include("counterfactuals/objects.jl")
 
 end # module
