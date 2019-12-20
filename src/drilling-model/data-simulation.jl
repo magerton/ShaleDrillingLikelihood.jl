@@ -1,6 +1,3 @@
-all_same_value(x) = all(x .== first(x))
-range_i_to_ip1(x,i) = x[i] : (x[i+1]-1)
-
 function DataDynamicDrill(
         u, v, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
         ddm::DynamicDrillModel, theta;
