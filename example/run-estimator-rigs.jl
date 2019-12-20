@@ -18,7 +18,7 @@ intstr = generate_formatter("%'d")
 # ------------------- number of simulations ----------------------
 
 M_cnstr = 500
-M_full  = 1000
+M_full  = 2000
 
 DO_CNSTR = false
 DO_FULL  = true
@@ -28,7 +28,7 @@ COMPUTE_INITIAL_VALUES = false
 MAXTIME_CNSTR = 3 * 60^2
 MAXTIME_FULL  = 48 * 60^2
 
-THETA0_FULL_OVERRIDE = [-0x1.5744a54d60f62p+3, -0x1.d117aa07eef64p+2, -0x1.79f927f9bb9ffp+2, -0x1.441a10e192652p+2, -0x1.2acdb6e2bada1p+2, 0x1.9354425393b3cp+0, -0x1.782a92f1ee656p+0, -0x1.a3bab435dc7d7p+0, -0x1.4e03895da1d3ep+1, 0x1.316a8fef388e9p-1, 0x1.65c962aad6d6bp-2, 0x1.bcc7b91882082p-7, 0x1.527e753d41bep-1, 0x1.0c1cb074832d1p-3, 0x1.3137f3e64d182p-1, 0x1.2ffe4305080fap+0, -0x1.b6c5a5ac5414p+0, 0x1.1e815f092437cp-3, 0x1.e87168cddfdffp+1, 0x1.09aca495e0e38p+2, 0x1.405a56f44902cp+2, 0x1.7a0727a91f6d9p+2, 0x1.9eef181e16c0ap+2, -0x1.d8872e15169d5p+3, 0x1.8c727c253f856p-4, 0x1.481ac7a4734e9p-2, ]
+THETA0_FULL_OVERRIDE = [-0x1.546613e8f0081p+3, -0x1.ce3b74275515fp+2, -0x1.787557418e6dap+2, -0x1.43e97e82734dbp+2, -0x1.2d79cd998cbc9p+2, 0x1.9363d39bd295cp+0, -0x1.69951d6189ec2p+0, -0x1.9f21de890114ap+0, -0x1.5aa11c4acef75p+1, 0x1.39399c55258fep-1, 0x1.66a75b50a44c3p-2, 0x1.06d5a62a6bc02p-6, 0x1.87a3e4609aedep-1, 0x1.fe12424a73f2ap-4, 0x1.3176d2477863bp-1, 0x1.2fb185f3e6142p+0, -0x1.b5d606a49bcf7p+0, 0x1.1ef0860025dfp-3, 0x1.e9db1ddba754cp+1, 0x1.0a5f9f5fb4591p+2, 0x1.410427affeee5p+2, 0x1.7aa4908e13162p+2, 0x1.9f83f84a16626p+2, -0x1.db0ee8bc533d2p+3, 0x1.8c726a5a869fcp-4, 0x1.473595758dc57p-2, ]
 
 COST = DrillingCost_TimeFE_rigrate(2008,2012)
 EXT = ExtensionCost_Constant()
@@ -43,10 +43,10 @@ if cost(REWARD) isa DrillingCost_TimeFE
     EXTEND_GRID = log(3)
     MINP = minp_default()
 elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
-    PSI = PsiSpace(13)
-    NUM_P = 13
-    EXTEND_GRID = log(2.5)
-    MINP = 5e-5
+    PSI = PsiSpace(17)
+    NUM_P = 17
+    EXTEND_GRID = log(3)
+    MINP = 1e-4
 end
 
 ANTICIPATE = false
