@@ -153,7 +153,7 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
     end
 end
 
-DataDrill(d::DataDrill) = _data(d)
+DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
 function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
