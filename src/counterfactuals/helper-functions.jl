@@ -71,25 +71,12 @@ macro zeroColumn_j(obj, j, flds::Symbol...)
 end
 
 
-
-
-function approx_stdnorm(z::AbstractVector{<:Real}; L::Integer=11, κ::Real=1e-10)
-
-    n = length(z)
-
-    scale_factor = maximum(abs.(z))
-    scaled_moments = [m for m in MarkovTransitionMatrices.NormCentralMoment(L, 1.0/scale_factor)]
-
-    ΔT = Matrix{Float64}(undef,n,L)
-    MarkovTransitionMatrices.ΔTmat!(ΔT, z./scale_factor, scaled_moments)
-
-    q = max.(normpdf.(z), κ)
-    qp = similar(q)
-
-    for l in L:-2:1
-        @views J = discreteApprox!(qp, Vector{Float64}(undef,l), Vector{Float64}(undef,l), Vector{Float64}(undef,n), q, ΔT[:,1:l])
-        isfinite(J) && break
+"creates function f(x::T) = x.f for f in flds"
+macro getFieldFunction(T, flds::Symbol...)
+    r = quote end
+    for f in flds
+        e = esc( quote $f( x::$T ) = x.$f end )
+        push!(r.args, e)
     end
-
-    return qp
+    return r
 end
