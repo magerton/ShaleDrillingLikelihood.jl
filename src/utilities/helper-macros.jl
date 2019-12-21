@@ -1,5 +1,3 @@
-export approx_stdnorm
-
 """
     @declarezero(T, args...)
 

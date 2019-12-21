@@ -192,6 +192,7 @@ include("utilities/threadutils.jl")
 include("utilities/sum-functions.jl")
 include("utilities/inplace-interpolation.jl")
 include("utilities/delegate-methods.jl")
+include("utilities/helper-macros.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
@@ -253,7 +254,7 @@ include("likelihood/display-results.jl")
 include("SDLParameters/SDLParameters.jl")
 
 # counterfactuals
-include("counterfactuals/helper-functions.jl")
 include("counterfactuals/objects.jl")
+# include("counterfactuals/sparse-state-transition.jl")
 
 end # module
