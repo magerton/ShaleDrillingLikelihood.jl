@@ -241,7 +241,8 @@ coefnames(x::DataDrill)  = coefnames(_model(x))
 
 # length of things
 hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
-length(     d::AbstractDataDrill) = length(j2ptr(d))
+length(     d::AbstractDataDrill) = length(ichars(d))
+num_i(d::AbstractDataDrill) = length(d)
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = _nparm(_model(d))
 j1length(   d::AbstractDataDrill) = length(j1chars(d))
