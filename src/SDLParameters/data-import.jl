@@ -247,8 +247,14 @@ function DataDrillPrimitive(rwrd::DrillReward, path; kwargs...)
 
     jwtvec = _j1chars[!, :share_of_unit_lease_owns]
 
+    if length(j1ptr) == 0
+        newj1ptr = ones(length(ichars)+1)
+    else
+        newj1ptr = j1ptr
+    end
+
     data = DataDrillPrimitive(
-        rwrd, j1ptr, j2ptr, tptr, jtstart,
+        rwrd, newj1ptr, j2ptr, tptr, jtstart,
         jwtvec, ichars, y, x, zchars, wp
     )
 
