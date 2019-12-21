@@ -3,6 +3,7 @@ uuid = "86eebf76-2bd1-562c-98f0-956a09052695"
 version = "0.0.0"
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 AxisAlgorithms = "13072b0f-2c55-5437-9ae7-d433b7a33950"
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"

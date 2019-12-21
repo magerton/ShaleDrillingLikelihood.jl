@@ -21,8 +21,8 @@ using CountPlus
 using Optim
 using StatsBase
 using ClusterManagers
-
 using UnsafeArrays
+using ArgParse
 
 # extend these methods
 import Base: length, size, iterate,
@@ -180,6 +180,28 @@ check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
 
 
 @deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
+
+# Overall structure
+#----------------------------
+
+export parse_commandline
+
+function parse_commandline()
+    s = ArgParseSettings()
+
+    @add_arg_table s begin
+        "--dataset", "-d"
+            help = "Dataset to use"
+            arg_type = String
+            default = "data_all_leases.RData"
+        "--anticipate"
+            help = "T1ev shocks anticipated?"
+            arg_type = Bool
+            default = false
+    end
+
+    return parse_args(s)
+end
 
 # Overall structure
 #----------------------------
