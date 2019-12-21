@@ -62,6 +62,8 @@ else
 end
 DATAPATH = "data_all_leases.RData"
 DATAPATH = "data_first_lease_only_all_leased.RData"
+DATAPATH = "data_first_lease_only.RData"
+# DATAPATH = "data_last_lease_only.RData"
 
 # --------------- create data ---------------
 
