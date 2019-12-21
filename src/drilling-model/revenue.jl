@@ -293,6 +293,16 @@ end
     return out::T
 end
 
+
+# quantity (for post-estimation SIMULATIONS)
+# -----------
+function eur_kernel(x::DrillingRevenue, d, obs::ObservationDrill, θ, sim)
+    @assert length(θ) == _nparm(x)
+    z = zchars(obs)
+    logQ = theta_g(x,θ)*geology(obs) + α_ψ(x,θ)*_ψ2(sim) + trend_component(x, θ, z)
+    return exp(logQ)
+end
+
 # ----------------------------------------------------------------
 # flow revenue
 # ----------------------------------------------------------------
@@ -394,29 +404,6 @@ function flowdψ(x::DrillingRevenue, d, obs, θ, sim)
     rev = flow(x, d, obs, θ, sim)
     return flowdψ(rev, x, d, obs, θ, sim)
 end
-
-
-# quantity (for post-estimation SIMULATIONS)
-# -----------
-# @inline function eur_kernel(x::DrillingRevenue{<:AbstractConstrainedType,NoTrend}, θ, σ, obs)
-#     geoid, ψ, z, d, roy, Dgt0 = _geoid(obs), _ψ(obs), zchars(obs), _y(obs), _roy(obs), _Dgt0(obs)
-#     return exp(
-#         log_ogip(x,θ)*geoid +
-#         α_ψ(x,θ)*_ψ2(obs)
-#     )
-# end
-#
-# @inline function eur_kernel(x::DrillingRevenue{<:AbstractConstrainedType,TimeTrend}, θ, σ, obs)
-#     geoid, z, roy, Dgt0 = _geoid(obs), zchars(obs), _roy(obs), _Dgt0(obs)
-#     ψ = _ψ(sim, obs)
-#     return exp(
-#         log_ogip(x,θ)*geoid +
-#         α_ψ(x,θ)*_ψ2(obs) +
-#         α_t(x,θ)*(
-#             last(z) - baseyear(tech(x))
-#         )
-#     )
-# end
 
 
 
