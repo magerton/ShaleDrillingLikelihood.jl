@@ -21,6 +21,7 @@ using CountPlus
 using Optim
 using StatsBase
 using ClusterManagers
+using DataFrames
 
 using UnsafeArrays
 
@@ -253,6 +254,6 @@ include("SDLParameters/SDLParameters.jl")
 
 # counterfactuals
 include("counterfactuals/helper-functions.jl")
-# include("counterfactuals/objects.jl")
+include("counterfactuals/objects.jl")
 
 end # module
