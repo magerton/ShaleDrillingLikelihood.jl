@@ -28,7 +28,7 @@ COMPUTE_INITIAL_VALUES = false
 MAXTIME_CNSTR = 3 * 60^2
 MAXTIME_FULL  = 24 * 60^2
 
-THETA0_FULL_OVERRIDE = [-0x1.83eeb26cf8c0ap+3, -0x1.132e0f9f3028fp+3, -0x1.d5722d44dbff4p+2, -0x1.b056c3b1a2c2bp+2, -0x1.9a3b02a2d1a13p+2, 0x1.9afb35c44ca89p+0, -0x1.6fc292fb3cd44p+0, -0x1.7ceca35ba26a9p+1, 0x1.432180d09e432p-1, 0x1.6afab14ff30b8p-2, 0x1.0a2eeb8d6028p-6, 0x1.a166348636691p-1, 0x1.8d7ec5555bee9p-4, 0x1.342ab1e3e2f02p-1, 0x1.2e7710107fcfcp+0, -0x1.b04c826c14fc9p+0, 0x1.1de044f6d8731p-3, 0x1.f453b2afd8d4dp+1, 0x1.0f97722983fd3p+2, 0x1.461dafb20c6ddp+2, 0x1.7f91f4a8ad68p+2, 0x1.a44fb95709805p+2, -0x1.ddb9c1dd1de8bp+3, 0x1.8c726cf59ccfcp-4, 0x1.3f5dd41de8e1cp-2, ]
+THETA0_FULL_OVERRIDE = [-0x1.8fa7df8b8e166p+3, -0x1.1ee5269bb0ed3p+3, -0x1.ec8b9d2469105p+2, -0x1.c85d56d05f875p+2, -0x1.b210f34d44434p+2, 0x1.9385b5338096bp+0, -0x1.7ed2cc582d0ecp+0, -0x1.5abeccb6fa743p+1, 0x1.319f90114062cp-1, 0x1.5c011ab314e82p-2, 0x1.6d3b588f33071p-6, 0x1.5cdb42f5ea573p-1, 0x1.cf6a2c88c90bcp-4, 0x1.32ba584838fe7p-1, 0x1.2eb9aed1b3c82p+0, -0x1.b2a0476a1b014p+0, 0x1.1ea18d15d9801p-3, 0x1.ef0a7dbd79c02p+1, 0x1.0cf72d7b30f84p+2, 0x1.4391e744b338bp+2, 0x1.7d20c6a7c4927p+2, 0x1.a1efd4a1176a5p+2, -0x1.d8fbbf907b493p+3, 0x1.8c726cf39a8d3p-4, 0x1.477d354182cfdp-2, ]
 
 COST = DrillingCost_TimeFE(2008,2012)
 EXT = ExtensionCost_Constant()
@@ -61,11 +61,13 @@ else
     DATADIR = "E:/projects/haynesville/intermediate_data"
 end
 DATAPATH = "data_all_leases.RData"
+DATAPATH = "data_first_lease_only_all_leased.RData"
 
 # --------------- create data ---------------
 
 # load in data from disk
 rdatapath = joinpath(DATADIR, DATAPATH)
+println_time_flush("loading $rdatapath")
 data_royalty    = DataRoyalty(REWARD, rdatapath)
 data_produce    = DataProduce(REWARD, rdatapath)
 data_drill_prim = DataDrillPrimitive(REWARD, rdatapath)
