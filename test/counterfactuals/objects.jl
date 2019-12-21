@@ -57,6 +57,7 @@ ShaleDrillingLikelihood.num_i(data_for_xfer)
 newdatafull = DataSetofSets(datafull, data_for_xfer)
 theta = rand(_nparm(newdatafull))
 sim = SimulationDraws(datafull, M)
+update!(sim, ThetaRho())
 simtmp = SimulationTmp(data_for_xfer, M)
 simprim = SimulationPrimitives(newdatafull, sim, Tstop, theta, simtmp)
 sharesim = SharedSimulations(data_for_xfer)
@@ -92,5 +93,21 @@ lc = LeaseCounterfactual(l)
         end
     end
 end
+
+getindex(view(sim, 1), 1)
+
+using ShaleDrillingLikelihood: update_sparse_state_transition!, vw_revenue, split_thetas
+
+@testset "trying out sparse_state_transition" begin
+    thetasvw = split_thetas(newdatafull, theta)
+    thet = first(thetasvw)
+    for obs in lc
+        simm = getindex(view(sim, 1), rand(1:M))
+        update_sparse_state_transition!(simtmp, obs, simm, thet)
+    end
+end
+
+
+# end
 
 # end # module
