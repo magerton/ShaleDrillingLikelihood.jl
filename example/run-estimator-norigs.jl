@@ -15,6 +15,12 @@ using Formatting: generate_formatter
 num_nonzeros(x) = length(nonzeros(x))
 intstr = generate_formatter("%'d")
 
+# ------------------- get arguments ----------------------
+
+parsed_args = parse_commandline()
+DATAPATH = parsed_args["dataset"]
+ANTICIPATE = parsed_args["anticipate"]
+
 # ------------------- number of simulations ----------------------
 
 M_cnstr = 500
@@ -49,7 +55,6 @@ elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
     MINP = 5e-5
 end
 
-ANTICIPATE = false
 println("Firms anticipate T1EV shocks? $ANTICIPATE")
 
 DISCOUNT = RealDiscountRate()
@@ -60,10 +65,6 @@ if "SLURM_JOBID" in keys(ENV)
 else
     DATADIR = "E:/projects/haynesville/intermediate_data"
 end
-DATAPATH = "data_all_leases.RData"
-DATAPATH = "data_first_lease_only_all_leased.RData"
-DATAPATH = "data_first_lease_only.RData"
-# DATAPATH = "data_last_lease_only.RData"
 
 # --------------- create data ---------------
 
