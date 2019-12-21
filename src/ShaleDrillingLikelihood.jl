@@ -195,7 +195,7 @@ function parse_commandline()
             arg_type = String
             default = "data_all_leases.RData"
         "--anticipate"
-            help = "T1ev shocks anticipated?"
+            help = "T1ev shocks anticipated"
             arg_type = Bool
             default = false
     end
