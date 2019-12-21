@@ -29,7 +29,19 @@ Holds temp variables needed for each simulation of a section `i` given
 struct SimulationTmp <: AbstractTmpVars
      Pprime::SparseMatrixCSC{Float64,Int}
      @addStructFields Vector{Float64} sa sb qm LLJ profit surplus drillcost revenue vdfull Eeps
+
+     function SimulationTmp(Pprime, sa, sb, qm, LLJ, profit, surplus, drillcost, revenue, vdfull, Eeps)
+         length(sa) == length(sb) == length(Eeps) == checksquare(Pprime) ||
+            throw(DimensionMismatch())
+
+         length(profit) == length(surplus) == length(drillcost) == length(revenue) ==
+            length(vdfull) || throw(DimensionMismatch())
+
+        return new(Pprime, sa, sb, qm, LLJ, profit, surplus, drillcost, revenue, vdfull, Eeps)
+     end
 end
+
+@getFieldFunction SimulationTmp Pprime sa sb qm LLJ profit surplus drillcost revenue vdfull Eeps
 
 function SimulationTmp(data::DataDrill, M::Integer)
     m = _model(data)
