@@ -127,7 +127,7 @@ exploratory_learning(wp::PerpetualProblem) = end_ex0(wp)+1 : end_lrn(wp)
 """
     state_if_never_drilled(wp::AbstractUnitProblem, state0::Integer, t::Integer)
 
-At what state will a unit be in after `t` periods have passed if it has
+At what state will a unit be in after `t` ADDITIONAL periods have passed if it has
 decision structure `wp` and a starting `state0`?
 """
 function state_if_never_drilled(wp::AbstractUnitProblem, state0::Integer, t::Integer)
