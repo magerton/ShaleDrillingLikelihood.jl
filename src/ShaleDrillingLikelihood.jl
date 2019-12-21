@@ -254,6 +254,7 @@ include("likelihood/display-results.jl")
 include("SDLParameters/SDLParameters.jl")
 
 # counterfactuals
+include("counterfactuals/shared-simulations.jl")
 include("counterfactuals/objects.jl")
 include("counterfactuals/sparse-state-transition.jl")
 

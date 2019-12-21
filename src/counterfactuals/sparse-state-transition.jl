@@ -69,5 +69,5 @@ function getindex(x::LeaseCounterfactual, t)
     zt = jtstart(x) + time_since_start
     d = DataDrill(x)
     x0 = state_if_never_drilled(x,t)
-    return ObservationDrill(_model(d), ichars(x), zchars(d,zt), 0, x0)
+    return ObservationDrill(_model(d), ichars(x), zchars(d,zt), 0, x0), zt
 end

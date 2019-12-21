@@ -45,7 +45,6 @@ end
 
 function SimulationTmp(data::DataDrill, M::Integer)
     m = _model(data)
-    N = num_i(data)
 
     Pprime = sparse_state_transition(statespace(m))
 
@@ -66,45 +65,106 @@ function SimulationTmp(data::DataDrill, M::Integer)
      return SimulationTmp(Pprime, sa, sb, qm, LLJ, profit, surplus, drillcost, revenue, vdfull, Eeps)
 end
 
+"""
+    isodd(t) ? (sa,sb) : (sb,sa)
+
+`tday` holds our current state in `t`
+`tmrw` holds the distribution of our state in `t+1` given prices
+we switch between `sa` and `sb` to avoid allocating...
+"""
+
+function today_tomorrow(x::SimulationTmp, t::Integer)
+    if isodd(t)
+        return sa(simtmp), sb(simtmp)
+    else
+        return sb(simtmp), sa(simtmp)
+    end
+end
+
 SimulationTmp(data::DataSetofSets, M) = SimulationTmp(drill(data), _num_sim(M))
+
+num_states(x::SimulationTmp) = length(sa(x))
+
+function reset!(x::SimulationTmp, s0::Integer)
+    fill!(sa(simtmp), 0)
+    fill!(sb(simtmp), 0)
+    setindex!(sa(simtmp), 1, starting_state)
+    setindex!(sb(simtmp), 1, starting_state)
+    return nothing
+end
+
+function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDraw, θ)
+    update_sparse_state_transition!(simtmp, obs, sim, θ)
+
+    m = _model(obs)
+    wp = statespace(m)
+    nS = length(wp)
+    dograd = false
+    newobs = ObservationDrill(model, ichars(obs), zchars(obs), 0, nS)
+
+    x = reward(m)
+    surp = NoRoyaltyProblem(x)
+
+    # components of payoff. NOTE that these DO NOT depend on the deterministic state... just zₜ
+    for d in actionspace(wp)
+
+        c   = flow!(vw_cost(   x, θ), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
+        r   = flow!(vw_revenue(x, θ), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
+        pft = flow!(θ,                        x,  d, obs, θ,                sim, dograd)
+        s   = flow!(θ,                     surp,  d, obs, θ,                sim, dograd)
+
+        # assumes extension & eur are fixed
+        setindex!( revenue(  simtmp), c  , d+1)  # (1-r)rev - 0
+        setindex!( drillcost(simtmp), r  , d+1)  #    0     - drillcost(d)
+        setindex!( profit(   simtmp), pft, d+1)  # (1-r)rev - drillcost(d)
+        setindex!( surplus(  simtmp), s  , d+1)  #      rev - drillcost(d)
+    end
+
+    Q = eur_kernel(revenue(x), 0, obs, vw_revenue(x,θ), sim)
+    ext = extensioncost(extend(x), vw_extend(x,θ))
+
+    return Q, ext
+end
 
 # ----------------------
 # Holds simulations
 # ----------------------
 
 "What kind of simulation to run given datastruct"
-struct SimulationPrimitives{D<:DataSetofSets}
+struct SimulationPrimitives{D<:DataSetofSets,R}
     data::D
     sim::SimulationDraws{Float64,2,Matrix{Float64}}
     Tstop::Int
     theta::Vector{Float64}
     simtmp::SimulationTmp
+    sharedsim::SharedSimulations{R}
 
     function SimulationPrimitives(
-        data::D, sim, Tstop, theta, simtmp
-    ) where {D<:DataSetofSets}
+        data::D, sim, Tstop, theta, simtmp, sharedsim::SharedSimulations{R}
+    ) where {D<:DataSetofSets, R}
         _nparm(data) == length(theta) || throw(DimensionMismatch("data & theta"))
         num_i(data) == num_i(sim) || throw(DimensionMismatch("num_i"))
         0 < Tstop || throw(DomainError(Tstop))
         drilldat = drill(data)
         Tstop <= length(zchars(drilldat)) || throw(DomainError(Tstop))
-        new{D}(data, sim, Tstop, theta, SimulationTmp(data, sim))
+        new{D,R}(data, sim, Tstop, theta, SimulationTmp(data, sim), sharedsim)
     end
 end
 
 @noinline function SimulationPrimitives(
     data::DataSetofSets, sim::SimulationDrawsMatrix,
-    rwrd::AbstractStaticPayoff, wp::AbstractStateSpace, Tstop, theta
+    rwrd::AbstractStaticPayoff, wp::AbstractStateSpace, Tstop, theta, sharedsim
     )
 
     datanew = DataSetofSets(data, DataDrill(drill(data), rwrd, wp))
-    return SimulationPrimitives(datanew, sim, Tstop, theta)
+    return SimulationPrimitives(datanew, sim, Tstop, theta, sharedsim)
 end
 
 function SimulationPrimitives(rwrd, wp, Tstop, theta)
     data = get_g_BaseDataSetofSets()
     sim = get_g_SimulationDrawsMatrix()
-    return SimulationPrimitives(data, sim, rwrd, wp, Tstop, theta)
+    sharedsim = get_g_SharedSimulations()
+    return SimulationPrimitives(data, sim, rwrd, wp, Tstop, theta, sharedsim)
 end
 
 function set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
@@ -112,140 +172,7 @@ function set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
     set_g_SimulationPrimitives(simprim)
 end
 
-# ----------------------
-# Holds simulations
-# ----------------------
+SimulationTmp(x::SimulationPrimitives) = x.simtmp
+SharedSimulations(x::SimulationPrimitives) = x.sharedsim
 
-type_to_sym(x) = x |> typeof |> Symbol |> string
-
-const SimulationList = Tuple{DrillReward,AbstractUnitProblem,Vector}
-
-"Create `DataFrame` of info given vector of `simulationPrimitives`"
-function simulationPrimitives_information(simulations::Vector{<:SimulationList})
-    df = DataFrame()
-    df[!, :i] = 1:length(simulations)
-
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> tech    |> type_to_sym, simulations) )
-    df[!, :tax ]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> tax     |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> learn   |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> royalty |> type_to_sym, simulations) )
-
-    df[!, :state_space] = CategoricalArray( map(s -> s |> getindex(2)                       |> type_to_sym, simulations) )
-
-    df[!, :theta]       = CategoricalArray( map(s -> s |> getindex(3)  |> round(; digits=3) |> string     , simulations) )
-    return df
-end
-
-"construct `DataFrame`s to hold simulations"
-function dataFrames_from_simulationPrimitives(simulations::Vector{<:SimulationList}, data::DataDrill, Tstop)
-
-    nSim = length(simulations)
-    nT = length(zchars(data))
-    timestamps = _timestamp(zchars(data))
-    nI = num_i(data)
-
-    Dmx = _Dmax(getindex(first(simulations), 2))
-
-    df_d_iter = product(1:nT,        1:nI, 1:nSim)
-    df_D_iter = product(Tstop:Tstop, 1:nI, 1:nSim)
-
-    ndf_d = length(df_d_iter)
-    ndf_D = length(df_D_iter)
-
-    df_d = DataFrame(
-        sim     = vec(collect(Int32(ns)    for (t, i, ns,) in df_d_iter)),
-        i       = vec(collect(Int32(i)     for (t, i, ns,) in df_d_iter)),
-        mondate = vec(collect(timestamps[t] for (t, i, ns,) in df_d_iter)),
-    )
-    vars = [
-        :d0, :d1, :d0psi, :d1psi, :d0eur, :d1eur, :d0eursq, :d1eursq, :d0eurcub, :d1eurcub,
-        :epsdeq1, :epsdgt1, :Prdeq1, :Prdgt1,
-        :Eeps, :profit, :surplus, :revenue, :drillcost, :extension,
-    ]
-    for v in vars
-        df_d[!, v] = zeros(Float64, ndf_d)
-    end
-
-    df_D = DataFrame(
-        sim     = vec(collect(Int32(ns)     for (t, i, ns,) in df_D_iter)),
-        i       = vec(collect(Int32(i)      for (t, i, ns,) in df_D_iter)),
-        mondate = vec(collect(timestamps[t]  for (t, i, ns,) in df_D_iter)),
-    )
-    for D in 0:Dmx
-        df_D[!, Symbol("D$(D)")] = zeros(Float64, ndf_D)
-    end
-
-    return (df_d, df_D,)
-end
-
-# ----------------------
-# Holds simulations
-# ----------------------
-
-"Container holds simulations of all sections"
-struct SharedSimulations{R<:AbstractRange}
-    @addStructFields(SharedMatrix{Float64}, d0, d1, d0psi, d1psi, d0eur, d1eur, d0eursq, d1eursq, d0eurcub, d1eurcub)
-    @addStructFields(SharedMatrix{Float64}, epsdeq1, epsdgt1, Prdeq1, Prdgt1)
-    @addStructFields(SharedMatrix{Float64}, Eeps, profit, surplus, revenue, drillcost, extension)
-    @addStructFields(SharedMatrix{Float64}, D_at_T)
-    zchars_time::R
-end
-
-
-"Create `SharedSimulations`"
-function SharedSimulations(pids::Vector{<:Integer}, nT::Integer, N::Integer, Dmax::Integer, zchars_time::AbstractRange)
-
-    @declareVariables( SharedMatrix{Float64}(nT, N, pids=pids), d0, d1, d0psi, d1psi, d0eur, d1eur, d0eursq, d1eursq, d0eurcub, d1eurcub)
-    @declareVariables( SharedMatrix{Float64}(nT, N, pids=pids), epsdeq1, epsdgt1, Prdeq1, Prdgt1)
-    @declareVariables( SharedMatrix{Float64}(nT, N, pids=pids), Eeps, profit, surplus, revenue, drillcost, extension)
-
-    D_at_T = SharedMatrix{Float64}(Dmax, N, pids=pids)
-
-    return SharedSimulations(
-        d0, d1, d0psi, d1psi, d0eur, d1eur, d0eursq, d1eursq, d0eurcub, d1eurcub,
-        epsdeq1, epsdgt1, Prdeq1, Prdgt1,
-        Eeps, profit, surplus, revenue, drillcost, extension,
-        D_at_T,
-        zchars_time
-    )
-end
-
-function SharedSimulations(pids, data::DataDrill)
-    nT = length(zchars(data))
-    N = num_i(data)
-    Dmax = _Dmax(statespace(_model(data)))
-    zchars_time = _timestamp(zchars(data))
-    return SharedSimulations(pids, nT, N, Dmax, zchars_time)
-end
-
-SharedSimulations(data) = SharedSimulations(workers(), data)
-
-# ----------------------
-# Holds simulations
-# ----------------------
-
-"update `df_d` and `df_D` with simulation number `sim`, held in `drillsim`"
-function update_sim_dataframes_from_simdata!(df_d::DataFrame, df_D::DataFrame, sim::Integer, drillsim::SharedSimulations)
-
-    is_this_simulation_d = df_d[!,:sim] .== sim
-    is_this_simulation_D = df_D[!,:sim] .== sim
-
-    sum(is_this_simulation_d) == 0 && throw(error("no observations selected to update"))
-
-    # update period-t simulations
-    vars = [
-        :d0, :d1, :d0psi, :d1psi, :d0eur, :d1eur, :d0eursq, :d1eursq, :d0eurcub, :d1eurcub,
-        :epsdeq1, :epsdgt1, :Prdeq1, :Prdgt1,
-        :Eeps, :profit, :surplus, :revenue, :drillcost, :extension,
-    ]
-    for v in vars
-        simfld = getfield(drillsim, v)::SharedMatrix{Float64}
-        df_d[is_this_simulation_d, v] = vec(sdata(simfld))
-    end
-
-    # update final period simulations
-    df_D[is_this_simulation_D, :D0] = 1 .- vec(sum(sdata(drillsim.D_at_T);dims=1))
-    for D in 1:size(drillsim.D_at_T, 1)
-        @views df_D[is_this_simulation_D, Symbol("D$(D)")] = sdata(drillsim.D_at_T)[D,:]
-    end
-end
+@getFieldFunction SimulationPrimitives Tstop
