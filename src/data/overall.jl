@@ -26,7 +26,7 @@ struct DataSetofSets{
     function DataSetofSets(d::D, r::R, p::P, cfp::V, cfd::V) where {D,R,P,V<:Vector{Int}}
         drp = (d, r, p)
         lengths = length.(drp)
-        issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths"))
+        issubset(lengths, (0, maximum(lengths),) ) || throw(DimensionMismatch("datasets must same or 0 lengths. lengths = $lengths"))
         length(cfp) == length(cfd) || throw(DimensionMismatch())
         check_coef_restr_in_parm_vec(cfp, p)
         check_coef_restr_in_parm_vec(cfd, d)
@@ -55,6 +55,10 @@ function SimulationDraws(data::DataSetofSets, M)
     n = num_i(data)
     k = _nparm(drill(data))
     return SimulationDraws(M,n,k)
+end
+
+function DataSetofSets(dsos::DataSetofSets, ddrill::DataDrill)
+    return DataSetofSets(ddrill, royalty(dsos), produce(dsos), coef_link_pdxn(dsos), coef_link_drill(dsos))
 end
 
 # -------------------------------------------------
