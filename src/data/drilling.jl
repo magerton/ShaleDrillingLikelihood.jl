@@ -351,7 +351,8 @@ const DrillLease = ObservationGroup{<:AbstractDrillRegime}
 
 length(    g::DrillLease) = tlength(DataDrill(g), _i(g))
 eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
-firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
+tstart(    g::DrillLease) = tstart( DataDrill(g), _i(g))
+firstindex(g::DrillLease) = tstart(g)
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
 
 _y(g::DrillLease) = view(_y(DataDrill(g)), eachindex(g))
