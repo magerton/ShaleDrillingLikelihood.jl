@@ -255,6 +255,6 @@ include("SDLParameters/SDLParameters.jl")
 
 # counterfactuals
 include("counterfactuals/objects.jl")
-# include("counterfactuals/sparse-state-transition.jl")
+include("counterfactuals/sparse-state-transition.jl")
 
 end # module

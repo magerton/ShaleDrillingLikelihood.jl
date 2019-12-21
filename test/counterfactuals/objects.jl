@@ -6,7 +6,9 @@ using ShaleDrillingLikelihood.SDLParameters
 using Distributed
 using Test
 
-using ShaleDrillingLikelihood: drill, _x, _D
+using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
+    ObservationGroup, InitialDrilling, ichars, zchars, uniti,
+    end_ex0, _data, _i
 
 
 num_i = 50
@@ -67,5 +69,28 @@ simlist = [
 df_t, df_Tstop = dataFrames_from_simulationPrimitives(simlist, data_for_xfer, Tstop)
 
 update_sim_dataframes_from_simdata!(df_t, df_Tstop, 1, sharesim)
+
+# make these objects
+u = ObservationGroup(ddata, 1)
+r = ObservationGroup(u, InitialDrilling())
+l = ObservationGroup(r, 1)
+lc = LeaseCounterfactual(l)
+
+@testset "last counterfactual is an undrilled state" begin
+    for unit in ddata
+        for regime in unit
+            for lease in regime
+                lc = LeaseCounterfactual(lease)
+                @test length(lc) >= 0
+                for (t,obs) in enumerate(lc)
+                    if t == length(lc)
+                        wp = statespace(_model(obs))
+                        @test _x(obs) == end_ex0(wp)+1
+                    end
+                end
+            end
+        end
+    end
+end
 
 # end # module
