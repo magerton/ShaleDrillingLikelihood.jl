@@ -299,7 +299,7 @@ end
 function eur_kernel(x::DrillingRevenue, d, obs::ObservationDrill, θ, sim)
     @assert length(θ) == _nparm(x)
     z = zchars(obs)
-    logQ = theta_g(x,θ)*geology(obs) + α_ψ(x,θ)*_ψ2(sim) + trend_component(x, θ, z)
+    logQ = theta_g(x,θ)*geology(obs) + theta_ψ(x,θ)*_ψ2(sim) + trend_component(x, θ, z)
     return exp(logQ)
 end
 
