@@ -174,6 +174,10 @@ end
 
 SimulationTmp(x::SimulationPrimitives) = x.simtmp
 SharedSimulations(x::SimulationPrimitives) = x.sharedsim
+SimulationDraws(x::SimulationPrimitives) = x.sim
+SimulationDrawsMatrix(x::SimulationPrimitives) = SimulationDraws(x)
+SimulationDrawsVector(x::SimulationPrimitives, i) =
+    view(SimulationDrawsMatrix(x), i)
 
 @getFieldFunction SimulationPrimitives Tstop theta data
 
