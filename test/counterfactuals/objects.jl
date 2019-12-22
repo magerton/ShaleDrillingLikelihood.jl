@@ -8,20 +8,21 @@ using Test
 
 using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     ObservationGroup, InitialDrilling, ichars, zchars, uniti,
-    end_ex0, _data, _i, simulate_lease!, Pprime
-
+    end_ex0, _data, _i, simulate_lease!, Pprime,
+    state_if_never_drilled, tstart, jtstart, first_state,
+    update_sparse_state_transition!, vw_revenue,
+    split_thetas
 
 num_i = 50
 M = 10
 nz = 13
 nψ = 13
-Tstop = 15
+Tstop = 150
 
 datafull = first(last(MakeTestData(; num_i=num_i, nz=nz, nψ=nψ)))
 
 ddata = drill(datafull)
 wpold = statespace(_model(ddata))
-
 
 newrwrd = DrillReward(
     DrillingRevenue(Constrained(), TimeTrend(), GathProcess(), NoLearn(), WithRoyalty()),
@@ -62,6 +63,7 @@ sharesim = SharedSimulations(data_for_xfer)
 simprim = SimulationPrimitives(newdatafull, sim, Tstop, theta, sharesim)
 simtmp = SimulationTmp(simprim)
 
+@test SimulationTmp(simprim) === simtmp
 
 simlist = [
     (newrwrd, PerpetualProblem(statespace(data_for_xfer)), theta),
@@ -83,6 +85,7 @@ lc = LeaseCounterfactual(l)
             for lease in regime
                 lc = LeaseCounterfactual(lease)
                 @test length(lc) >= 0
+                obslast = 0
                 for (t,(obs,zt)) in enumerate(lc)
                     if t == length(lc)
                         wp = statespace(_model(obs))
@@ -94,7 +97,23 @@ lc = LeaseCounterfactual(l)
     end
 end
 
-using ShaleDrillingLikelihood: update_sparse_state_transition!, vw_revenue, split_thetas
+# to make sure state if not drilled is OK
+@testset "iteration through state if never drilled in lease cntrfact" begin
+    @test state_if_never_drilled(lc, 0) == 1
+
+    @test tstart(lc) == firstindex(lc)
+    @test length(lc) == length(jtstart(lc):length(zchars(ddata)))
+    @test first_state(lc) == first(_x(l))
+    @test _x(first(first(lc))) == _x(first(l))
+
+    for (t, (obs,zt)) in enumerate(lc)
+        if t == 1
+            @test _x(obs) == first_state(lc)
+        else
+            _x(obs) > first_state(lc)
+        end
+    end
+end # testset
 
 @testset "trying out sparse_state_transition" begin
     thetasvw = split_thetas(newdatafull, theta)
@@ -106,9 +125,20 @@ using ShaleDrillingLikelihood: update_sparse_state_transition!, vw_revenue, spli
 end
 
 
+@testset "simulate 1 lease 1 time" begin
+    simi = view(sim, uniti(l))
+    simim = simi[1]
 
-@test SimulationTmp(simprim) === simtmp
-#
+    fill!(sharesim, 0)
+    simulate_lease!(simprim, l, simim, 1.0)
+
+    @test sum(sharesim.d0[:,1]) > 0
+    @test sum(sharesim.profit[:,1]) > 0
+    @test sum(sharesim.surplus[:,1]) > 0
+    @test sum(sharesim.revenue[:,1]) > 0
+    @test sum(sharesim.D_at_T[:,1]) > 0
+end
+
 # ShaleDrillingLikelihood.reset!(SimulationTmp(simprim), 3)
 # thetasvw = split_thetas(newdatafull, theta)
 # thet = first(thetasvw)
@@ -122,29 +152,6 @@ end
 #
 # simtmp.sa
 #@test sum(sharesim.d0        ) > 0
-@testset "simulate 1 lease" begin
-    @test sum(sharesim.d1        ) > 0
-    @test sum(sharesim.d0psi     ) > 0
-    @test sum(sharesim.d1psi     ) > 0
-    @test sum(sharesim.d0eur     ) > 0
-    @test sum(sharesim.d1eur     ) > 0
-    @test sum(sharesim.d0eursq   ) > 0
-    @test sum(sharesim.d1eursq   ) > 0
-    @test sum(sharesim.d0eurcub  ) > 0
-    @test sum(sharesim.d1eurcub  ) > 0
-    @test sum(sharesim.epsdeq1   ) > 0
-    @test sum(sharesim.epsdgt1   ) > 0
-    @test sum(sharesim.Prdeq1    ) > 0
-    @test sum(sharesim.Prdgt1    ) > 0
-    @test sum(sharesim.Eeps      ) > 0
-    @test sum(sharesim.profit    ) > 0
-    @test sum(sharesim.surplus   ) > 0
-    @test sum(sharesim.revenue   ) > 0
-    @test sum(sharesim.drillcost ) > 0
-    @test sum(sharesim.extension ) > 0
-end
-
-@test sum(sharesim.D_at_T) >0
 
 # end
 

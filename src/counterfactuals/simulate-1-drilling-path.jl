@@ -1,12 +1,16 @@
 function uview_col(x::SparseMatrixCSC, j::Integer)
     vals = nonzeros(x)
     rng = nzrange(x, j)
-    return view(vals, rng)
+    return uview(vals, rng)
 end
 
 
-"simulate a single path of drilling for section `i` given `uv` and `prob_uv`"
-function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::SimulationDraw, weight::Number=1)
+"""
+    simulate a single path of drilling for section `i` given
+        `uv` and `prob_uv`
+"""
+function simulate_lease!(simprim::SimulationPrimitives,
+        lease::DrillLease, sim::SimulationDraw, weight::Number=1)
 
     simtmp = SimulationTmp(simprim)
     m = _model(DataDrill(lease))
@@ -30,8 +34,7 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
         tday, tmrw = today_tomorrow(simtmp, zt)
         _Eeps = dot(tday, Eeps(simtmp))
 
-        # for si in _x(obs):length(wp) # OneTo(length(wp))
-        for si in 1:length(wp) # OneTo(length(wp))
+        for si in _x(obs):length(wp) #_x(obs) is state if never drilled
             PrTday = tday[si]
 
             if PrTday > 0
@@ -42,7 +45,8 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
 
                 # add to extension if we are expiring
                 if si == end_ex1(wp)
-                    extension += ext_cost * first(action_probs) * PrTday
+                    extension += ext_cost *
+                        first(action_probs) * PrTday
                 end
 
                 # ϵ cost shocks so we can add them to observed drilling cost later
@@ -51,7 +55,7 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
                     epsdeq1 += PrTday * xlogx(Pr1)
                     Prdeq1  += PrTday * Pr1
                     if dmx >= 2
-                        Pr2 = view(action_probs, 3:numactions)
+                        Pr2 = uview(action_probs, 3:numactions)
                         twodmx = 2:dmx
                         epsdgt1 += PrTday * sum(xlogx.(Pr2) ./ twodmx )
                         Prdgt1  += PrTday * sum(Pr2)
@@ -68,10 +72,10 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
 
                 # Expected payoffs
                 dp1space_t = OneTo(numactions) # 0:dmax
-                _profit += dot(action_probs, view(profit(simtmp),    dp1space_t)) * PrTday
-                surp    += dot(action_probs, view(surplus(simtmp),   dp1space_t)) * PrTday
-                cost    += dot(action_probs, view(drillcost(simtmp), dp1space_t)) * PrTday
-                rev     += dot(action_probs, view(revenue(simtmp),   dp1space_t)) * PrTday
+                _profit += dot(action_probs, uview(profit(simtmp),    dp1space_t)) * PrTday
+                surp    += dot(action_probs, uview(surplus(simtmp),   dp1space_t)) * PrTday
+                cost    += dot(action_probs, uview(drillcost(simtmp), dp1space_t)) * PrTday
+                rev     += dot(action_probs, uview(revenue(simtmp),   dp1space_t)) * PrTday
             end # PrTday > 0
         end # states
 
@@ -86,9 +90,7 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
         )
 
         # Full transition
-        @assert sum(tday) ≈ 1
         mul!(tmrw, Pprime(simtmp), tday)
-        @assert sum(tmrw) ≈ 1
 
         # Distribution Pr(Dₜ = D|T) for D ∈ 1:Dmax after actions in T (eg sₜ₊₁)
         if zt == Tstop(simprim)-1
