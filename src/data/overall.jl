@@ -9,6 +9,12 @@ export DataSetofSets,
 # Data structure
 # -------------------------------------------------
 
+function check_theta(d::AbstractDataStructure, theta)
+    _nparm(d) == length(theta) || throw(DimensionMismatch("_nparm(d) = $(_nparm(d)) != length(theta) = $(length(theta))"))
+    all(isfinite.(theta)) || throw(error("theta = $theta not finite"))
+    return true
+end
+
 "check coef restrictions fit in parameter vector"
 function check_coef_restr_in_parm_vec(cf, d::AbstractDataSet)
     n = _nparm(d)

@@ -153,6 +153,13 @@ theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
 # check if theta is okay
 theta_royalty_check(d, theta) = issorted(theta_royalty_κ(d,theta))
 
+function check_theta(d::DataOrObsRoyalty, theta)
+    _nparm(d) == length(theta) || throw(DimensionMismatch("_nparm(d) = $(_nparm(d)) != length(theta) = $(length(theta))"))
+    all(isfinite.(theta)) || throw(error("theta = $theta not finite"))
+    kappa = theta_royalty_κ(d,theta)
+    issorted(kappa) || @warn "kappa = $kappa not sorted"
+    return true
+end
 
 function coefnames(d::DataRoyalty)
     nms = Vector{String}(undef, _nparm(d))
