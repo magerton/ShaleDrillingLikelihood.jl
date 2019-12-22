@@ -6,6 +6,7 @@
     unit, obs_r, wells = getindex.(data(simprim), i)
 
     qm = _qm(sim)
+    fill!(qm,0)
 
     # royalty posterior
     if do_r
@@ -38,7 +39,7 @@
     end
 end
 
-function simulate_m_drilling_paths!(i, do_r=true)
-     simprim = g_SimulationPrimitives()
-     simulate_m_drilling_paths!(simprim, i, do_r)
+function simulate_unit!(i, do_r=true)
+     simprim = get_g_SimulationPrimitives()
+     simulate_unit!(simprim, i, do_r)
 end

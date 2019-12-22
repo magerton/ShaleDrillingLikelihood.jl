@@ -80,6 +80,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
 
     l = _y(obs)
     xbeta = _xbeta(obs)
+    isfinite(xbeta) || throw(error("xbeta = $xbeta not finite"))
 
     check_finite(theta)
 

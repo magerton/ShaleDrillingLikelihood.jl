@@ -22,7 +22,7 @@ nz = 13
 nψ = 13
 Tstop = 150
 
-datafull = first(last(MakeTestData(; num_i=num_i, nz=nz, nψ=nψ)))
+datafull, thetafull = last(MakeTestData(; num_i=num_i, nz=nz, nψ=nψ))
 
 ddata = drill(datafull)
 wpold = statespace(_model(ddata))
@@ -51,7 +51,7 @@ data_for_xfer = DataDrill(data_dso, ddm_novf)
     ShaleDrillingLikelihood.num_i(data_for_xfer)
 
 newdatafull = DataSetofSets(datafull, data_for_xfer)
-theta = rand(_nparm(newdatafull))
+theta = thetafull
 sim = SimulationDraws(datafull, M)
 update!(sim, ThetaRho())
 sharesim = SharedSimulations(data_for_xfer)
@@ -130,11 +130,11 @@ end
     fill!(sharesim, 0)
     simulate_lease!(simprim, l, simim, 1.0)
 
-    @test sum(sharesim.d0[:,1]) > 0
-    @test sum(sharesim.profit[:,1]) > 0
-    @test sum(sharesim.surplus[:,1]) > 0
-    @test sum(sharesim.revenue[:,1]) > 0
-    @test sum(sharesim.D_at_T[:,1]) > 0
+    @test abs(sum(sharesim.d0[:,1])) > 0
+    @test abs(sum(sharesim.profit[:,1])) > 0
+    @test abs(sum(sharesim.surplus[:,1])) > 0
+    @test abs(sum(sharesim.revenue[:,1])) > 0
+    @test abs(sum(sharesim.D_at_T[:,1])) > 0
 end
 
 using ShaleDrillingLikelihood: simulate_unit!
@@ -173,6 +173,62 @@ using ShaleDrillingLikelihood: simulate_unit!
 end
 
 
+@testset "using global objects" begin
+
+    ddata = drill(datafull)
+    wp = statespace(_model(ddata))
+    rwrd = DrillReward(
+        DrillingRevenue(Unconstrained(), NoTrend(), GathProcess(), NoLearn(), WithRoyalty()),
+        DrillingCost_constant(),
+        ExtensionCost_Constant()
+    )
+
+    ddm_novf = DDM_NoVF(_model(drill(datafull)))
+    datadrill_dso = DataDrillStartOnly(drill(datafull))
+    datadrill_bare= DataDrill(data_dso, ddm_novf)
+
+    sharesim2 = SharedSimulations(datadrill_bare)
+    fill!(sharesim2, 0)
+
+    data_bare = DataSetofSets(datafull, datadrill_bare)
+    simMat = SimulationDraws(data_bare, M)
+    set_g_BaseDataSetofSets(data_bare)
+    set_g_SimulationDrawsMatrix(simMat)
+    set_g_SharedSimulations(sharesim2)
+
+    simprim = set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
+
+    @test simprim.sharedsim === sharesim2 #FIXME
+
+    for i in 1:ShaleDrillingLikelihood.num_i(newdatafull)
+        simulate_unit!(i, true)
+    end
+
+    @test all(isfinite.(sharesim2.d0))
+
+    @test abs(sum(get_g_SharedSimulations().d0        )) > 0
+    @test abs(sum(get_g_SharedSimulations().d1        )) > 0
+    @test abs(sum(get_g_SharedSimulations().d0psi     )) > 0
+    @test abs(sum(get_g_SharedSimulations().d1psi     )) > 0
+    @test abs(sum(get_g_SharedSimulations().d0eur     )) > 0
+    @test abs(sum(get_g_SharedSimulations().d1eur     )) > 0
+    @test abs(sum(get_g_SharedSimulations().d0eursq   )) > 0
+    @test abs(sum(get_g_SharedSimulations().d1eursq   )) > 0
+    @test abs(sum(get_g_SharedSimulations().d0eurcub  )) > 0
+    @test abs(sum(get_g_SharedSimulations().d1eurcub  )) > 0
+    @test abs(sum(get_g_SharedSimulations().epsdeq1   )) > 0
+    @test abs(sum(get_g_SharedSimulations().epsdgt1   )) > 0
+    @test abs(sum(get_g_SharedSimulations().Prdeq1    )) > 0
+    @test abs(sum(get_g_SharedSimulations().Prdgt1    )) > 0
+    @test abs(sum(get_g_SharedSimulations().Eeps      )) > 0
+    @test abs(sum(get_g_SharedSimulations().profit    )) > 0
+    @test abs(sum(get_g_SharedSimulations().surplus   )) > 0
+    @test abs(sum(get_g_SharedSimulations().revenue   )) > 0
+    @test abs(sum(get_g_SharedSimulations().drillcost )) > 0
+    @test abs(sum(get_g_SharedSimulations().extension )) > 0
+    @test abs(sum(get_g_SharedSimulations().D_at_T    )) > 0
+
+end
 
 
 

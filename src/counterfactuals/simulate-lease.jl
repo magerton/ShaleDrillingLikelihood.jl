@@ -17,6 +17,10 @@ function simulate_lease!(simprim::SimulationPrimitives,
     wp = statespace(m)
     θt = theta_drill(simprim)
 
+    isfinite(_ψ2(sim)) || throw(DomainError("_ψ2(sim) = $(_ψ2(sim)) is not finite"))
+    isfinite(_ψ1(sim)) || throw(DomainError("_ψ1(sim) = $(_ψ1(sim)) is not finite"))
+    isfinite(weight)   || throw(DomainError("  weight = $(weight) is not finite"))
+
     # reset sa and sb, which hold the current state
     # we start out in period 1 at state0
     reset!(simtmp, first(_x(lease)))

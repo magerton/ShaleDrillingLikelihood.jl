@@ -155,7 +155,10 @@ end
     data::DataSetofSets, sim::SimulationDrawsMatrix,
     rwrd::AbstractStaticPayoff, wp::AbstractStateSpace, Tstop, theta, sharedsim
     )
-
+    theta_d = theta_drill(data, theta)
+    θρ = theta_drill_ρ(_model(drill(data)), theta_d)
+    update!(sim, θρ)
+    update!(data, theta)
     datanew = DataSetofSets(data, DataDrill(drill(data), rwrd, wp))
     return SimulationPrimitives(datanew, sim, Tstop, theta, sharedsim)
 end
@@ -169,7 +172,7 @@ end
 
 function set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
     simprim = SimulationPrimitives(rwrd, wp, Tstop, theta)
-    set_g_SimulationPrimitives(simprim)
+    return set_g_SimulationPrimitives(simprim)
 end
 
 SimulationTmp(x::SimulationPrimitives) = x.simtmp

@@ -100,12 +100,16 @@ function reset!(x::LocalEstObj)
 end
 
 
-@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
-    dat = data(reo)
-    thetas = split_thetas(dat, theta)
-    for (d, θ) in zip(dat, thetas)
+function update!(data::DataSetofSets, theta::Vector)
+    _nparm(data) == length(theta) || throw(DimensionMismatch())
+    thetas = split_thetas(data, theta)
+    for (d, θ) in zip(data, thetas)
         update!(d, θ)
     end
+end
+
+@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
+    update!(data(reo), theta)
     return nothing
 end
 
