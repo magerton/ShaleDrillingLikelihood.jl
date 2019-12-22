@@ -258,6 +258,6 @@ include("counterfactuals/shared-simulations.jl")
 include("counterfactuals/objects.jl")
 include("counterfactuals/sparse-state-transition.jl")
 include("counterfactuals/simulate-lease.jl")
-# include("counterfactuals/simulate-unit.jl")
+include("counterfactuals/simulate-unit.jl")
 
 end # module

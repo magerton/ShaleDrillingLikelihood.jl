@@ -11,7 +11,10 @@ using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     end_ex0, _data, _i, simulate_lease!, Pprime,
     state_if_never_drilled, tstart, jtstart, first_state,
     update_sparse_state_transition!, vw_revenue,
-    split_thetas
+    split_thetas, SimulationTmp, SimulationPrimitives,
+    simulationPrimitives_information, dataFrames_from_simulationPrimitives,
+    SharedSimulations, update_sim_dataframes_from_simdata!,
+    value_function
 
 num_i = 50
 M = 10
@@ -25,12 +28,11 @@ ddata = drill(datafull)
 wpold = statespace(_model(ddata))
 
 newrwrd = DrillReward(
-    DrillingRevenue(Constrained(), TimeTrend(), GathProcess(), NoLearn(), WithRoyalty()),
-    DrillingCost_TimeFE(2008,2016),
+    DrillingRevenue(Unconstrained(), NoTrend(), GathProcess(), NoLearn(), WithRoyalty()),
+    DrillingCost_constant(),
     ExtensionCost_Constant()
 )
 newwp = PerpetualProblem(wpold)
-
 
 @testset "Revision of statespace" begin
     newd = DataDrill(ddata, newrwrd, newwp)
@@ -45,15 +47,8 @@ ddm_novf = DDM_NoVF(_model(ddata))
 data_dso = DataDrillStartOnly(ddata)
 data_for_xfer = DataDrill(data_dso, ddm_novf)
 
-using ShaleDrillingLikelihood: SimulationTmp, SimulationPrimitives,
-    simulationPrimitives_information, dataFrames_from_simulationPrimitives,
-    SharedSimulations, update_sim_dataframes_from_simdata!
-
-@which length(data_for_xfer)
-
-
-ShaleDrillingLikelihood.num_i(datafull)
-ShaleDrillingLikelihood.num_i(data_for_xfer)
+@test ShaleDrillingLikelihood.num_i(datafull) ==
+    ShaleDrillingLikelihood.num_i(data_for_xfer)
 
 newdatafull = DataSetofSets(datafull, data_for_xfer)
 theta = rand(_nparm(newdatafull))
@@ -63,6 +58,9 @@ sharesim = SharedSimulations(data_for_xfer)
 simprim = SimulationPrimitives(newdatafull, sim, Tstop, theta, sharesim)
 simtmp = SimulationTmp(simprim)
 
+@assert _nparm(newrwrd) == _nparm(drill(newdatafull))
+
+@test value_function(_model(drill(newdatafull))) == nothing
 @test SimulationTmp(simprim) === simtmp
 
 simlist = [
@@ -139,20 +137,43 @@ end
     @test sum(sharesim.D_at_T[:,1]) > 0
 end
 
-# ShaleDrillingLikelihood.reset!(SimulationTmp(simprim), 3)
-# thetasvw = split_thetas(newdatafull, theta)
-# thet = first(thetasvw)
-#
-#
-# ShaleDrillingLikelihood.update!(simtmp, first(first(lc)), simm, thet)
-#
-# simtmp.Pprime[:,2]
+using ShaleDrillingLikelihood: simulate_unit!
 
-# _x(l)
-#
-# simtmp.sa
-#@test sum(sharesim.d0        ) > 0
+@testset "simulate unit" begin
+    simprim2 = SimulationPrimitives(newdatafull, sim,
+        newrwrd, wpold, Tstop, theta, sharesim)
+        update!(sim, ThetaRho())
+    fill!(sharesim, 0)
+    do_r = false
+    for i in 1:ShaleDrillingLikelihood.num_i(newdatafull)
+        simulate_unit!(simprim2, i, do_r)
+    end
 
-# end
+    @test abs(sum(sharesim.d0        )) > 0
+    @test abs(sum(sharesim.d1        )) > 0
+    @test abs(sum(sharesim.d0psi     )) > 0
+    @test abs(sum(sharesim.d1psi     )) > 0
+    @test abs(sum(sharesim.d0eur     )) > 0
+    @test abs(sum(sharesim.d1eur     )) > 0
+    @test abs(sum(sharesim.d0eursq   )) > 0
+    @test abs(sum(sharesim.d1eursq   )) > 0
+    @test abs(sum(sharesim.d0eurcub  )) > 0
+    @test abs(sum(sharesim.d1eurcub  )) > 0
+    @test abs(sum(sharesim.epsdeq1   )) > 0
+    @test abs(sum(sharesim.epsdgt1   )) > 0
+    @test abs(sum(sharesim.Prdeq1    )) > 0
+    @test abs(sum(sharesim.Prdgt1    )) > 0
+    @test abs(sum(sharesim.Eeps      )) > 0
+    @test abs(sum(sharesim.profit    )) > 0
+    @test abs(sum(sharesim.surplus   )) > 0
+    @test abs(sum(sharesim.revenue   )) > 0
+    @test abs(sum(sharesim.drillcost )) > 0
+    @test abs(sum(sharesim.extension )) > 0
+    @test abs(sum(sharesim.D_at_T    )) > 0
+end
+
+
+
+
 
 # end # module
