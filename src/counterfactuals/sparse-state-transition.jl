@@ -16,7 +16,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp, obs::Observation
     states_after_drilling = end_ex0(wp)+1 : end_inf(wp)
     states_can_start_from = flatten( (_x(obs), states_after_drilling, )  )
 
-    for si in states_can_start_from
+    for si in 1:length(wp) # states_can_start_from
 
         obs_cf = ObservationDrill(model, ichars(obs), zchars(obs), 0, si)
         actions = actionspace(obs_cf)

@@ -8,7 +8,7 @@ using Test
 
 using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     ObservationGroup, InitialDrilling, ichars, zchars, uniti,
-    end_ex0, _data, _i
+    end_ex0, _data, _i, simulate_lease!, Pprime
 
 
 num_i = 50
@@ -59,8 +59,8 @@ theta = rand(_nparm(newdatafull))
 sim = SimulationDraws(datafull, M)
 update!(sim, ThetaRho())
 sharesim = SharedSimulations(data_for_xfer)
-simtmp = SimulationTmp(data_for_xfer, M)
-simprim = SimulationPrimitives(newdatafull, sim, Tstop, theta, simtmp, sharesim)
+simprim = SimulationPrimitives(newdatafull, sim, Tstop, theta, sharesim)
+simtmp = SimulationTmp(simprim)
 
 
 simlist = [
@@ -94,8 +94,6 @@ lc = LeaseCounterfactual(l)
     end
 end
 
-getindex(view(sim, 1), 1)
-
 using ShaleDrillingLikelihood: update_sparse_state_transition!, vw_revenue, split_thetas
 
 @testset "trying out sparse_state_transition" begin
@@ -107,6 +105,46 @@ using ShaleDrillingLikelihood: update_sparse_state_transition!, vw_revenue, spli
     end
 end
 
+
+
+@test SimulationTmp(simprim) === simtmp
+#
+# ShaleDrillingLikelihood.reset!(SimulationTmp(simprim), 3)
+# thetasvw = split_thetas(newdatafull, theta)
+# thet = first(thetasvw)
+#
+#
+# ShaleDrillingLikelihood.update!(simtmp, first(first(lc)), simm, thet)
+#
+# simtmp.Pprime[:,2]
+
+# _x(l)
+#
+# simtmp.sa
+#@test sum(sharesim.d0        ) > 0
+@testset "simulate 1 lease" begin
+    @test sum(sharesim.d1        ) > 0
+    @test sum(sharesim.d0psi     ) > 0
+    @test sum(sharesim.d1psi     ) > 0
+    @test sum(sharesim.d0eur     ) > 0
+    @test sum(sharesim.d1eur     ) > 0
+    @test sum(sharesim.d0eursq   ) > 0
+    @test sum(sharesim.d1eursq   ) > 0
+    @test sum(sharesim.d0eurcub  ) > 0
+    @test sum(sharesim.d1eurcub  ) > 0
+    @test sum(sharesim.epsdeq1   ) > 0
+    @test sum(sharesim.epsdgt1   ) > 0
+    @test sum(sharesim.Prdeq1    ) > 0
+    @test sum(sharesim.Prdgt1    ) > 0
+    @test sum(sharesim.Eeps      ) > 0
+    @test sum(sharesim.profit    ) > 0
+    @test sum(sharesim.surplus   ) > 0
+    @test sum(sharesim.revenue   ) > 0
+    @test sum(sharesim.drillcost ) > 0
+    @test sum(sharesim.extension ) > 0
+end
+
+@test sum(sharesim.D_at_T) >0
 
 # end
 
