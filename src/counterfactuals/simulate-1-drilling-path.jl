@@ -75,6 +75,7 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
             end # PrTday > 0
         end # states
 
+
         # update our tracking vectors
         ds = SharedSimulations(simprim)
 
@@ -91,6 +92,7 @@ function simulate_lease!(simprim::SimulationPrimitives, lease::DrillLease, sim::
 
         # Distribution Pr(Dₜ = D|T) for D ∈ 1:Dmax after actions in T (eg sₜ₊₁)
         if zt == Tstop(simprim)-1
+            i = uniti(lease)
             @inbounds for D in 1:_Dmax(wp)
                 ds.D_at_T[D,i]  += weight * sum( view(tmrw, s_of_D(wp, D)) )
             end
