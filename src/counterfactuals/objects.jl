@@ -75,9 +75,9 @@ we switch between `sa` and `sb` to avoid allocating...
 
 function today_tomorrow(x::SimulationTmp, t::Integer)
     if isodd(t)
-        return sa(simtmp), sb(simtmp)
+        return sa(x), sb(x)
     else
-        return sb(simtmp), sa(simtmp)
+        return sb(x), sa(x)
     end
 end
 
@@ -86,10 +86,10 @@ SimulationTmp(data::DataSetofSets, M) = SimulationTmp(drill(data), _num_sim(M))
 num_states(x::SimulationTmp) = length(sa(x))
 
 function reset!(x::SimulationTmp, s0::Integer)
-    fill!(sa(simtmp), 0)
-    fill!(sb(simtmp), 0)
-    setindex!(sa(simtmp), 1, starting_state)
-    setindex!(sb(simtmp), 1, starting_state)
+    fill!(sa(x), 0)
+    fill!(sb(x), 0)
+    setindex!(sa(x), 1, s0)
+    setindex!(sb(x), 1, s0)
     return nothing
 end
 
@@ -100,7 +100,7 @@ function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDr
     wp = statespace(m)
     nS = length(wp)
     dograd = false
-    newobs = ObservationDrill(model, ichars(obs), zchars(obs), 0, nS)
+    newobs = ObservationDrill(m, ichars(obs), zchars(obs), 0, nS)
 
     x = reward(m)
     surp = NoRoyaltyProblem(x)
@@ -140,7 +140,7 @@ struct SimulationPrimitives{D<:DataSetofSets,R}
     sharedsim::SharedSimulations{R}
 
     function SimulationPrimitives(
-        data::D, sim, Tstop, theta, simtmp, sharedsim::SharedSimulations{R}
+        data::D, sim, Tstop, theta, sharedsim::SharedSimulations{R}
     ) where {D<:DataSetofSets, R}
         _nparm(data) == length(theta) || throw(DimensionMismatch("data & theta"))
         num_i(data) == num_i(sim) || throw(DimensionMismatch("num_i"))
@@ -175,4 +175,7 @@ end
 SimulationTmp(x::SimulationPrimitives) = x.simtmp
 SharedSimulations(x::SimulationPrimitives) = x.sharedsim
 
-@getFieldFunction SimulationPrimitives Tstop
+@getFieldFunction SimulationPrimitives Tstop theta data
+
+split_thetas(x::SimulationPrimitives) = split_thetas(data(x), theta(x))
+theta_drill(x::SimulationPrimitives) = first(split_thetas(x))
