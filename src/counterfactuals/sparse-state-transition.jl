@@ -5,7 +5,8 @@ for each period `t`, we need to compute
 """
 # function update_sparse_state_transition!(simtmp::SimulationTmp,  uv::NTuple{2,<:Real}, z::NTuple{NZ,Real}, itypidx::NTuple{NI,Real}, state_if_no_drilling::Integer) where {NZ,NI}
 
-function update_sparse_state_transition!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDraw, theta)
+function update_sparse_state_transition!(simtmp::SimulationTmp,
+    obs::ObservationDrill, sim::SimulationDraw, theta)
 
     model = _model(obs)
     wp = statespace(model)
@@ -16,7 +17,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp, obs::Observation
     states_after_drilling = end_ex0(wp)+1 : end_inf(wp)
     states_can_start_from = flatten( (_x(obs), states_after_drilling, )  )
 
-    for si in 1:length(wp) # states_can_start_from
+    for si in states_can_start_from
 
         obs_cf = ObservationDrill(model, ichars(obs), zchars(obs), 0, si)
         actions = actionspace(obs_cf)
@@ -61,13 +62,13 @@ first_state(x::LeaseCounterfactual) = _x(DataDrill(x), tstart(x))
 function state_if_never_drilled(x::LeaseCounterfactual, t)
     model = _model(DataDrill(x))
     wp = statespace(model)
-    state_if_never_drilled(wp, first_state(x), t)
+    return state_if_never_drilled(wp, first_state(x), t)
 end
 
 function getindex(x::LeaseCounterfactual, t)
     time_since_start = t - tstart(x)
     zt = jtstart(x) + time_since_start
     d = DataDrill(x)
-    x0 = state_if_never_drilled(x,t)
+    x0 = state_if_never_drilled(x,time_since_start)
     return ObservationDrill(_model(d), ichars(x), zchars(d,zt), 0, x0), zt
 end
