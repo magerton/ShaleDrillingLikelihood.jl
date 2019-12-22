@@ -105,7 +105,7 @@ function SharedSimulations(pids, data::DataDrill)
     return SharedSimulations(pids, nT, N, Dmax, zchars_time)
 end
 
-SharedSimulations(data) = SharedSimulations(workers(), data)
+SharedSimulations(data::DataDrill) = SharedSimulations(workers(), data)
 
 # ----------------------
 # Holds simulations
