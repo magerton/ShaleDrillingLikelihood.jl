@@ -32,7 +32,7 @@ function arg_settings()
         "--doCnstr"
             action = :store_true
             group = "comp"
-        "--doFull"
+        "--noFull"
             action = :store_true
             group = "comp"
 
@@ -125,11 +125,11 @@ function print_parsed_args(x::Dict)
         "Mcnstr",
         "Mfull",
         "doCnstr",
-        "doFull",
+        "noFull",
+        "noPar",
         "maxtimeCnstr",
         "maxtimeFull",
         "computeStarting",
-        "noPar",
     ]
     parm = [
         "computeStarting",
