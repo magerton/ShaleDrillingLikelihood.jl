@@ -116,9 +116,8 @@ ArgParse.parse_item(::Type{DrillingRevenue}, x::AbstractString) =
 ArgParse.parse_item(::Type{Vector{T}}, x::AbstractString) where {T} =
     eval(parse(x))::Vector{T}
 
-ArgParse.parse_item(::Type{Float64}, x::AbstractString) =
-    eval(parse(x))::Float64
-
+ArgParse.parse_item(::Type{T}, x::AbstractString) where {T<:Real} =
+    eval(parse(x))::T
 
 function print_parsed_args(x::Dict)
     dset = ["dataset",]
