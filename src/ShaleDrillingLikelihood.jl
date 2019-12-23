@@ -34,6 +34,7 @@ import Base: length, size, iterate,
     step
 
 import StatsBase: coeftable, coefnames
+import ArgParse: parse_item
 
 export coefnames, print_in_binary_for_copy_paste
 
@@ -185,28 +186,6 @@ check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
 all_same_value(x) = all(x .== first(x))
 range_i_to_ip1(x,i) = x[i] : (x[i+1]-1)
 
-
-# Overall structure
-#----------------------------
-
-export parse_commandline
-
-function parse_commandline()
-    s = ArgParseSettings()
-
-    @add_arg_table s begin
-        "--dataset", "-d"
-            help = "Dataset to use"
-            arg_type = String
-            default = "data_all_leases.RData"
-        "--anticipate"
-            help = "T1ev shocks anticipated"
-            arg_type = Bool
-            default = false
-    end
-
-    return parse_args(s)
-end
 
 # Overall structure
 #----------------------------

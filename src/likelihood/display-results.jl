@@ -3,7 +3,8 @@ export  println_time_flush,
     strderr, tstats, pvals,
     Fstat!,
     _model,
-    coeftable
+    coeftable,
+    evaluate_likelihood
 
 
 function println_time_flush(str)
@@ -93,9 +94,38 @@ function solve_model(d::DataSetofSets, theta, M, maxtime, OptimMethod=bfgs)
         parallel_simloglik!(ew, theta, dograd)
         update!(ew, theta, dograd)
     end
+    @assert Optim.minimizer(res) == theta1(leo)
     println(coeftable(leo))
     print("Parameter estimates are\n\t")
-    print(sprintf_binary(Optim.minimizer(res)))
-    print("\n")
+    print(round.(theta1(leo); digits=3))
+    print("\n\t")
+    print(sprintf_binary(theta1(leo)))
+    print("\n\n")
     return res, ew
+end
+
+function evaluate_likelihood(d::DataSetofSets, theta, M; compute=true)
+    check_finite(theta)
+    leo = LocalEstObj(d, theta)
+    reo = RemoteEstObj(leo, M)
+    ew = EstimationWrapper(leo, reo)
+    leograd = grad(leo)
+
+    hess(leo) .= Matrix(I, length(leograd), length(leograd))
+    theta1(leo) .= theta
+
+    if compute
+        @eval @everywhere set_g_RemoteEstObj($reo)
+        dograd=true
+        parallel_simloglik!(ew, theta, dograd)
+        update!(ew, theta, dograd)
+    end
+
+    println(coeftable(leo))
+    print("Parameter estimates are\n\t")
+    print(round.(theta1(leo); digits=3))
+    print("\n\t")
+    print(sprintf_binary(theta1(leo)))
+    print("\n\n")
+    return ew
 end

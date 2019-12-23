@@ -1,4 +1,4 @@
-export DataDrill, DataDrillStartOnly, zchars
+export DataDrill, DataDrillStartOnly, zchars, DataDrillPrimitive
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------

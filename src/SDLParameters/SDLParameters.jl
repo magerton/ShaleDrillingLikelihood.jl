@@ -31,6 +31,8 @@ using ShaleDrillingLikelihood: simulate,
 
 using Base: product
 using LinearAlgebra: checksquare
+using ArgParse
+using Base.Meta: parse
 
 import ShaleDrillingLikelihood: ichars, zchars,
     DataRoyalty, DataProduce, DataDrillPrimitive, DataDrill
@@ -40,5 +42,6 @@ include("model-components.jl")
 include("make-models.jl")
 include("grids.jl")
 include("data-import.jl")
+include("argparse.jl")
 
 end
