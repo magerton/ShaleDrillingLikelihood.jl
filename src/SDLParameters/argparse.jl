@@ -1,6 +1,7 @@
 # Overall structure
 #----------------------------
 
+import ArgParse: parse_item
 export parse_commandline, print_parsed_args
 
 function arg_settings()
@@ -103,19 +104,19 @@ end
 
 parse_commandline() = parse_args(arg_settings())
 
-parse_item(::Type{AbstractDrillingCost}, x::AbstractString) =
+ArgParse.parse_item(::Type{AbstractDrillingCost}, x::AbstractString) =
     eval(parse(x))::AbstractDrillingCost
 
-parse_item(::Type{AbstractExtensionCost}, x::AbstractString) =
+ArgParse.parse_item(::Type{AbstractExtensionCost}, x::AbstractString) =
     eval(parse(x))::AbstractExtensionCost
 
-parse_item(::Type{DrillingRevenue}, x::AbstractString) =
+ArgParse.parse_item(::Type{DrillingRevenue}, x::AbstractString) =
     eval(parse(x))::DrillingRevenue
 
-parse_item(::Type{Vector{T}}, x::AbstractString) where {T} =
+ArgParse.parse_item(::Type{Vector{T}}, x::AbstractString) where {T} =
     eval(parse(x))::Vector{T}
 
-parse_item(::Type{Float64}, x::AbstractString) =
+ArgParse.parse_item(::Type{Float64}, x::AbstractString) =
     eval(parse(x))::Float64
 
 
