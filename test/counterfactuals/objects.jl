@@ -12,9 +12,9 @@ using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     state_if_never_drilled, tstart, jtstart, first_state,
     update_sparse_state_transition!, vw_revenue,
     split_thetas, SimulationTmp, SimulationPrimitives,
-    simulationPrimitives_information, dataFrames_from_simulationPrimitives,
+    simulationPrimitives_information, dataFramesForSimulations,
     SharedSimulations, update_sim_dataframes_from_simdata!,
-    value_function
+    value_function,check_theta, doSimulations
 
 num_i = 50
 M = 10
@@ -67,9 +67,9 @@ simlist = [
     (newrwrd, PerpetualProblem(statespace(data_for_xfer)), theta),
 ]
 
-df_t, df_Tstop = dataFrames_from_simulationPrimitives(simlist, data_for_xfer, Tstop)
+df_t, df_Tstop = dataFramesForSimulations(simlist, data_for_xfer, Tstop)
 
-update_sim_dataframes_from_simdata!(df_t, df_Tstop, 1, sharesim)
+update_sim_dataframes_from_simdata!(df_t, df_Tstop, sharesim, 1)
 
 # make these objects
 u = ObservationGroup(ddata, 1)
@@ -191,45 +191,71 @@ end
     fill!(sharesim2, 0)
 
     data_bare = DataSetofSets(datafull, datadrill_bare)
+    check_theta(data_bare, theta)
     simMat = SimulationDraws(data_bare, M)
     set_g_BaseDataSetofSets(data_bare)
     set_g_SimulationDrawsMatrix(simMat)
     set_g_SharedSimulations(sharesim2)
-
     simprim = set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
 
     @test simprim.sharedsim === sharesim2 #FIXME
 
+    fill!(sharesim2, 0)
     for i in 1:ShaleDrillingLikelihood.num_i(newdatafull)
         simulate_unit!(i, true)
     end
 
     @test all(isfinite.(sharesim2.d0))
 
-    @test abs(sum(get_g_SharedSimulations().d0        )) > 0
-    @test abs(sum(get_g_SharedSimulations().d1        )) > 0
-    @test abs(sum(get_g_SharedSimulations().d0psi     )) > 0
-    @test abs(sum(get_g_SharedSimulations().d1psi     )) > 0
-    @test abs(sum(get_g_SharedSimulations().d0eur     )) > 0
-    @test abs(sum(get_g_SharedSimulations().d1eur     )) > 0
-    @test abs(sum(get_g_SharedSimulations().d0eursq   )) > 0
-    @test abs(sum(get_g_SharedSimulations().d1eursq   )) > 0
-    @test abs(sum(get_g_SharedSimulations().d0eurcub  )) > 0
-    @test abs(sum(get_g_SharedSimulations().d1eurcub  )) > 0
-    @test abs(sum(get_g_SharedSimulations().epsdeq1   )) > 0
-    @test abs(sum(get_g_SharedSimulations().epsdgt1   )) > 0
-    @test abs(sum(get_g_SharedSimulations().Prdeq1    )) > 0
-    @test abs(sum(get_g_SharedSimulations().Prdgt1    )) > 0
-    @test abs(sum(get_g_SharedSimulations().Eeps      )) > 0
-    @test abs(sum(get_g_SharedSimulations().profit    )) > 0
-    @test abs(sum(get_g_SharedSimulations().surplus   )) > 0
-    @test abs(sum(get_g_SharedSimulations().revenue   )) > 0
-    @test abs(sum(get_g_SharedSimulations().drillcost )) > 0
-    @test abs(sum(get_g_SharedSimulations().extension )) > 0
-    @test abs(sum(get_g_SharedSimulations().D_at_T    )) > 0
+    g_sharesim = get_g_SharedSimulations()
+
+    @test abs(sum(g_sharesim.d0        )) > 0
+    @test abs(sum(g_sharesim.d1        )) > 0
+    @test abs(sum(g_sharesim.d0psi     )) > 0
+    @test abs(sum(g_sharesim.d1psi     )) > 0
+    @test abs(sum(g_sharesim.d0eur     )) > 0
+    @test abs(sum(g_sharesim.d1eur     )) > 0
+    @test abs(sum(g_sharesim.d0eursq   )) > 0
+    @test abs(sum(g_sharesim.d1eursq   )) > 0
+    @test abs(sum(g_sharesim.d0eurcub  )) > 0
+    @test abs(sum(g_sharesim.d1eurcub  )) > 0
+    @test abs(sum(g_sharesim.epsdeq1   )) > 0
+    @test abs(sum(g_sharesim.epsdgt1   )) > 0
+    @test abs(sum(g_sharesim.Prdeq1    )) > 0
+    @test abs(sum(g_sharesim.Prdgt1    )) > 0
+    @test abs(sum(g_sharesim.Eeps      )) > 0
+    @test abs(sum(g_sharesim.profit    )) > 0
+    @test abs(sum(g_sharesim.surplus   )) > 0
+    @test abs(sum(g_sharesim.revenue   )) > 0
+    @test abs(sum(g_sharesim.drillcost )) > 0
+    @test abs(sum(g_sharesim.extension )) > 0
+    @test abs(sum(g_sharesim.D_at_T    )) > 0
 
 end
 
+@testset "multiple simulations" begin
+    rwrd1 = reward(_model(ddata))
+    wp1 = statespace(_model(ddata))
+    rwrd2 = DrillReward(
+        DrillingRevenue(Unconstrained(), NoTrend(), GathProcess(), NoLearn(), NoRoyalty()),
+        DrillingCost_constant(),
+        ExtensionCost_Constant()
+    )
+    wp2 = PerpetualProblem(wp1)
 
+    theta_d = thetafull[1:_nparm(ddata)]
+
+    simlist = [
+        (rwrd1, wp1, thetafull),
+        (rwrd2, wp1, thetafull),
+        (rwrd1, wp2, thetafull),
+    ]
+
+    pids = start_up_workers(ENV)
+    @everywhere using ShaleDrillingLikelihood
+    M = 50
+    Tstop = 60
+    doSimulations(datafull, simlist, Tstop, M)
+end
 
 # end # module

@@ -1,3 +1,5 @@
+export simulate_unit!
+
 # ----------------------
 # Holds simulations
 # ----------------------
@@ -109,16 +111,16 @@ end
 
 
 
-function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList}, Tstop, M)
+function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList}, Tstop, M; do_royalty=true)
 
-    N = num_i(data_bare)
+    N = num_i(datafull)
     wrkrs = CachingPool(workers())
 
     # generate smaller DataDrill to transfer to workers
     datadrill = drill(datafull)
     ddm_novf = DDM_NoVF(_model(datadrill))
     datadrill_dso = DataDrillStartOnly(datadrill)
-    datadrill_bare= DataDrill(data_dso, ddm_novf)
+    datadrill_bare= DataDrill(datadrill_dso, ddm_novf)
 
     # DataFull set for transfer
     data_bare = DataSetofSets(datafull, datadrill_bare)
@@ -131,17 +133,21 @@ function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList
     df_t, df_Tstop = dataFramesForSimulations(simlist, datadrill_bare, Tstop)
 
     # send to workers
-    set_g_BaseDataSetofSets(data_bare)
-    set_g_SimulationDrawsMatrix(simMat)
-    set_g_SharedSimulations(sharesim)
+    @eval @everywhere set_g_BaseDataSetofSets($data_bare)
+    @eval @everywhere set_g_SimulationDrawsMatrix($simMat)
+    @eval @everywhere set_g_SharedSimulations($sharesim)
 
     for (k, (rwrd, wp, theta)) in enumerate(simlist)
-        check_theta(datadrill, theta)
+
+        check_theta(datafull, theta)
         fill!(sharesim, 0)
-        simprim = set_g_SimulationPrimitives(rwrd, wp, Tstop, theta)
-        pmap(i -> simulate_unit!(i,true), wrkrs, OneTo(N))
-        # map(i -> simulate_unit!(simprim, i,true), OneTo(N))
-        update_sim_dataframes_from_simdata(df_t, df_Tstop, sharesim, k)
+
+        @eval @everywhere set_g_SimulationPrimitives($rwrd, $wp, $Tstop, $theta)
+        simprim = get_g_SimulationPrimitives()
+
+        # map(i -> simulate_unit!(simprim, i, do_royalty), OneTo(N))
+        pmap(i -> simulate_unit!(i, do_royalty), wrkrs, OneTo(N))
+        update_sim_dataframes_from_simdata!(df_t, df_Tstop, sharesim, k)
     end
 
     return df_t, df_Tstop
