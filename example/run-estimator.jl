@@ -139,6 +139,8 @@ theta0_full = merge_thetas(theta0s, dataset_full)
 
 if length(THETA0_FULL_OVERRIDE) == length(theta0_full)
     theta0_full .= THETA0_FULL_OVERRIDE
+elseif length(THETA0_FULL_OVERRIDE) != 0
+    @warn "Not using theta supplied - incorrect length"
 end
 
 let thts = split_thetas(dataset_full, theta0_full)
