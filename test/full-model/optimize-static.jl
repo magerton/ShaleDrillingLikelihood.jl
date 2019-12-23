@@ -191,6 +191,7 @@ println("print to keep from blowing up")
     theta_tuple = (θ_drill, θ_royalty, θ_produce)
     theta_full = merge_thetas(theta_tuple, data_full)
     @test theta_full == θ
+    @test all(theta_tuple .== split_thetas(data_full, theta_full))
 
     let leo = LocalEstObj(data_small, θ_produce)
         coeftable(leo)
@@ -251,7 +252,7 @@ println("print to keep from blowing up")
             res = solve_model(ew, 0.9*t; OptimOpts=opts)
             @show res
             @test minimizer(res) == theta1(leo)
-            print_in_binary_for_copy_paste(minimizer(res))
+            println(sprintf_binary(minimizer(res)))
 
             if drill(d) != EmptyDataSet()
                 @test theta_ρ(d, t) == θρ
