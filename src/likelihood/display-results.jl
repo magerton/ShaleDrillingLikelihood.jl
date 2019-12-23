@@ -104,7 +104,7 @@ function solve_model(d::DataSetofSets, theta, M, maxtime, OptimMethod=bfgs)
     return res, ew
 end
 
-function evaluate_likelihood(d::DataSetofSets, theta, M)
+function evaluate_likelihood(d::DataSetofSets, theta, M; compute=true)
     check_finite(theta)
     leo = LocalEstObj(d, theta)
     reo = RemoteEstObj(leo, M)
@@ -114,10 +114,12 @@ function evaluate_likelihood(d::DataSetofSets, theta, M)
     hess(leo) .= Matrix(I, length(leograd), length(leograd))
     theta1(leo) .= theta
 
-    @eval @everywhere set_g_RemoteEstObj($reo)
-    dograd=true
-    parallel_simloglik!(ew, theta, dograd)
-    update!(ew, theta, dograd)
+    if compute
+        @eval @everywhere set_g_RemoteEstObj($reo)
+        dograd=true
+        parallel_simloglik!(ew, theta, dograd)
+        update!(ew, theta, dograd)
+    end
 
     println(coeftable(leo))
     print("Parameter estimates are\n\t")

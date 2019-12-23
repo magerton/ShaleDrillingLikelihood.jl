@@ -3,7 +3,7 @@
 
 export parse_commandline, print_parsed_args
 
-function parse_commandline()
+function arg_settings()
     s = ArgParseSettings()
 
     add_arg_group(s, "Computation", "comp")
@@ -32,7 +32,6 @@ function parse_commandline()
         "--doCnstr"
             action = :store_true
             group = "comp"
-
         "--doFull"
             action = :store_true
             group = "comp"
@@ -44,6 +43,9 @@ function parse_commandline()
         "--maxtimeFull"
             arg_type = Int
             default  = 24 * 60^2
+            group = "comp"
+        "--noPar"
+            action = :store_true
             group = "comp"
 
         # Parameters
@@ -96,10 +98,10 @@ function parse_commandline()
             default=minp_default()
             group="approx"
     end
-
-
-    return parse_args(s)
+    return s
 end
+
+parse_commandline() = parse_args(arg_settings())
 
 parse_item(::Type{AbstractDrillingCost}, x::AbstractString) =
     eval(parse(x))::AbstractDrillingCost
@@ -126,6 +128,8 @@ function print_parsed_args(x::Dict)
         "doFull",
         "maxtimeCnstr",
         "maxtimeFull",
+        "computeStarting",
+        "noPar",
     ]
     parm = [
         "computeStarting",

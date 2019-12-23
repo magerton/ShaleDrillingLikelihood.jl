@@ -22,6 +22,8 @@ intstr = generate_formatter("%'d")
 # ------------------- number of simulations ----------------------
 
 pargs = parse_commandline()
+# using ArgParse: parse_args
+# pargs = parse_args(["--noPar"], ShaleDrillingLikelihood.SDLParameters.arg_settings())
 print_parsed_args(pargs)
 
 DATAPATH = pargs["dataset"]
@@ -33,6 +35,7 @@ DO_CNSTR = pargs["doCnstr"]
 DO_FULL  = pargs["doFull"]
 MAXTIME_CNSTR = pargs["maxtimeCnstr"]
 MAXTIME_FULL  = pargs["maxtimeFull"]
+DO_PAR = !pargs["noPar"]
 
 # parms
 COMPUTE_INITIAL_VALUES = pargs["computeStarting"]
@@ -122,9 +125,11 @@ end
 
 # ------------------- set up workers -----------------------
 
-pids = start_up_workers(ENV)
-@everywhere using ShaleDrillingLikelihood
-println_time_flush("Library loaded on workers")
+if DO_PAR
+    pids = start_up_workers(ENV)
+    @everywhere using ShaleDrillingLikelihood
+    println_time_flush("Library loaded on workers")
+end
 
 # Solve constrained simpler model
 if DO_CNSTR
@@ -170,7 +175,7 @@ ddmnovf = DDM_NoVF(_model(leodatadrill))
 
 println_time_flush("saving data to\n\t$fn")
 
-jldopen(fn, "w") do file
+jldopen(fn, "w"; compress=true) do file
     file["DATAPATH"] = DATAPATH
     file["M"]        = ShaleDrillingLikelihood._num_sim(ShaleDrillingLikelihood.sim(reo))
     file["ddm_novf"] = ddmnovf
