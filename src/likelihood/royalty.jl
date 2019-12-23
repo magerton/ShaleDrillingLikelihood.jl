@@ -93,10 +93,14 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
             eta12 = η12(obs, theta, zm)
 
             if dograd == false
-                LLm[m] += loglik_royalty(obs, eta12)
+                LL = loglik_royalty(obs, eta12)
+                isfinite(LL) || throw(error("LL = $LL not finite"))
+                LLm[m] += LL
             else
                 η1, η2 = eta12
                 F,LL  = lik_loglik_royalty(obs, eta12)
+                isfinite(LL) || throw(error("LL = $LL not finite"))
+                isfinite(F)  || throw(error("F = $F not finite"))
                 LLm[m] += LL
                 am[m] = normpdf(η1) / F
                 bm[m] = normpdf(η2) / F
