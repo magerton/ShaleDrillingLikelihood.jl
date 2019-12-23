@@ -24,7 +24,9 @@ check_rowvals_equal(A, X) = true
 
 
 "Temp vars for dynamic model"
-struct DCDPTmpVars{T<:Real, SM<:AbstractMatrix{T}, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}} <: AbstractTmpVars
+struct DCDPTmpVars{
+    T<:Real, SM<:AbstractMatrix{T}, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}
+    } <: AbstractTmpVars
     ubVfull::AA3
     dubVfull::AA4
     dubVfullperm::AA4

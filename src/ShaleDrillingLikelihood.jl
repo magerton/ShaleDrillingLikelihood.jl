@@ -21,6 +21,8 @@ using CountPlus
 using Optim
 using StatsBase
 using ClusterManagers
+using DataFrames
+
 using UnsafeArrays
 using ArgParse
 
@@ -173,13 +175,16 @@ function sprintf_binary(x::Vector{<:Number})
     xstr = reduce(*, @sprintf("%a, ", i) for i in x)
     return "[" * xstr * "]"
 end
+@deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
 
 check_finite(x::AbstractArray) = all(isfinite.(x)) || throw(error("x not finite!"))
 check_finite(x::AbstractVector) = all(isfinite.(x)) || throw(error("x not finite! $x"))
 check_finite(x::Number) = isfinite(x) || throw(error("x not finite! $x"))
 
 
-@deprecate print_in_binary_for_copy_paste(x) sprintf_binary(x)
+all_same_value(x) = all(x .== first(x))
+range_i_to_ip1(x,i) = x[i] : (x[i+1]-1)
+
 
 # Overall structure
 #----------------------------
@@ -210,6 +215,7 @@ include("utilities/threadutils.jl")
 include("utilities/sum-functions.jl")
 include("utilities/inplace-interpolation.jl")
 include("utilities/delegate-methods.jl")
+include("utilities/helper-macros.jl")
 
 include("time-variables/tvpack.jl")
 include("time-variables/tauchen.jl")
@@ -270,5 +276,12 @@ include("likelihood/display-results.jl")
 # parameters, model generation
 include("SDLParameters/SDLParameters.jl")
 
+# counterfactuals
+include("counterfactuals/shared-simulations.jl")
+include("counterfactuals/objects.jl")
+include("counterfactuals/sparse-state-transition.jl")
+include("counterfactuals/simulate-lease.jl")
+include("counterfactuals/simulate-unit.jl")
+include("counterfactuals/wrapper.jl")
 
 end # module

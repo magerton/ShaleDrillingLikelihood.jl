@@ -42,7 +42,7 @@ function MakeTestData(;
 
         rwrd_c = ConstrainedProblem(reward)
         ddm_c = TestDynamicDrillModel(z, anticipate; reward=rwrd_c)
-        data_drill_c = DataDrill(ddm_c, data_drill)
+        data_drill_c = DataDrill(data_drill, ddm_c)
         dataset_drill = DataSetofSets(data_drill_c, EmptyDataSet(), EmptyDataSet())
         theta_drill = Theta(rwrd_c)
 

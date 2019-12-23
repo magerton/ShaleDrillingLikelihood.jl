@@ -1,4 +1,4 @@
-export DataDrill, DataDrillPrimitive, zchars
+export DataDrill, DataDrillStartOnly, zchars
 
 # Types to define Initial vs Development Drilling
 #------------------------------------------
@@ -57,9 +57,13 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
         throw(DimensionMismatch("lengths of tptr, jtstart must be consistent"))
 
     # check tchars
-    length(y) == length(x) == last(tptr)-1 ||
-        throw(DimensionMismatch("lengths of y, x, and last(tptr)-1 not equal"))
-
+    if length(y) == length(x) == last(tptr)-1
+    else
+        leny = length(y)
+        lenx = length(x)
+        tlast = last(tptr)-1
+        throw(DimensionMismatch("length(y) = $leny, length(x) = $lenx, last(tptr)-1=$tlast"))
+    end
     # pointers are sorted
     issorted(j1ptr) && issorted(j2ptr) && issorted(tptr) ||
         throw(error("Pointers not sorted"))
@@ -76,16 +80,19 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
     return true
 end
 
-struct DataDrillPrimitive{R<:AbstractStaticPayoff, ETV<:ExogTimeVars, ITup<:Tuple, XT, UP<:AbstractUnitProblem} <: AbstractDataDrill
+struct DataDrillPrimitive{
+        R<:AbstractStaticPayoff, ETV<:ExogTimeVars,
+        ITup<:Tuple, XT, UP<:AbstractStateSpace
+        } <: AbstractDataDrill
     reward::R
 
-    j1ptr::Vector{Int}             # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
-    j2ptr::UnitRange{Int}          # tptr, jchars is in  j2ptr[i]
-    tptr::Vector{Int}              # tchars       is in  tptr[j] : tptr[j+1]-1
-    jtstart::Vector{Int}           # zvars for lease j start at zchars[jtstart(data,j)]
+    j1ptr::Vector{Int}    # tptr, jchars is in  j1ptr[i] : j1ptr[i+1]-1
+    j2ptr::UnitRange{Int} # tptr, jchars is in  j2ptr[i]
+    tptr::Vector{Int}     # tchars       is in  tptr[j] : tptr[j+1]-1
+    jtstart::Vector{Int}  # zvars for lease j start at zchars[jtstart(data,j)]
 
     # leases per unit
-    j1chars::Vector{Float64}       # weights for lease observations
+    j1chars::Vector{Float64} # weights for lease observations
 
     # drilling histories
     ichars::Vector{ITup}
@@ -153,16 +160,18 @@ struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: A
     end
 end
 
-DataDrill(d::DataDrill) = _data(d)
+DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
 
-function DataDrill(m::AbstractDrillModel, d::AbstractDataDrill)
+function DataDrill(d::AbstractDataDrill, m::AbstractDrillModel)
     statespace(d) == statespace(m) || throw(error("state space not same"))
     return DataDrill(
         m, j1ptr(d), j2ptr(d), tptr(d), jtstart(d),
         j1chars(d), ichars(d),_y(d), _x(d), zchars(d)
     )
 end
+
+@deprecate DataDrill(m::AbstractDrillModel, d::AbstractDataDrill) DataDrill(d,m)
 
 # What is an observation?
 #------------------------------------------
@@ -232,7 +241,8 @@ coefnames(x::DataDrill)  = coefnames(_model(x))
 
 # length of things
 hasj1ptr(   d::AbstractDataDrill) = hasj1ptr(j1ptr(d))
-length(     d::AbstractDataDrill) = length(j2ptr(d))
+length(     d::AbstractDataDrill) = length(ichars(d))
+num_i(d::AbstractDataDrill) = length(d)
 maxj1length(d::AbstractDataDrill) = maxj1length(j1ptr(d))
 _nparm(     d::AbstractDataDrill) = _nparm(_model(d))
 j1length(   d::AbstractDataDrill) = length(j1chars(d))
@@ -341,7 +351,8 @@ const DrillLease = ObservationGroup{<:AbstractDrillRegime}
 
 length(    g::DrillLease) = tlength(DataDrill(g), _i(g))
 eachindex( g::DrillLease) = trange( DataDrill(g), _i(g))
-firstindex(g::DrillLease) = tstart( DataDrill(g), _i(g))
+tstart(    g::DrillLease) = tstart( DataDrill(g), _i(g))
+firstindex(g::DrillLease) = tstart(g)
 lastindex( g::DrillLease) = tstop(  DataDrill(g), _i(g))
 
 _y(g::DrillLease) = view(_y(DataDrill(g)), eachindex(g))
@@ -512,4 +523,66 @@ function DataDrill(u, v, m, theta; num_zt=30, kwargs...)
     num_i = length(u)
     _ichars = ichars_sample(m,num_i)
     return DataDrill(u,v,_zchars, _ichars,m,theta;kwargs...)
+end
+
+
+# ---------------------------
+# DataDrlll - start only
+# ---------------------------
+
+function DataDrillStartOnly(d::AbstractDataDrill)
+    _tptr = zero(tptr(d))
+    _tptr[1] = 1
+
+    for unit in d
+        for regime in unit
+            for lease in regime
+                _tptr[_i(lease)+1] = length(lease) > 0
+            end
+        end
+    end
+    cumsum!(_tptr, _tptr)
+
+    XT = eltype(_x(d))
+    x = Vector{XT}(undef, last(_tptr)-1)
+    y = Vector{Int}(undef, length(x))
+
+    for unit in d
+        for regime in unit
+            for lease in regime
+                if length(lease) > 0
+                    trng = range_i_to_ip1(_tptr, _i(lease))
+                    x[trng] .= first(_x(lease))
+                    y[trng] .= first(_y(lease))
+                end
+            end
+        end
+    end
+
+    return DataDrill(
+        _model(d),
+        j1ptr(d), j2ptr(d), _tptr, jtstart(d), j1chars(d),
+        ichars(d), y, x, zchars(d)
+    )
+end
+
+# create new DataDrill with different reward & statespace
+function DataDrill(d::DataDrill, rwrd::AbstractStaticPayoff, wp::AbstractStateSpace)
+
+    # create new DDM from old
+    ddm = DynamicDrillModel(_model(d), rwrd, wp)
+
+    if wp == statespace(d)
+        newx = _x(d)
+    else
+        states = map(x -> state(statespace(d), x), _x(d))
+        newx = map(s -> state_idx(wp, s), states)
+    end
+
+    dnew = DataDrill(
+        ddm,
+        j1ptr(d), j2ptr(d), tptr(d), jtstart(d), j1chars(d),
+        ichars(d), _y(d), newx, zchars(d)
+    )
+    return dnew
 end

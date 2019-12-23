@@ -25,13 +25,15 @@ end
 
 PerpetualProblem(dmax,Dmax,τ0max,τ1max,ext) = PerpetualProblem(dmax,Dmax)
 
-function ==(x::AbstractUnitProblem, y::AbstractUnitProblem)
+function ==(x::AUP, y::AUP) where {AUP<:Union{LeasedProblem, LeasedProblemContsDrill}}
     x.dmax == y.dmax &&
     x.Dmax == y.Dmax &&
     x.τ0max == y.τ0max &&
     x.τ1max == y.τ1max &&
     x.ext == y.ext
 end
+
+==(x::AbstractUnitProblem, y::AbstractUnitProblem) = false
 
 function ==(x::PerpetualProblem, y::PerpetualProblem)
     x.dmax == y.dmax &&
@@ -125,7 +127,7 @@ exploratory_learning(wp::PerpetualProblem) = end_ex0(wp)+1 : end_lrn(wp)
 """
     state_if_never_drilled(wp::AbstractUnitProblem, state0::Integer, t::Integer)
 
-At what state will a unit be in after `t` periods have passed if it has
+At what state will a unit be in after `t` ADDITIONAL periods have passed if it has
 decision structure `wp` and a starting `state0`?
 """
 function state_if_never_drilled(wp::AbstractUnitProblem, state0::Integer, t::Integer)
@@ -357,6 +359,7 @@ maxlease(wp::AbstractUnitProblem) = max( end_ex1(wp)+max_ext(wp), end_ex0(wp)-en
 
 _τ11(wp::AbstractUnitProblem, sidx::Integer) = 2*_τrem(wp,sidx)/maxlease(wp)-1
 
+state_idx(wp::AbstractStateSpace, s::state) = state_idx(wp, s.τ1, s.τ0, s.D, s.d1)
 
 # ----------------------------------
 # actions

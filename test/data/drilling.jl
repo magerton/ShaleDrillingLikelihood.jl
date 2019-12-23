@@ -29,8 +29,8 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
     uniti,
     simulate_lease,
     randsumtoone,
-    num_initial_leases
-
+    num_initial_leases,
+    DataDrillStartOnly
 
 
 @testset "Drilling Data Structure" begin
@@ -171,6 +171,25 @@ using ShaleDrillingLikelihood: SimulationDraws, _u, _v, SimulationDrawsMatrix, S
         end
         @test j == length(tptr(data))-1
         @test t == length(_y(data))
+
+        @testset "Drilling Start Only" begin
+            dso = DataDrillStartOnly(data)
+            for (ud, us) in zip(data, dso)
+                for (rd, rs) in zip(ud, us)
+                    for (ld, ls) in zip(rd, rs)
+
+                        if length(ld) > 0
+                            @test length(ls) == 1
+                            @test first(_x(ld)) == first(_x(ls))
+                            @test first(_y(ld)) == first(_y(ls))
+                        else
+                            @test length(ls) == 0
+                        end
+
+                    end
+                end
+            end
+        end
 
     end # testset: random drilling data
 

@@ -100,12 +100,16 @@ function reset!(x::LocalEstObj)
 end
 
 
-@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
-    dat = data(reo)
-    thetas = split_thetas(dat, theta)
-    for (d, θ) in zip(dat, thetas)
+function update!(data::DataSetofSets, theta::Vector)
+    _nparm(data) == length(theta) || throw(DimensionMismatch())
+    thetas = split_thetas(data, theta)
+    for (d, θ) in zip(data, thetas)
         update!(d, θ)
     end
+end
+
+@noinline function update_reo!(reo::RemoteEstObj, theta::Vector)
+    update!(data(reo), theta)
     return nothing
 end
 
@@ -163,8 +167,13 @@ data(ew::EstimationWrapper) = data(RemoteEstObj(ew))
 OneTo(ew::EstimationWrapper) = OneTo(num_i(LocalEstObj(ew)))
 _nparm(ew::EstimationWrapper) = _nparm(LocalEstObj(ew))
 
-function check_theta(ew::EstimationWrapper, theta)
-    length(theta) == _nparm(ew) || throw(DimensionMismatch())
+check_theta(ew::EstimationWrapper, theta) = check_theta(data(ew),theta)
+
+function check_theta(data::DataSetofSets, theta)
+    thetasvw = split_thetas(data, theta)
+    for (dat,θ) in zip(data,thetasvw)
+        update!(dat, θ)
+    end
 end
 
 function update!(ew::EstimationWrapper, theta, dograd)

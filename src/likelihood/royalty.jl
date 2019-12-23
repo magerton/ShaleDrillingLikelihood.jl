@@ -13,6 +13,10 @@ end
 
 const invsqrthalfπ = 1/sqrthalfπ
 
+# see
+# https://github.com/cossio/TruncatedNormal.jl/blob/fc904152f2da11a257e3ccdd3e49ef118b81d437/notes/normal.pdf
+# https://stats.stackexchange.com/questions/7200/evaluate-definite-interval-of-normal-distribution/7206#7206
+
 function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/scipy/scipy/blob/a2ffe09aa751749f2372aa13c19c61b2dec5266f/scipy/stats/_continuous_distns.py
     # https://github.com/JuliaStats/Distributions.jl/blob/master/src/truncated/normal.jl
@@ -80,6 +84,7 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
 
     l = _y(obs)
     xbeta = _xbeta(obs)
+    isfinite(xbeta) || throw(error("xbeta = $xbeta not finite"))
 
     check_finite(theta)
 
@@ -92,10 +97,14 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
             eta12 = η12(obs, theta, zm)
 
             if dograd == false
-                LLm[m] += loglik_royalty(obs, eta12)
+                LL = loglik_royalty(obs, eta12)
+                isfinite(LL) || @warn "LL = $LL not finite"
+                LLm[m] += LL
             else
                 η1, η2 = eta12
                 F,LL  = lik_loglik_royalty(obs, eta12)
+                isfinite(LL) || @warn "LL = $LL not finite. η1, η2 = $eta12 and choice =$l"
+                isfinite(F) || F <= 0 || @warn "F = $F not finite or zero"
                 LLm[m] += LL
                 am[m] = normpdf(η1) / F
                 bm[m] = normpdf(η2) / F
