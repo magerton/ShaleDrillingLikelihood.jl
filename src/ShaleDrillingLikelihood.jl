@@ -22,7 +22,7 @@ using Optim
 using StatsBase
 using ClusterManagers
 using DataFrames
-
+using RCall
 using UnsafeArrays
 using ArgParse
 
