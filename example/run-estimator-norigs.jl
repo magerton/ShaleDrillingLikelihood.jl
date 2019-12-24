@@ -4,8 +4,12 @@ using ShaleDrillingLikelihood.SDLParameters
 
 # detect if using SLURM
 if "SLURM_JOBID" in keys(ENV)
+    SLURM_JOBID = ENV["SLURM_JOBID"]
     using ClusterManagers
+else
+    SLURM_JOBID = ""
 end
+
 using CountPlus, Distributed
 using Optim: minimizer, Options, BFGS, NelderMead
 using ShaleDrillingLikelihood: value_function, EVobj, cost
@@ -48,11 +52,16 @@ if cost(REWARD) isa DrillingCost_TimeFE
     NUM_P = 51
     EXTEND_GRID = log(3)
     MINP = minp_default()
+    HASRIGS = "no-rigs"
+
 elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
     PSI = PsiSpace(15)
     NUM_P = 15
     EXTEND_GRID = log(2.5)
     MINP = 5e-5
+    HASRIGS = "WITH-rigs"
+else
+    throw(error("don't have values for this cost fct"))
 end
 
 println("Firms anticipate T1EV shocks? $ANTICIPATE")
@@ -140,3 +149,36 @@ if DO_FULL
     println("Starting full model solution")
     res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, MAXTIME_FULL)
 end
+
+# ------------------- save stuff -----------------------
+
+fn = "estimation-results-" *
+    SLURM_JOBID * "-" * HASRIGS
+    replace(DATAPTAH, r"\.RData" => ".jld2")
+
+leo = LocalEstObj(ew_u)
+reo = RemoteEstObj(ew_u)
+
+jldopen(fn, "w") do file
+    file["DATAPATH"] = DATAPATH
+    file["M"]        = _num_sim(sim(reo))
+    file["ddm_novf"] = DDM_NoVF(_model(drill(data(leo))))
+    file["LL"]       = ShaleDrillingLikelihood.LL(reo)
+    file["grad"]     = grad(leo)
+    file["hess"]     = hess(leo)
+    file["theta1"]   = theta1(leo)
+    file["invhess"]  = invhess(leo)
+
+    # file["LEO"] = leo # theta1, grad, hess, invhess, data
+end
+
+
+# need to save
+# REO: llvec -> LL, sim -> M
+# LEO: theta1, grad, hess, invhess
+# model: DDM_noVF
+# datasetname
+#
+# OR....
+#
+# save LEO + LL, M... but that could be a lot
