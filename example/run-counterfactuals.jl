@@ -45,6 +45,7 @@ else
     DATADIR = "E:/projects/haynesville/intermediate_data"
 end
 
+println_time_flush("Loading results from $JLD2FILE")
 file = jldopen(JLD2FILE, "r")
     DATAPATH = file["DATAPATH"]
     M        = file["M"]
