@@ -229,29 +229,3 @@ function Theta_NoTech(d::DataSetofSets, theta::Vector, TECH_YEAR_ZERO::Integer)
 
     return theta_notech
 end
-
-
-
-function save_simulations_to_R(
-    df_d::DataFrame, df_D::DataFrame, cost_df::DataFrame,
-    simulations_meta_info::DataFrame, THETA::Vector, FILEPATH::String,
-    TStop::Int)
-
-    println("saving simulations to .RData")
-
-    @rput df_d df_D cost_df simulations_meta_info THETA FILEPATH TStop
-
-    R"""
-    library(data.table)
-    setDT(df_D)
-    setDT(df_d)
-    setDT(cost_df)
-    setDT(simulations_meta_info)
-
-    save(simulations_meta_info, df_d, df_D, cost_df, THETA, TStop, file=FILEPATH)
-    rm(simulations_meta_info, df_d, df_D, cost_df, THETA, FILEPATH, TStop)
-    gc()
-    """
-
-    return nothing
-end

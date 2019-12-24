@@ -22,7 +22,6 @@ using Optim
 using StatsBase
 using ClusterManagers
 using DataFrames
-using RCall
 using UnsafeArrays
 using ArgParse
 
@@ -262,5 +261,7 @@ include("counterfactuals/sparse-state-transition.jl")
 include("counterfactuals/simulate-lease.jl")
 include("counterfactuals/simulate-unit.jl")
 include("counterfactuals/wrapper.jl")
+
+# include("likelihood/posteriors.jl")
 
 end # module

@@ -15,6 +15,7 @@ using ShaleDrillingLikelihood: value_function, EVobj, cost
 using SparseArrays: nonzeros
 using Formatting: generate_formatter
 using Dates: today
+using RCall
 
 num_nonzeros(x) = length(nonzeros(x))
 intstr = generate_formatter("%'d")
@@ -22,7 +23,7 @@ intstr = generate_formatter("%'d")
 using ShaleDrillingLikelihood: learn, royalty, constr, tech, tax,
     PerfectInfo, MaxLearning, drill,
     simulationPrimitives_information,
-    doSimulations, save_simulations_to_R, average_cost_df,
+    doSimulations, average_cost_df,
     Theta_NoTech, theta_revenue,
     time_idx, DateQuarter
 
@@ -126,7 +127,7 @@ if DO_PAR
     println_time_flush("Library loaded on workers")
 end
 
-df_t, df_Tstop = doSimulations(dataset_full, simlist, TSTOP, M)
+df_d, df_D = doSimulations(dataset_full, simlist, TSTOP, M)
 
 # ------------------- save -----------------------
 
@@ -134,6 +135,23 @@ filenm = "simulations-" * SLURM_JOBID * "-" * today() ".RData"
 filepath = joinpath(RFILEDIR, filenm)
 
 println_time_flush("Saving simulations")
-save_simulations_to_R(df_t, df_Tstop, cost_df, simulations_meta_info, theta, filepath, TSTOP)
+
+THETA = theta
+FILEPATH = filepath
+
+@rput df_d df_D cost_df simulations_meta_info THETA FILEPATH TStop
+
+R"""
+library(data.table)
+setDT(df_D)
+setDT(df_d)
+setDT(cost_df)
+setDT(simulations_meta_info)
+
+save(simulations_meta_info, df_d, df_D, cost_df, THETA, TStop, file=FILEPATH)
+rm(  simulations_meta_info, df_d, df_D, cost_df, THETA, TStop,      FILEPATH)
+gc()
+"""
+
 
 println_time_flush("Mischief managed. :)")
