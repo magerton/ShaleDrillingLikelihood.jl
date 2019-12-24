@@ -141,7 +141,7 @@ function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList
         fill!(sharesim, 0)
         rev = revenue(rwrd)
         thet_d = theta_drill(datafull, theta)
-        thet_r = vw_revenue(rwrd, thet_d),
+        thet_r = vw_revenue(rwrd, thet_d)
         println_time_flush("Simulation $k of $(length(simlist))")
         println("\tTech = $(tech(rev))")
         println("\tLearn = $(learn(rev))")
