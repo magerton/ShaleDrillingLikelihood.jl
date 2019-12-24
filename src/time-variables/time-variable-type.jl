@@ -14,11 +14,13 @@ _timevars(tv::ExogTimeVars) = tv.timevars
 _timestamp(tv::ExogTimeVars) = tv.timestamp
 
 getindex(tv::ExogTimeVars, t) = getindex(_timevars(tv), t)
-function getindex(tv::ExogTimeVars, t::Date)
+function time_idx(tv::ExogTimeVars, t::Date)
     ts = _timestamp(tv)
     t in ts || throw(DomainError(t))
-    return getindex(_timevars(tv), searchsortedfirst(ts,t))
+    return searchsortedfirst(ts,t)
 end
+getindex(tv::ExogTimeVars, t::Date) =
+    getindex(_timevars(tv), time_idx(tv,t))
 
 date(tv::ExogTimeVars, t::Integer)     = getindex(_timestamp(tv),t)
 length(tv::ExogTimeVars) = length(_timestamp(tv))
