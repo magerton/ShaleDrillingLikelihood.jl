@@ -13,14 +13,12 @@ function simulationPrimitives_information(simulations::Vector{<:SimulationList})
     df = DataFrame()
     df[!, :i] = 1:length(simulations)
 
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> tech    |> type_to_sym, simulations) )
-    df[!, :tax ]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> tax     |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> learn   |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> getindex(1) |> revenue |> royalty |> type_to_sym, simulations) )
-
-    df[!, :state_space] = CategoricalArray( map(s -> s |> getindex(2)                       |> type_to_sym, simulations) )
-
-    df[!, :theta]       = CategoricalArray( map(s -> s |> getindex(3)  |> round(; digits=3) |> string     , simulations) )
+    df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> tech    |> type_to_sym, simulations) )
+    df[!, :tax ]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> tax     |> type_to_sym, simulations) )
+    df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> learn   |> type_to_sym, simulations) )
+    df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> royalty |> type_to_sym, simulations) )
+    df[!, :state_space] = CategoricalArray( map(s -> s |> x -> getindex(x,2)                       |> type_to_sym, simulations) )
+    df[!, :theta]       = CategoricalArray( map(s -> s |> x -> getindex(x,3) |> x -> round.(x; digits=3) |> string     , simulations) )
     return df
 end
 
@@ -141,6 +139,15 @@ function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList
 
         check_theta(datafull, theta)
         fill!(sharesim, 0)
+        rev = revenue(rwrd)
+        thet_d = theta_drill(datafull, theta)
+        thet_r = vw_revenue(rwrd, thet_d),
+        println_time_flush("Simulation $k of $(length(simlist))")
+        println("\tTech = $(tech(rev))")
+        println("\tLearn = $(learn(rev))")
+        println("\tRoyalty = $(royalty(rev))")
+        println("\tStatespace = $(wp)")
+        println("\tTheta_rev = $(thet_r)")
 
         @eval @everywhere set_g_SimulationPrimitives($rwrd, $wp, $Tstop, $theta)
         simprim = get_g_SimulationPrimitives()
@@ -151,4 +158,100 @@ function doSimulations(datafull::DataSetofSets, simlist::Vector{<:SimulationList
     end
 
     return df_t, df_Tstop
+end
+
+
+
+function theta_cost(d::DataSetofSets, theta)
+    length(theta) == _nparm(d) || throw(DimensionMismatch())
+    rwrd = reward(_model(drill(d)))
+    theta_d = theta_drill(d, theta)
+    thet_c = vw_cost(rwrd, theta_d)
+    return thet_c
+end
+
+function theta_revenue(d::DataSetofSets, theta)
+    length(theta) == _nparm(d) || throw(DimensionMismatch())
+    rwrd = reward(_model(drill(d)))
+    theta_d = theta_drill(d, theta)
+    thet_r = vw_revenue(rwrd, theta_d)
+    return thet_r
+end
+
+function average_cost(dfull::DataSetofSets, theta, d::Int)
+    theta_c = theta_cost(dfull, theta)
+    ddrill = drill(dfull)
+    zs = zchars(ddrill)
+    m = _model(ddrill)
+    x = length(statespace(m))
+    C = cost(reward(m))
+
+    sim = SimulationDraw(0,0,0,zeros(Int,0))
+    grad = similar(theta_c)
+
+    obs(z) = ObservationDrill(m, (Inf,Inf), z, 0, x)
+    drillcost(z) = flow!(grad, C, d, obs(z), theta_c, sim, false)
+
+    avgcost = collect(drillcost(z) / d for z in _timevars(zs))
+
+    return avgcost
+end
+
+function average_cost_df(d::DataSetofSets, theta)
+
+    zs = zchars(drill(d))
+    cost1 = average_cost(d, theta, 1)
+    cost2 = average_cost(d, theta, 2)
+
+    df = DataFrame(
+        date = _timestamp(zs),
+        cost1 = cost1,
+        cost2 = cost2
+    )
+    return df
+end
+
+function Theta_NoTech(d::DataSetofSets, theta::Vector, TECH_YEAR_ZERO::Integer)
+    length(theta) == _nparm(d) || throw(DimensionMismatch())
+
+    theta_notech = copy(theta)
+
+    ddrill = drill(d)
+    m = _model(ddrill)
+    R = revenue(reward(m))
+
+    thet_r = theta_revenue(d, theta_notech)
+    basey = baseyear(tech(R))
+    alphat = thet_r[idx_t(R)]
+
+    thet_r[idx_0(R)] -= alphat*(basey - TECH_YEAR_ZERO)
+    thet_r[idx_t(R)] = 0
+
+    return theta_notech
+end
+
+
+
+function save_simulations_to_R(
+    df_d::DataFrame, df_D::DataFrame, cost_df::DataFrame,
+    simulations_meta_info::DataFrame, THETA::Vector, FILEPATH::String,
+    TStop::Int)
+
+    println("saving simulations to .RData")
+
+    @rput df_d df_D cost_df simulations_meta_info THETA FILEPATH TStop
+
+    R"""
+    library(data.table)
+    setDT(df_D)
+    setDT(df_d)
+    setDT(cost_df)
+    setDT(simulations_meta_info)
+
+    save(simulations_meta_info, df_d, df_D, cost_df, THETA, TStop, file=FILEPATH)
+    rm(simulations_meta_info, df_d, df_D, cost_df, THETA, FILEPATH, TStop)
+    gc()
+    """
+
+    return nothing
 end

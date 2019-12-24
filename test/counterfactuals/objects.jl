@@ -251,8 +251,8 @@ end
         (rwrd1, wp2, thetafull),
     ]
 
-    pids = start_up_workers(ENV)
-    @everywhere using ShaleDrillingLikelihood
+    # pids = start_up_workers(ENV)
+    # @everywhere using ShaleDrillingLikelihood
     M = 50
     Tstop = 60
     doSimulations(datafull, simlist, Tstop, M)
