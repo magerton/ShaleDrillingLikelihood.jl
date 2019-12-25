@@ -262,6 +262,6 @@ include("counterfactuals/simulate-lease.jl")
 include("counterfactuals/simulate-unit.jl")
 include("counterfactuals/wrapper.jl")
 
-# include("likelihood/posteriors.jl")
+include("likelihood/posteriors.jl")
 
 end # module
