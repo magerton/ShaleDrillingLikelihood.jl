@@ -131,7 +131,8 @@ df_d, df_D = doSimulations(dataset_full, simlist, TSTOP, M)
 
 # ------------------- save -----------------------
 
-filenm = "simulations-" * SLURM_JOBID * "-" * string(today()) * ".RData"
+dpath_no_rdata = replace(DATAPATH, ".RData" => "")
+filenm = "simulations-$(SLURM_JOBID)-$(dpath_no_rdata)-$(today()).RData"
 filepath = joinpath(RFILEDIR, filenm)
 
 println_time_flush("Saving simulations to $filepath")
