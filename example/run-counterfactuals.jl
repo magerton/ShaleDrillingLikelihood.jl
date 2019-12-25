@@ -131,15 +131,15 @@ df_d, df_D = doSimulations(dataset_full, simlist, TSTOP, M)
 
 # ------------------- save -----------------------
 
-filenm = "simulations-" * SLURM_JOBID * "-" * today() ".RData"
+filenm = "simulations-" * SLURM_JOBID * "-" * string(today()) * ".RData"
 filepath = joinpath(RFILEDIR, filenm)
 
-println_time_flush("Saving simulations")
+println_time_flush("Saving simulations to $filepath")
 
 THETA = theta
 FILEPATH = filepath
 
-@rput df_d df_D cost_df simulations_meta_info THETA FILEPATH TStop
+@rput df_d df_D cost_df simulations_meta_info THETA FILEPATH TSTOP
 
 R"""
 library(data.table)
@@ -148,8 +148,8 @@ setDT(df_d)
 setDT(cost_df)
 setDT(simulations_meta_info)
 
-save(simulations_meta_info, df_d, df_D, cost_df, THETA, TStop, file=FILEPATH)
-rm(  simulations_meta_info, df_d, df_D, cost_df, THETA, TStop,      FILEPATH)
+save(simulations_meta_info, df_d, df_D, cost_df, THETA, TSTOP, file=FILEPATH)
+rm(  simulations_meta_info, df_d, df_D, cost_df, THETA, TSTOP,      FILEPATH)
 gc()
 """
 
