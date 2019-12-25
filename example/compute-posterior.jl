@@ -1,14 +1,12 @@
-# module ShaleDrillingLikelihood_CounterfactualObjects_Test
-using Revise
-
+# using Revise
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
 using Distributed
-using Test
 using SharedArrays
 using JLD2
 using RCall
 using DataFrames
+using Dates: today
 
 using ShaleDrillingLikelihood: _ψ2, royalty, produce, num_i, value_function, EVobj, cost, drill
 using Base.Iterators: flatten, product, OneTo
@@ -82,19 +80,19 @@ sim = SimulationDraws(M, dataset_full)
 
 # ------------------- simulations -----------------------
 
-# if DO_PAR
-#     pids = start_up_workers(ENV)
-#     @everywhere using ShaleDrillingLikelihood
-#     println_time_flush("Library loaded on workers")
-# end
+if DO_PAR
+    pids = start_up_workers(ENV)
+    @everywhere using ShaleDrillingLikelihood
+    println_time_flush("Library loaded on workers")
+end
 
 @eval @everywhere set_g_BaseDataSetofSets($dataset_full)
 @eval @everywhere set_g_SimulationDrawsMatrix($sim)
 @eval @everywhere set_g_SharedPosterior($posteriors)
 
 # map(i -> simloglik_posterior!(i, theta, sim, posteriors, dataset_full), OneTo(N))
-# pmap(i -> simloglik_posterior!(i, theta), CachingPool(pids), OneTo(N))
-# rmprocs(pids)
+pmap(i -> simloglik_posterior!(i, theta), CachingPool(pids), OneTo(N))
+rmprocs(pids)
 
 unitidx = [Int32(n) for (m,n) in product(OneTo(M), OneTo(N))]
 psi2    = _ψ2(sim)
@@ -112,14 +110,12 @@ posterior_df = DataFrame(
 
 # ------------------- save -----------------------
 
-filenm = "posteriors-" * SLURM_JOBID * "-" * today() ".RData"
-filepath = joinpath(RFILEDIR, filenm)
+dpath_no_rdata = replace(DATAPATH, ".RData" => "")
+filenm = "posterior-$(SLURM_JOBID)-$(dpath_no_rdata)-$(today()).RData"
+FILEPATH = joinpath(RFILEDIR, filenm)
 
-println("saving simulations to $filepath")
+println("saving posterior to $FILEPATH")
 flush(stdout)
-
-println("saving simulations to .RData")
-FILEPATH = joinpath(OUTDIR, OUTFILE)
 
 @rput posterior_df FILEPATH
 
@@ -128,6 +124,7 @@ library(data.table)
 setDT(posterior_df)
 save(posterior_df, file=FILEPATH)
 rm(posterior_df, FILEPATH)
+gc()
 """
 
 println("all done! :)")
