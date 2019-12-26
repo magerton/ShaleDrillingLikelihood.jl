@@ -9,6 +9,13 @@ using Statistics
 using DataStructures: OrderedDict
 
 
+
+using ShaleDrillingLikelihood: idx_ρ, _ρ, _dρdθρ, theta_0, vw_revenue,
+    split_theta, revenue,
+    theta_produce_σ2η, theta_produce_σ2u, theta_produce_β,
+    average_cost_df, theta_indexes
+
+
 global MGL_CORP_INC_TAX
 global CAPITAL_MGL_TAX_RATE
 
@@ -64,12 +71,6 @@ function coef_translate(nm)
 
     return texify(nm2)
 end
-
-
-using ShaleDrillingLikelihood: idx_ρ, _ρ, _dρdθρ, theta_0, vw_revenue,
-    split_theta, revenue,
-    theta_produce_σ2η, theta_produce_σ2u, theta_produce_β,
-    average_cost_df, theta_indexes
 
 function nms_coef_se_sumstat(jld2file,
     DATADIR = "E:/projects/haynesville/intermediate_data";
@@ -164,7 +165,7 @@ function regcol(title, nms, coefs, ses, sumstats)
 
     rc = RegCol(title)
 
-    for x in zip(nms, coef, se)
+    for x in zip(nms, coefs, ses)
         setcoef!(rc, x...)
     end
 

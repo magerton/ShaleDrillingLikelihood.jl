@@ -23,7 +23,7 @@ mynote = "Mean well costs are the mean per-well drilling cost over the period $F
          "and the marginal tax rate on capital investment is \$\\tau_{k} \\approx $(round(100*CAPITAL_MGL_TAX_RATE;digits=1))\\% \$"
 
 
-mt = make_table(regtable(rcnew, rcnew), "caption", "label", "note")
+mt = make_table(regtable(rcnew, rcnew), "caption", "label", mynote)
 println(mt)
 
 
