@@ -155,8 +155,8 @@ theta_produce_σ2η(d, theta) = theta[idx_produce_σ2η(d)]
 theta_produce_σ2u(d, theta) = theta[idx_produce_σ2u(d)]
 
 theta_produce_β(  d::ProductionModel, theta) = view(theta, 2:length(theta)-2)
-theta_produce_σ2η(d::ProductionModel, theta) = theta[end-1]
-theta_produce_σ2u(d::ProductionModel, theta) = theta[end]
+theta_produce_σ2η(d::ProductionModel, theta) = theta[end-1] # ACTUALLY ση
+theta_produce_σ2u(d::ProductionModel, theta) = theta[end]   # ACTUALLY σu
 
 function coefnames(d::AbstractDataStructureProduction)
     nms = Vector{String}(undef, _nparm(d))
@@ -164,8 +164,8 @@ function coefnames(d::AbstractDataStructureProduction)
     beta_idx = idx_produce_β(d) .- 1
     nms[idx_produce_β(d)]  .= ["\\gamma_{$i}" for i in beta_idx]
     nms[idx_produce_g(d)]   = "\\alpha_g"
-    nms[idx_produce_σ2η(d)] = "\\sigma^2_\\eta"
-    nms[idx_produce_σ2u(d)] = "\\sigma^2_u"
+    nms[idx_produce_σ2η(d)] = "\\sigma_\\eta"
+    nms[idx_produce_σ2u(d)] = "\\sigma_u"
     return nms
 end
 
