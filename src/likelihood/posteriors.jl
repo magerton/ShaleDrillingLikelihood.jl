@@ -23,16 +23,16 @@ function fill!(s::SharedPosterior, x)
     return nothing
 end
 
-function SharedPosterior(M,N)
-    d = SharedMatrix{Float64}(M,N)
-    r = SharedMatrix{Float64}(M,N)
-    p = SharedMatrix{Float64}(M,N)
+function SharedPosterior(M,N; kwargs...)
+    d = SharedMatrix{Float64}(M,N; kwargs...)
+    r = SharedMatrix{Float64}(M,N; kwargs...)
+    p = SharedMatrix{Float64}(M,N; kwargs...)
     s = SharedPosterior(d,r,p)
     fill!(s, 0)
     return s
 end
 
-SharedPosterior(d::DataFull, M) = SharedPosterior(M, num_i(d))
+SharedPosterior(d::DataFull, M; kwargs...) = SharedPosterior(M, num_i(d); kwargs...)
 
 function view(s::SharedPosterior, i)
     d = view(drill(s), :, i)

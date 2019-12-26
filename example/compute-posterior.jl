@@ -83,7 +83,7 @@ end
 # ------------------- simulations -----------------------
 
 N = num_i(dataset_full)
-posteriors = SharedPosterior(M, N)
+posteriors = SharedPosterior(M, N; pids = pids)
 sim = SimulationDraws(M, dataset_full)
 
 @eval @everywhere set_g_BaseDataSetofSets($dataset_full)
