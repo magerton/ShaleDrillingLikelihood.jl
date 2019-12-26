@@ -31,8 +31,10 @@ RFILEDIR       = pargs["rFileDir"]
 
 if "SLURM_JOBID" in keys(ENV)
     DATADIR = "/home/magerton/haynesville/intermediate_data"
+    SLURM_JOBID = ENV["SLURM_JOBID"]
 else
     DATADIR = "E:/projects/haynesville/intermediate_data"
+    SLURM_JOBID = "999999"
 end
 
 println_time_flush("Loading results from $JLD2FILE")
