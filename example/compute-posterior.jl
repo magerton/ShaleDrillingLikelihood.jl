@@ -1,4 +1,4 @@
-# using Revise
+using Revise
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
 using Distributed
@@ -72,13 +72,7 @@ let thts = split_thetas(dataset_full, theta)
     println("theta_pdxn  = $(round.(thts[3]; digits=3))")
 end
 
-# ------------------- simulations -----------------------
-
-N = num_i(dataset_full)
-posteriors = SharedPosterior(dataset_full, M)
-sim = SimulationDraws(M, dataset_full)
-
-# ------------------- simulations -----------------------
+# ------------------- parallel startup -----------------------
 
 if DO_PAR
     pids = start_up_workers(ENV)
@@ -86,9 +80,16 @@ if DO_PAR
     println_time_flush("Library loaded on workers")
 end
 
+# ------------------- simulations -----------------------
+
+N = num_i(dataset_full)
+posteriors = SharedPosterior(M, N)
+sim = SimulationDraws(M, dataset_full)
+
 @eval @everywhere set_g_BaseDataSetofSets($dataset_full)
 @eval @everywhere set_g_SimulationDrawsMatrix($sim)
 @eval @everywhere set_g_SharedPosterior($posteriors)
+println_time_flush("starting simulations")
 
 # map(i -> simloglik_posterior!(i, theta, sim, posteriors, dataset_full), OneTo(N))
 pmap(i -> simloglik_posterior!(i, theta), CachingPool(pids), OneTo(N))

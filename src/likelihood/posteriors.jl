@@ -41,29 +41,18 @@ function view(s::SharedPosterior, i)
     return (d,r,p)
 end
 
-
-function parallel_simloglik_posterior!(
-    data, theta; kwargs...)
-    wp = CachingPool(workers())
-    @eval @everywhere
-
-    let x=theta, dograd=dograd, kwargs=kwargs
-        pmap(i -> simloglik!(i, x, dograd; kwargs...), wp, OneTo(ew))
-    end
-    return update!(ew, theta, dograd)
-end
-
-
 # SML for unit i
 function simloglik_posterior!(grptup::NTuple{3,ObservationGroup}, thetas,
     sim::SimulationDrawsVector, posteriors::NTuple{3,AbstractVector};
     kwargs...
 ) where {N}
 
-    for (theta, grp, post) in zip(thetas, grptup, posteriors)
-        fill!(_qm(sim), 0)
+    qm = _qm(sim)
+
+    for (k,(theta, grp, post)) in enumerate(zip(thetas, grptup, posteriors))
+        fill!(qm, 0)
         simloglik!(theta, grp, theta, sim, false; kwargs...)
-        post .= _qm(sim)
+        post .= qm
     end
     return nothing
 end
@@ -88,7 +77,7 @@ end
 function simloglik_posterior!(i, theta; kwargs...)
     data = get_g_BaseDataSetofSets()
     sim = get_g_SimulationDrawsMatrix()# ::SimulationDraws{Float64,2,Matrix{Float64}}
-    posteriors = get_g_SharedPosterior() #::SharedPosterior
-    simloglik_posterior!(i, theta, sim, posteriors, data; kwargs...)
+    posteriors = get_g_SharedPosterior()
+    simloglik_posterior!(i, theta, sim, posteriors::SharedPosterior, data; kwargs...)
     return nothing
 end
