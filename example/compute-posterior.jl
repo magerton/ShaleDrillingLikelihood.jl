@@ -89,6 +89,7 @@ sim = SimulationDraws(M, dataset_full)
 @eval @everywhere set_g_BaseDataSetofSets($dataset_full)
 @eval @everywhere set_g_SimulationDrawsMatrix($sim)
 @eval @everywhere set_g_SharedPosterior($posteriors)
+@eval @everywhere ShaleDrillingLikelihood.update!(get_g_BaseDataSetofSets(), $theta)
 println_time_flush("starting simulations")
 
 # map(i -> simloglik_posterior!(i, theta, sim, posteriors, dataset_full), OneTo(N))
