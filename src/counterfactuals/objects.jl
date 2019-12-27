@@ -108,14 +108,14 @@ function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDr
     # components of payoff. NOTE that these DO NOT depend on the deterministic state... just zₜ
     for d in actionspace(wp)
 
-        c   = flow!(vw_cost(   x, θ), cost(   x), d, newobs, vw_cost(   x, θ), sim, dograd)
         r   = flow!(vw_revenue(x, θ), revenue(x), d, newobs, vw_revenue(x, θ), sim, dograd)
+        c   = flow!(vw_cost(   x, θ), cost(   x), d, newobs, vw_cost(   x, θ), sim, dograd)
         pft = flow!(θ,                        x,  d, newobs, θ,                sim, dograd)
         s   = flow!(θ,                     surp,  d, newobs, θ,                sim, dograd)
 
         # assumes extension & eur are fixed
-        setindex!( revenue(  simtmp), c  , d+1)  # (1-r)rev - 0
-        setindex!( drillcost(simtmp), r  , d+1)  #    0     - drillcost(d)
+        setindex!( revenue(  simtmp), r  , d+1)  # (1-r)rev - 0
+        setindex!( drillcost(simtmp), c  , d+1)  #    0     - drillcost(d)
         setindex!( profit(   simtmp), pft, d+1)  # (1-r)rev - drillcost(d)
         setindex!( surplus(  simtmp), s  , d+1)  #      rev - drillcost(d)
     end

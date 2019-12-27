@@ -46,6 +46,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
 
         # this is ok to do b/c logsumexp(x::Float64) = x
         lse = logsumexp!(actionprobs, ubV)
+        isfinite(lse) || throw(error("lse = $lse with actionprobs = $actionprobs and ubV = $ubV"))
         eeps = lse - dot(actionprobs, ubV)
         setindex!(Eeps(simtmp), eeps, si)
       end

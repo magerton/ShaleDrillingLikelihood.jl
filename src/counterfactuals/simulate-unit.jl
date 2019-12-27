@@ -21,6 +21,7 @@
 
     model = _model(DataDrill(unit))
     solve_vf_and_update_itp!(model, theta_d, ichars(unit), false)
+    @assert any( EVobj(value_function(ddm)) .!= 0 )
 
     # do update
     for m = OneTo(M)
