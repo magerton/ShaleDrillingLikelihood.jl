@@ -142,6 +142,15 @@ function Theta(m::DrillingCost_TimeFE_rigrate, args...; kwargs...)
 end
 
 
+function Theta(m::DrillingCost_TimeFE_costdiffs, args...; kwargs...)
+    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+        timefe = [-10.548923591552184, -7.034018996118814, -5.758999044446409, -5.539143772743451, -5.579481358288621,]
+    else
+        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+    end
+    return vcat(timefe, 0.017248457193998108, -1.155685021020903, 1.6270414642692912,)
+end
+
 # extension
 # ---------
 Theta(m::ExtensionCost_Zero    , args...; kwargs...) = zeros(0)
