@@ -1,3 +1,9 @@
+function uview_col(x::SparseMatrixCSC, j::Integer)
+    vals = nonzeros(x)
+    rng = nzrange(x, j)
+    return view(vals, rng)
+end
+
 """
 for each period `t`, we need to compute
     1. State transitions: Pr(sₜ₊₁ | sₜ)
@@ -13,8 +19,9 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
     P = Pprime(simtmp)
 
     vals = nonzeros(P)
+    fill!(vals, 0)
 
-    states_after_drilling = end_ex0(wp)+1 : end_inf(wp)
+    states_after_drilling = end_lrn(wp)+1 : end_inf(wp)
     states_can_start_from = flatten( (_x(obs), states_after_drilling, )  )
 
     for si in states_can_start_from
@@ -23,8 +30,8 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
         actions = actionspace(obs_cf)
         dp1sp = actions .+ 1
 
-        local ubV = uview(vdfull(simtmp), dp1sp)
-        local actionprobs = uview(vals, nzrange(P,si))
+        local ubV = view(vdfull(simtmp), dp1sp)
+        local actionprobs = uview_col(P, si)
 
         # if we can't drill
         if end_ex0(wp) < si <= end_lrn(wp) || si == end_inf(wp)
@@ -32,7 +39,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
             fill!(ubV, 0)
             fill!(actionprobs, 1)
         else
-            @inbounds for d in actions
+            for d in actions
                 ubV[d+1] = full_payoff!(theta, d, obs, theta, sim, false)
             end
         end

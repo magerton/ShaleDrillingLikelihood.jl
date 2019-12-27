@@ -1,9 +1,3 @@
-function uview_col(x::SparseMatrixCSC, j::Integer)
-    vals = nonzeros(x)
-    rng = nzrange(x, j)
-    return uview(vals, rng)
-end
-
 
 """
     simulate a single path of drilling for section `i` given
@@ -49,8 +43,7 @@ function simulate_lease!(simprim::SimulationPrimitives,
 
                 # add to extension if we are expiring
                 if si == end_ex1(wp)
-                    extension += ext_cost *
-                        first(action_probs) * PrTday
+                    extension += ext_cost * first(action_probs) * PrTday
                 end
 
                 # ϵ cost shocks so we can add them to observed drilling cost later
@@ -59,7 +52,7 @@ function simulate_lease!(simprim::SimulationPrimitives,
                     epsdeq1 += PrTday * xlogx(Pr1)
                     Prdeq1  += PrTday * Pr1
                     if dmx >= 2
-                        Pr2 = uview(action_probs, 3:numactions)
+                        Pr2 = view(action_probs, 3:numactions)
                         twodmx = 2:dmx
                         epsdgt1 += PrTday * sum(xlogx.(Pr2) ./ twodmx )
                         Prdgt1  += PrTday * sum(Pr2)
@@ -76,10 +69,10 @@ function simulate_lease!(simprim::SimulationPrimitives,
 
                 # Expected payoffs
                 dp1space_t = OneTo(numactions) # 0:dmax
-                _profit += dot(action_probs, uview(profit(simtmp),    dp1space_t)) * PrTday
-                surp    += dot(action_probs, uview(surplus(simtmp),   dp1space_t)) * PrTday
-                cost    += dot(action_probs, uview(drillcost(simtmp), dp1space_t)) * PrTday
-                rev     += dot(action_probs, uview(revenue(simtmp),   dp1space_t)) * PrTday
+                _profit += dot(action_probs, view(profit(simtmp),    dp1space_t)) * PrTday
+                surp    += dot(action_probs, view(surplus(simtmp),   dp1space_t)) * PrTday
+                cost    += dot(action_probs, view(drillcost(simtmp), dp1space_t)) * PrTday
+                rev     += dot(action_probs, view(revenue(simtmp),   dp1space_t)) * PrTday
             end # PrTday > 0
         end # states
 

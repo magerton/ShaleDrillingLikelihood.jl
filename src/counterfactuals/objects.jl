@@ -94,13 +94,13 @@ function reset!(x::SimulationTmp, s0::Integer)
 end
 
 function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDraw, θ)
+
     update_sparse_state_transition!(simtmp, obs, sim, θ)
 
     m = _model(obs)
     wp = statespace(m)
-    nS = length(wp)
     dograd = false
-    newobs = ObservationDrill(m, ichars(obs), zchars(obs), 0, nS)
+    newobs = ObservationDrill(m, ichars(obs), zchars(obs), 0, length(wp))
 
     x = reward(m)
     surp = NoRoyaltyProblem(x)
@@ -108,10 +108,10 @@ function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDr
     # components of payoff. NOTE that these DO NOT depend on the deterministic state... just zₜ
     for d in actionspace(wp)
 
-        c   = flow!(vw_cost(   x, θ), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
-        r   = flow!(vw_revenue(x, θ), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
-        pft = flow!(θ,                        x,  d, obs, θ,                sim, dograd)
-        s   = flow!(θ,                     surp,  d, obs, θ,                sim, dograd)
+        c   = flow!(vw_cost(   x, θ), cost(   x), d, newobs, vw_cost(   x, θ), sim, dograd)
+        r   = flow!(vw_revenue(x, θ), revenue(x), d, newobs, vw_revenue(x, θ), sim, dograd)
+        pft = flow!(θ,                        x,  d, newobs, θ,                sim, dograd)
+        s   = flow!(θ,                     surp,  d, newobs, θ,                sim, dograd)
 
         # assumes extension & eur are fixed
         setindex!( revenue(  simtmp), c  , d+1)  # (1-r)rev - 0
@@ -120,7 +120,7 @@ function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDr
         setindex!( surplus(  simtmp), s  , d+1)  #      rev - drillcost(d)
     end
 
-    Q = eur_kernel(revenue(x), 0, obs, vw_revenue(x,θ), sim)
+    Q = eur_kernel(revenue(x), 0, newobs, vw_revenue(x,θ), sim)
     ext = extensioncost(extend(x), vw_extend(x,θ))
 
     return Q, ext

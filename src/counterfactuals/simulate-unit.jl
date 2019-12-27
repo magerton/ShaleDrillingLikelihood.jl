@@ -8,20 +8,22 @@
     qm = _qm(sim)
     fill!(qm,0)
 
+    M = _num_sim(sim)
+
     # royalty posterior
     if do_r
         simloglik_royalty!(first(obs_r), theta_r, sim, false)
         logsumexp!(qm)
     else
-        invM = 1/_num_sim(sim)
+        invM = 1/M
         qm .= invM
     end
 
-    m = _model(DataDrill(unit))
-    solve_vf_and_update_itp!(m, theta_d, ichars(unit), false)
+    model = _model(DataDrill(unit))
+    solve_vf_and_update_itp!(model, theta_d, ichars(unit), false)
 
     # do update
-    for m = OneTo(_num_sim(sim))
+    for m = OneTo(M)
         simm = getindex(sim, m)
 
         if num_initial_leases(unit) > 0
@@ -30,7 +32,9 @@
                 simulate_lease!(simprim, lease, simm, weight)
             end
         else
-            for lease in DevelopmentDrilling(unit)
+            DD = DevelopmentDrilling(unit)
+            @assert length(DD) == 1
+            for lease in DD
                 weight = qm[m]
                 simulate_lease!(simprim, lease, simm, weight)
             end
