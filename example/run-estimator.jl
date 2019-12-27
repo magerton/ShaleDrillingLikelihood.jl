@@ -64,6 +64,8 @@ if cost(REWARD) isa DrillingCost_TimeFE
     HASRIGS = "no-rigs"
 elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
     HASRIGS = "WITH-rigs"
+elseif cost(REWARD) isa DrillingCost_TimeFE_costdiffs
+    HASRIGS = "COSTDIFF"
 else
     throw(error("don't have values for this cost fct"))
 end
