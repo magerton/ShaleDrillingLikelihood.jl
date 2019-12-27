@@ -34,9 +34,11 @@ function simulate_lease!(simprim::SimulationPrimitives,
 
         for si in _x(obs):length(wp) #_x(obs) is state if never drilled
             PrTday = tday[si]
+            @assert 0 <= PrTday <= 1 || PrTday ≈ 1
 
             if PrTday > 0
                 action_probs = uview_col(Pprime(simtmp), si)
+                @assert sum(action_probs) ≈ 1
                 actions = actionspace(wp, si)
                 dmx = _dmax(wp,si)
                 numactions = dmx+1
