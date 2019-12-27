@@ -15,8 +15,8 @@ function simulationPrimitives_information(simulations::Vector{<:SimulationList})
 
     df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> tech    |> type_to_sym, simulations) )
     df[!, :tax ]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> tax     |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> learn   |> type_to_sym, simulations) )
-    df[!, :tech]        = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> royalty |> type_to_sym, simulations) )
+    df[!, :learn]       = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> learn   |> type_to_sym, simulations) )
+    df[!, :royalty]     = CategoricalArray( map(s -> s |> x -> getindex(x,1) |> revenue |> royalty |> type_to_sym, simulations) )
     df[!, :state_space] = CategoricalArray( map(s -> s |> x -> getindex(x,2)                       |> type_to_sym, simulations) )
     df[!, :theta]       = CategoricalArray( map(s -> s |> x -> getindex(x,3) |> x -> round.(x; digits=3) |> string     , simulations) )
     return df

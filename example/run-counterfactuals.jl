@@ -105,14 +105,19 @@ theta_notech = Theta_NoTech(dataset_full, theta, TECH_YEAR_ZERO)
 TSTOP = time_idx(zchars(drill(dataset_full)), DateQuarter(DATE_STOP))
 
 simlist = [
-    (DrillRwrd( learn(R),      royalty(R) ), wp, theta, ),
-    (DrillRwrd( learn(R),      royalty(R) ), wp, theta_notech, ),
-    (DrillRwrd( NoLearn(),     royalty(R) ), wp, theta, ),
-    (DrillRwrd( PerfectInfo(), royalty(R) ), wp, theta, ),
-    (DrillRwrd( MaxLearning(), royalty(R) ), wp, theta, ),
-    (DrillRwrd( learn(R),      NoRoyalty()), wp, theta, ),
-    (DrillRwrd( learn(R),      royalty(R) ), PP, theta, ),
-    (DrillRwrd( learn(R),      NoRoyalty()), PP, theta, ),
+    (DrillRwrd( learn(R),      royalty(R) ),   wp, theta, ),           # "Baseline"
+    (DrillRwrd( learn(R),      royalty(R) ),   wp, theta_notech, ),    # "Where to drill"
+    (DrillRwrd( NoLearn(),     royalty(R) ),   wp, theta, ),           # "No update ($\\psi_{it} = \\psi_i^0$)"
+    (DrillRwrd( PerfectInfo(), royalty(R) ),   wp, theta, ),           # "Perfect information ($\\psi_{it} = \\psi_i^1$)"
+    (DrillRwrd( MaxLearning(), royalty(R) ),   wp, theta, ),           # "Uninformative signals ($\\rho = 0$)"
+    (DrillRwrd( learn(R),      NoRoyalty()),   wp, theta, ),           # "No royalty"
+    (DrillRwrd( learn(R),      royalty(R) ),   PP, theta, ),           # "No expiration"
+    (DrillRwrd( learn(R),      NoRoyalty()),   PP, theta, ),           # "Ownership"
+    (DrillRwrd(NoLearn(),      NoRoyalty()  ), PP, theta_notech, ),    # "Price only"
+    (DrillRwrd(NoLearn(),      NoRoyalty()  ), PP, theta, ),           # "Price + tech (no distortions)"
+    (DrillRwrd(NoLearn(),      WithRoyalty()), wp, theta_notech, ),    # "Price + leases"
+    (DrillRwrd(Learn(),        NoRoyalty()  ), PP, theta_notech, ),    # "Price + learning"
+    (DrillRwrd(NoLearn(),      WithRoyalty()), PP, theta, ),           # "How to drill"
 ]
 
 simlist_meta = [(a,b,copy(theta_revenue(dataset_full, c))) for (a,b,c) in simlist]
