@@ -27,7 +27,7 @@ function simulate_lease!(simprim::SimulationPrimitives,
         @declarezero Float64 d0 d1 epsdeq1 epsdgt1 Prdeq1 Prdgt1
         @declarezero Float64 _profit surp cost rev extension
 
-        update_sparse_state_transition!(simtmp, obs, sim, θ)
+        update_sparse_state_transition!(simtmp, obs, sim, θt)
         eur, ext_cost = update!(simtmp, obs, sim, θt)
 
         tday, tmrw = today_tomorrow(simtmp, zt)
