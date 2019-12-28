@@ -14,7 +14,7 @@ using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     split_thetas, SimulationTmp, SimulationPrimitives,
     simulationPrimitives_information, dataFramesForSimulations,
     SharedSimulations, update_sim_dataframes_from_simdata!,
-    value_function,check_theta, doSimulations
+    value_function,check_theta, doSimulations, actionspace, statespace
 
 num_i = 50
 M = 10
@@ -76,6 +76,12 @@ u = ObservationGroup(ddata, 1)
 r = ObservationGroup(u, InitialDrilling())
 l = ObservationGroup(r, 1)
 lc = LeaseCounterfactual(l)
+
+# using ShaleDrillingLikelihood: actionspace
+#
+# for (obs, zt) in lc
+#     @show obs.ichars, obs.z, obs.y, obs.x, zt, actionspace(statespace(obs.model), obs.x)
+# end
 
 @testset "last counterfactual is an undrilled state" begin
     for unit in ddata

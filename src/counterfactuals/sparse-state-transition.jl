@@ -40,7 +40,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
             fill!(actionprobs, 1)
         else
             for d in actions
-                ubV[d+1] = full_payoff!(theta, d, obs, theta, sim, false)
+                ubV[d+1] = full_payoff!(theta, d, obs_cf, theta, sim, false)
             end
         end
 

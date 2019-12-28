@@ -95,8 +95,6 @@ end
 
 function update!(simtmp::SimulationTmp, obs::ObservationDrill, sim::SimulationDraw, θ)
 
-    update_sparse_state_transition!(simtmp, obs, sim, θ)
-
     m = _model(obs)
     wp = statespace(m)
     dograd = false
