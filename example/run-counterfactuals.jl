@@ -85,7 +85,7 @@ end
 
 # ------------------- simulations -----------------------
 
-wp = statespace(ddm)
+@show wp = statespace(ddm)
 PP = PerpetualProblem(wp)
 
 # ------------------- average costs -----------------------
