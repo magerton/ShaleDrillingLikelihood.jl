@@ -18,7 +18,6 @@
         invM = 1/M
         qm .= invM
     end
-    @assert sum(qm) ≈ 1
 
     model = _model(DataDrill(unit))
     solve_vf_and_update_itp!(model, theta_d, ichars(unit), false)
@@ -30,15 +29,11 @@
 
         if num_initial_leases(unit) > 0
             for lease in InitialDrilling(unit)
-                @assert length(j1chars(lease)) == 1
-                @assert 0 < j1chars(lease) <= 1
                 weight = qm[m] * j1chars(lease)
-                @assert 0 < weight <= j1chars(lease)
                 simulate_lease!(simprim, lease, simm, weight)
             end
         else
             DD = DevelopmentDrilling(unit)
-            @assert length(DD) == 1
             for lease in DD
                 weight = qm[m]
                 simulate_lease!(simprim, lease, simm, weight)
