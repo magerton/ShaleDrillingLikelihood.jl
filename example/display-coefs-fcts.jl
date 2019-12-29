@@ -26,9 +26,9 @@ function sigma_epsilon_and_capital_tau(_alpha0, _gamma0, sig_u, sig_eta)
     MONTHLY_INFLATION = 0x1.006b55c832502p+0  #  1.00163780343638
     BETA_ANNUAL_REAL  = (MONTHLY_INFLATION)^12 / (1+NOMINAL_ANNUAL_DISCOUNT_RATE)
 
-    MEDIAN_PERF              = 4445.5
+    MEDIAN_PERF              = 4428
     MEDIAN_LOGPERF           = log(MEDIAN_PERF)
-    GAMMA_Q_T                = 0x1.347a42c469f58p+2  #  4.81996220761342    cumulative pdxn FE for pdxn month 240
+    GAMMA_Q_T                = 0x1.32694dfd7a02ep+2  #  4.78767728570533    cumulative pdxn FE for pdxn month 240
     GATH_COMP_TRTMT_PER_MCF  = 0.42 + 0.07           # midstream charges
     global MGL_CORP_INC_TAX  = 0.402                 # mgl corp inc tax rate
     IDC_FRACTION             = 0.8                   # fraction of drilling costs that are intangible and expensed
@@ -144,7 +144,7 @@ function nms_coef_se_sumstat(jld2file,
 
     cost_df = average_cost_df(dataset_full, theta)
     date_range = first_cost_year .<= year.(cost_df[!,:date]) .<= last_cost_year
-    avgcost = mean( cost_df[date_range,:cost2] ./ 2 ) * sigeps / captau
+    avgcost = mean( cost_df[date_range,:cost2] ) * sigeps / (1-captau)
 
     sumstats = OrderedDict(
         "\$\\sigma_\\epsilon\$" => sigeps,

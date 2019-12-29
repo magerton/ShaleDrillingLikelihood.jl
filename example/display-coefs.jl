@@ -18,11 +18,12 @@ JLD2FILE = "E:/projects/ShaleDrillingResults/2019-12/16481962/estimation-results
 
 
 title_dataset = [
-     ("All, rigs"    , "E:/projects/ShaleDrillingResults/2019-12/16486124/estimation-results-16486124-WITH-rigs-data_all_leases.jld2",                ),
      ("All"          , "E:/projects/ShaleDrillingResults/2019-12/16481962/estimation-results-16481962-no-rigs-data_all_leases.jld2",                  ),
      ("First"        , "E:/projects/ShaleDrillingResults/2019-12/16627219/estimation-results-16627219-no-rigs-data_first_lease_only.jld2",            ),
      ("First, restr" , "E:/projects/ShaleDrillingResults/2019-12/16482515/estimation-results-16482515-no-rigs-data_first_lease_only_all_leased.jld2", ),
      ("Last"         , "E:/projects/ShaleDrillingResults/2019-12/16482550/estimation-results-16482550-no-rigs-data_last_lease_only.jld2",             ),
+     ("All, rigs"    , "E:/projects/ShaleDrillingResults/2019-12/16486124/estimation-results-16486124-WITH-rigs-data_all_leases.jld2",                ),
+     ("T1EV"         , "E:/projects/ShaleDrillingResults/2019-12/16627762/estimation-results-16627762-no-rigs-data_all_leases.jld2",                  ),
  ]
 
 rcs = [regcol(t, nms_coef_se_sumstat(j)...) for (t,j) in title_dataset]
