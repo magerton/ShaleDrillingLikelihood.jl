@@ -79,6 +79,12 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
         q0j  = view(q0, :, j, 1)
         ΔEVj = view(ΔEV, :, j)
 
+        # Consider https://juliamath.github.io/IterativeSolvers.jl/dev/preconditioning/#Preconditioning-1
+        # with https://github.com/haampie/IncompleteLU.jl as preconditioner
+        # https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method
+        # https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
+        # Econ paper - https://doi.org/10.1016/S1474-6670(17)33089-6
+        # Mrkaic and Pauletto (2001) Preconditioning in Economic Stochastic Growth Models
         update_IminusTVp!(t, ddm, q0j)
         fact = lu(IminusTEVp(t))
         ldiv!(fact, ΔEVj)                        # Vtmp = [I - T'(V)] \ [V - T(V)]
@@ -139,6 +145,8 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     for j in OneTo(nψ)
         qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
+
+        # Consider https://juliamath.github.io/IterativeSolvers.jl/dev/preconditioning/#Preconditioning-1
         fact = lu(IminusTEVp(t))
 
         # Note: cannot do this with @view(dEV0[:,j,:])
