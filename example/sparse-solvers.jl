@@ -120,28 +120,28 @@ q0j  = view(q0, :, j, 1)
 update_IminusTVp!(t, ddm, q0j)
 
 function solvedirect(t, ΔEVj, ΔEVj_orig)
-    # ΔEVj .= ΔEVj_orig
-    # fact = lu(IminusTEVp(t))
-    # ldiv!(fact, ΔEVj)
     ΔEVj .= IminusTEVp(t) \ ΔEVj_orig
 end
 
 using Preconditioners
 
 function solveindirect(t, ΔEVj, ΔEVj_orig; kwargs...)
-    bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; kwargs...)
+    # bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; kwargs...)
+    gmres!(ΔEVj, IminusTEVp(t), ΔEVj_orig; kwargs...)
 end
 
-function solveindirect_plu(t, ΔEVj, ΔEVj_orig, tau = 0.1; kwargs...)
+function solveindirect_plu(t, ΔEVj, ΔEVj_orig, tau = 0.02; kwargs...)
     LU = ilu(IminusTEVp(t); τ = tau)
-    bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=LU, kwargs...)
+    # bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=LU, kwargs...)
+    gmres!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=LU, kwargs...)
 end
 
 function solveindirect_diag(t, ΔEVj, ΔEVj_orig, dp::DiagonalPreconditioner; kwargs...)
     A = IminusTEVp(t)
     # dp = DiagonalPreconditioner(A)
     UpdatePreconditioner!(dp, A)
-    bicgstabl!(ΔEVj, A, ΔEVj_orig; Pl=LU, kwargs...)
+    # bicgstabl!(ΔEVj, A, ΔEVj_orig; Pl=LU, kwargs...)
+    gmres!(ΔEVj, A, ΔEVj_orig; Pl=dp, kwargs...)
 end
 
 dp = DiagonalPreconditioner(IminusTEVp(t))
@@ -161,11 +161,18 @@ bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; log=true)
 
 DiagonalPreconditioner(IminusTEVp(t))
 
-for tau in (2.0, 1.0, 0.1, 0.01, 0.001)
+for tau in (1.0, 0.1, 0.02, 0.01, 0.001)
     LU = ilu(IminusTEVp(t); τ = tau)
-    xplu, hist = bicgstabl!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=LU, log=true)
+    xplu, hist = gmres!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=LU, log=true)
     @show hist
 end
+
+x, hist = gmres!(ΔEVj, IminusTEVp(t), ΔEVj_orig; log=true)
+@show hist
+
+UpdatePreconditioner!(dp, IminusTEVp(t))
+x, hist = gmres!(ΔEVj, IminusTEVp(t), ΔEVj_orig; Pl=dp, log=true)
+@show hist
 
 
 
