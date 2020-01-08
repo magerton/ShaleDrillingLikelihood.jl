@@ -54,7 +54,7 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
-function div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
+function div_and_update_direct!(EV0, t, ddm, q0, ΔEV, vftol)
     J = size(EV0, 2)
     for j in OneTo(J)
         q0j  = uview(q0, :, j, 1)
@@ -67,17 +67,25 @@ function div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
     EV0 .-= ΔEV # update V
 end
 
-function div_and_update_indirect!(EV0, t, ddm, q0, ΔEV; kwargs...)
+function div_and_update_indirect!(EV0, t, ddm, q0, ΔEV, vftol; kwargs...)
     J = size(EV0,2)
     evnew = zeros(size(EV0,1))
+
     for j in OneTo(J)
         q0j  = uview(q0, :, j, 1)
         ΔEVj = uview(ΔEV, :, j)
+        if norm(ΔEVj, Inf) > vftol*1e-2
+            fill!(evnew, 0)
 
-        update_IminusTVp!(t, ddm, q0j)
-        bicgstabl!(evnew, IminusTEVp(t), ΔEVj; kwargs...)
-        all(isfinite.(evnew)) || throw(error("evnew not finite. j=$j, ΔEVj = $ΔEVj, evnew = $evnew"))
-        ΔEVj .= evnew
+            update_IminusTVp!(t, ddm, q0j)
+            # LU = ilu(IminusTEVp(t); τ = 0.1)
+            # UpdatePreconditioner!(dp, IminusTEVp(t))
+            # evnew = bicgstabl(IminusTEVp(t), ΔEVj; kwargs...)
+
+            gmres!(evnew, IminusTEVp(t), ΔEVj; initially_zero=true, kwargs...)
+            all(isfinite.(evnew)) || throw(error("evnew not finite. j=$j, ΔEVj = $ΔEVj, evnew = $evnew"))
+            ΔEVj .= evnew
+        end
     end
     EV0 .-= ΔEV # update V
 end
@@ -105,7 +113,7 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
     # Vtmp = [I - T'(V)] \ [V - T(V)]
     # V .= -Vtmp
     # div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
-    div_and_update_indirect!(EV0, t, ddm, q0, ΔEV) # ; tol=1e-10)
+    div_and_update_indirect!(EV0, t, ddm, q0, ΔEV, vftol; tol=1e-13)
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
@@ -185,4 +193,5 @@ function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::Dynamic
         converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
     end
     return converged, iter, bnds
+    # return solve_inf_pfit!(EV0, t, prim; maxit=maxit1, vftol=vftol)
 end

@@ -45,7 +45,10 @@ using Base.Iterators: flatten, product, OneTo
 using Dates: Month
 using LinearAlgebra: checksquare, stride1
 using Optim: minimizer
-using IterativeSolvers: bicgstabl!
+
+using IterativeSolvers
+# using IncompleteLU: ilu
+# using Preconditioners: DiagonalPreconditioner, UpdatePreconditioner!
 
 using InteractiveUtils: subtypes
 
