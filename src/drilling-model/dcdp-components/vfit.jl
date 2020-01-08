@@ -54,6 +54,35 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
+function div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
+    J = size(EV0, 2)
+    for j in OneTo(J)
+        q0j  = uview(q0, :, j, 1)
+        ΔEVj = uview(ΔEV, :, j)
+
+        update_IminusTVp!(t, ddm, q0j)
+        fact = lu(IminusTEVp(t))
+        ldiv!(fact, ΔEVj)  # Vtmp = [I - T'(V)] \ [V - T(V)]
+    end
+    EV0 .-= ΔEV # update V
+end
+
+function div_and_update_indirect!(EV0, t, ddm, q0, ΔEV; kwargs...)
+    J = size(EV0,2)
+    evnew = zeros(size(EV0,1))
+    for j in OneTo(J)
+        q0j  = uview(q0, :, j, 1)
+        ΔEVj = uview(ΔEV, :, j)
+
+        update_IminusTVp!(t, ddm, q0j)
+        bicgstabl!(evnew, IminusTEVp(t), ΔEVj; kwargs...)
+        all(isfinite.(evnew)) || throw(error("evnew not finite. j=$j, ΔEVj = $ΔEVj, evnew = $evnew"))
+        ΔEVj .= evnew
+    end
+    EV0 .-= ΔEV # update V
+end
+
+
 function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vftol=VFTOL, kwargs...)
 
     ΔEV = lse(t)
@@ -73,23 +102,10 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
         EV0 .= tmp(t)
         return bnds
     end
-
-    # full PFit
-    for j in OneTo(size(EV0, 2))
-        q0j  = view(q0, :, j, 1)
-        ΔEVj = view(ΔEV, :, j)
-
-        # Consider https://juliamath.github.io/IterativeSolvers.jl/dev/preconditioning/#Preconditioning-1
-        # with https://github.com/haampie/IncompleteLU.jl as preconditioner
-        # https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method
-        # https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
-        # Econ paper - https://doi.org/10.1016/S1474-6670(17)33089-6
-        # Mrkaic and Pauletto (2001) Preconditioning in Economic Stochastic Growth Models
-        update_IminusTVp!(t, ddm, q0j)
-        fact = lu(IminusTEVp(t))
-        ldiv!(fact, ΔEVj)                        # Vtmp = [I - T'(V)] \ [V - T(V)]
-    end
-    EV0 .-= ΔEV                                  # update V
+    # Vtmp = [I - T'(V)] \ [V - T(V)]
+    # V .= -Vtmp
+    # div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
+    div_and_update_indirect!(EV0, t, ddm, q0, ΔEV) # ; tol=1e-10)
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
