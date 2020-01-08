@@ -1,4 +1,6 @@
-module ShaleDrillingLikelihood_DynamicDrillModelTest
+# ;module ShaleDrillingLikelihood_DynamicDrillModelTest
+
+using Revise
 
 DOBTIME = false
 PRINTSTUFF = false
@@ -75,7 +77,7 @@ using ShaleDrillingLikelihood: DCDPEmax,
 
 println("print to keep from blowing up")
 
-@testset "Dynamic Drilling Model" begin
+# @testset "Dynamic Drilling Model" begin
 
     Random.seed!(1234)
     f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
@@ -243,13 +245,7 @@ println("print to keep from blowing up")
         end
     end
 
-    @testset "VF interpolation" begin
-
-
-
-    end
-
-    @testset "VF Iteration" begin
+    # @testset "VF Iteration" begin
 
         thetaminus = similar(theta)
         thetaplus = similar(theta)
@@ -591,9 +587,9 @@ println("print to keep from blowing up")
             end
 
         end # ddm
-    end # VF Iteration
+    # end # VF Iteration
 
 
 
-end # testset
-end # module
+# end # testset
+# end # module
