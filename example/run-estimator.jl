@@ -1,4 +1,4 @@
-# using Revise
+using Revise
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
 
@@ -73,7 +73,7 @@ end
 if "SLURM_JOBID" in keys(ENV)
     DATADIR = "/home/magerton/haynesville/intermediate_data"
 else
-    DATADIR = "E:/projects/haynesville/intermediate_data"
+    DATADIR = "D:/projects/haynesville/intermediate_data"
 end
 
 # --------------- create data ---------------
