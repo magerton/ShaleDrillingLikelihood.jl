@@ -54,8 +54,11 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
-function div_and_update_direct!(EV0, t, ddm, q0, ΔEV, vftol)
+function div_and_update_direct!(EV0, t, ddm)
     J = size(EV0, 2)
+    ΔEV = lse(t)
+    q0 = ubV(t)
+
     for j in OneTo(J)
         q0j  = uview(q0, :, j, 1)
         ΔEVj = uview(ΔEV, :, j)
@@ -67,24 +70,23 @@ function div_and_update_direct!(EV0, t, ddm, q0, ΔEV, vftol)
     EV0 .-= ΔEV # update V
 end
 
-function div_and_update_indirect!(EV0, t, ddm, q0, ΔEV, vftol; kwargs...)
+function div_and_update_indirect!(EV0, t, ddm, vftol; kwargs...)
+
     J = size(EV0,2)
-    evnew = zeros(size(EV0,1))
+    ΔEV = lse(t)
+    q0 = ubV(t)
+    ΔEVjnew = tmpEVj(t)
 
     for j in OneTo(J)
         q0j  = uview(q0, :, j, 1)
         ΔEVj = uview(ΔEV, :, j)
-        if norm(ΔEVj, Inf) > vftol*1e-2
-            fill!(evnew, 0)
-
+        if norm(ΔEVj, Inf) > vftol*1e-2  # b/c if ΔEVj ≈ 0, then we blow up
+            fill!(ΔEVjnew, 0)
             update_IminusTVp!(t, ddm, q0j)
-            # LU = ilu(IminusTEVp(t); τ = 0.1)
-            # UpdatePreconditioner!(dp, IminusTEVp(t))
-            # evnew = bicgstabl(IminusTEVp(t), ΔEVj; kwargs...)
-
-            gmres!(evnew, IminusTEVp(t), ΔEVj; initially_zero=true, kwargs...)
-            all(isfinite.(evnew)) || throw(error("evnew not finite. j=$j, ΔEVj = $ΔEVj, evnew = $evnew"))
-            ΔEVj .= evnew
+            # bicgstabl! results in NaNs
+            gmres!(ΔEVjnew, IminusTEVp(t), ΔEVj; initially_zero=true, kwargs...)
+            copyto!(ΔEVj, ΔEVjnew)
+            # all(isfinite.(ΔEVjnew)) || throw(error("ΔEVjnew not finite. j=$j, ΔEVj = $ΔEVj, ΔEVjnew = $ΔEVjnew"))
         end
     end
     EV0 .-= ΔEV # update V
@@ -107,13 +109,13 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
     # compute difference & check bnds
     bnds = extrema(ΔEV .= EV0 .- tmp(t)) .* -beta_1minusbeta(ddm)
     if all(abs.(bnds) .< vftol)
-        EV0 .= tmp(t)
+        copyto!(EV0, tmp(t))
         return bnds
     end
     # Vtmp = [I - T'(V)] \ [V - T(V)]
     # V .= -Vtmp
-    # div_and_update_direct!(EV0, t, ddm, q0, ΔEV)
-    div_and_update_indirect!(EV0, t, ddm, q0, ΔEV, vftol; tol=1e-13)
+    # div_and_update_direct!(EV0, t, ddm)
+    div_and_update_indirect!(EV0, t, ddm, vftol; tol=1e-13)
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
