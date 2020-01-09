@@ -51,6 +51,7 @@ using ShaleDrillingLikelihood: DCDPEmax,
     sprimes,
     _horizon,
     vfit!,
+    tmpEVj,
     dEV,
     EV,
     anticipate_t1ev,
@@ -130,8 +131,8 @@ println("print to keep from blowing up")
     @testset "Fill per-period flow payoffs" begin
 
         ddm = ddm_with_t1ev
-        tmpvminus = DCDPTmpVars(ubvminus, dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
-        tmpvplus  = DCDPTmpVars(ubvplus,  dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv))
+        tmpvminus = DCDPTmpVars(ubvminus, dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv), tmpEVj(tmpv))
+        tmpvplus  = DCDPTmpVars(ubvplus,  dubVfull(tmpv), dubVfullperm(tmpv), q(tmpv), lse(tmpv), tmp(tmpv), tmp_cart(tmpv), Πψtmp(tmpv), IminusTEVp(tmpv), tmpEVj(tmpv))
 
         for sidx in 1:length(wp)
             T = eltype(theta)

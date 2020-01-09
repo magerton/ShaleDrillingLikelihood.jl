@@ -92,6 +92,7 @@ println("print to keep from blowing up")
         end
 
         for ddm in (ddm_with_t1ev, ddm_no_t1ev)
+            println("doing ddm with anticipate: $(ddm.anticipate_t1ev)")
             wp = statespace(ddm)
             for i in OneTo(length(wp))
                 for d in actionspace(wp, i)

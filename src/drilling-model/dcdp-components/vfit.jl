@@ -54,6 +54,45 @@ end
 
 # --------------------------- basic pfit ----------------------------
 
+function div_and_update_direct!(EV0, t, ddm)
+    J = size(EV0, 2)
+    ΔEV = lse(t)
+    q0 = ubV(t)
+
+    for j in OneTo(J)
+        q0j  = uview(q0, :, j, 1)
+        ΔEVj = uview(ΔEV, :, j)
+
+        update_IminusTVp!(t, ddm, q0j)
+        fact = lu(IminusTEVp(t))
+        ldiv!(fact, ΔEVj)  # Vtmp = [I - T'(V)] \ [V - T(V)]
+    end
+    EV0 .-= ΔEV # update V
+end
+
+function div_and_update_indirect!(EV0, t, ddm, vftol; kwargs...)
+
+    J = size(EV0,2)
+    ΔEV = lse(t)
+    q0 = ubV(t)
+    ΔEVjnew = tmpEVj(t)
+
+    for j in OneTo(J)
+        q0j  = uview(q0, :, j, 1)
+        ΔEVj = uview(ΔEV, :, j)
+        if norm(ΔEVj, Inf) > vftol*1e-2  # b/c if ΔEVj ≈ 0, then we blow up
+            fill!(ΔEVjnew, 0)
+            update_IminusTVp!(t, ddm, q0j)
+            # bicgstabl! results in NaNs
+            gmres!(ΔEVjnew, IminusTEVp(t), ΔEVj; initially_zero=true, kwargs...)
+            copyto!(ΔEVj, ΔEVjnew)
+            # all(isfinite.(ΔEVjnew)) || throw(error("ΔEVjnew not finite. j=$j, ΔEVj = $ΔEVj, ΔEVjnew = $ΔEVjnew"))
+        end
+    end
+    EV0 .-= ΔEV # update V
+end
+
+
 function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vftol=VFTOL, kwargs...)
 
     ΔEV = lse(t)
@@ -70,26 +109,13 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
     # compute difference & check bnds
     bnds = extrema(ΔEV .= EV0 .- tmp(t)) .* -beta_1minusbeta(ddm)
     if all(abs.(bnds) .< vftol)
-        EV0 .= tmp(t)
+        copyto!(EV0, tmp(t))
         return bnds
     end
-
-    # full PFit
-    for j in OneTo(size(EV0, 2))
-        q0j  = view(q0, :, j, 1)
-        ΔEVj = view(ΔEV, :, j)
-
-        # Consider https://juliamath.github.io/IterativeSolvers.jl/dev/preconditioning/#Preconditioning-1
-        # with https://github.com/haampie/IncompleteLU.jl as preconditioner
-        # https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method
-        # https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
-        # Econ paper - https://doi.org/10.1016/S1474-6670(17)33089-6
-        # Mrkaic and Pauletto (2001) Preconditioning in Economic Stochastic Growth Models
-        update_IminusTVp!(t, ddm, q0j)
-        fact = lu(IminusTEVp(t))
-        ldiv!(fact, ΔEVj)                        # Vtmp = [I - T'(V)] \ [V - T(V)]
-    end
-    EV0 .-= ΔEV                                  # update V
+    # Vtmp = [I - T'(V)] \ [V - T(V)]
+    # V .= -Vtmp
+    # div_and_update_direct!(EV0, t, ddm)
+    div_and_update_indirect!(EV0, t, ddm, vftol; tol=1e-13)
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
@@ -141,7 +167,11 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     # for dubV/dθt
     sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
+    gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
+end
 
+function gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
+    nψ = size(dEV0, 2)
     for j in OneTo(nψ)
         qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
@@ -169,4 +199,5 @@ function solve_inf_vfit_pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, prim::Dynamic
         converged, iter, bnds = solve_inf_vfit!(EV0, t, prim; maxit=5000, vftol=vftol)
     end
     return converged, iter, bnds
+    # return solve_inf_pfit!(EV0, t, prim; maxit=maxit1, vftol=vftol)
 end
