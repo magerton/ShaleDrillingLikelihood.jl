@@ -152,6 +152,14 @@ tol = 1e-13
 @btime solveindirect_plu($t, $ΔEVj, $ΔEVj_orig; tol=tol)
 @btime solveindirect_diag($t, $ΔEVj, $ΔEVj_orig, $dp; tol=tol)
 
+A = IminusTEVp(t)
+ILU = ilu(A; τ = 1e-4)
+LU = lu(A)
+@btime ilu($A; τ = 1e-4)
+@btime lu($A)
+@btime gmres!($ΔEVj, $A, $ΔEVj_orig; Pl=$ILU)
+@btime solvedirect(  $t, $ΔEVj, $ΔEVj_orig)
+
 # for tau in (2.0, 1.0, 0.1, 0.01, 0.001)
 #     @btime solveindirect_plu($t, $ΔEVj, $ΔEVj_orig, $tau)
 # end
