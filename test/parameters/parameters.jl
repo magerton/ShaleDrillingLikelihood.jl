@@ -149,8 +149,8 @@ println("print to keep from blowing up")
     data_drill_n = DataDynamicDrill(u, v, _zchars, _ichars, ddm_no_t1ev,   θ_drill_u; ddm_opts...)
 
     # constrained versions of above
-    data_drill_w_con = DataDrill(ddm_c_with_t1ev, data_drill_w)
-    data_drill_n_con = DataDrill(ddm_c_no_t1ev, data_drill_n)
+    data_drill_w_con = DataDrill(data_drill_w, ddm_c_with_t1ev)
+    data_drill_n_con = DataDrill(data_drill_n, ddm_c_no_t1ev)
 
     # number of wells drilled
     nwells_w = total_wells_drilled(data_drill_w)
