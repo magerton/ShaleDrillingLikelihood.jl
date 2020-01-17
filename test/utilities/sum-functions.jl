@@ -85,6 +85,15 @@ println("printme")
     @test sum(q; dims=3) ≈ ones(ni,nj)
     @test q ≈ qcopy
 
+    # test w/ view
+    fill!(q,0)
+    fill!(lse,0)
+    @views qvw = q[:,:,1:end]
+    @views xvw = x[:,:,1:end]
+    # @show @code_warntype softmax3!(qvw, lse, tmpmax, xvw, 1)
+    softmax3!(qvw, lse, tmpmax, xvw, 1)
+
+    # test logsumexp
     fill!(q,0)
     fill!(lse,0)
     logsumexp_and_softmax!(lse, q, tmpmax, x, 1)
