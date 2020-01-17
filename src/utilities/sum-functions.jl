@@ -80,28 +80,26 @@ Based on code from
 https://arxiv.org/pdf/1412.8695.pdf eq 3.8 for p(y)
 https://discourse.julialang.org/t/fast-logsumexp/22827/7?u=baggepinnen for stable logsumexp
 """
-@generated function logsumexp!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
-    quote
-        n = length(x)
-        length(r) == n || throw(DimensionMismatch())
-        isempty(x) && return -T(Inf)
-        1 == stride1(r) == stride1(x) || throw(error("Arrays not strided"))
+function logsumexp!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
+    n = length(x)
+    length(r) == n || throw(DimensionMismatch())
+    isempty(x) && return -T(Inf)
+    1 == stride1(r) == stride1(x) || throw(error("Arrays not strided"))
 
-        u = maximum(x)                                       # max value used to re-center
-        abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
+    u = maximum(x)                                       # max value used to re-center
+    abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
 
-        s = zero(T)
-        @vectorize $T for i = 1:n
-            tmp = exp(x[i] - u)
-            r[i] = tmp
-            s += tmp
-        end
-
-        invs = inv(s)
-        r .*= invs
-
-        return log1p(s-1) + u
+    s = zero(T)
+    for i = 1:n
+        tmp = exp(x[i] - u)
+        r[i] = tmp
+        s += tmp
     end
+
+    invs = inv(s)
+    r .*= invs
+
+    return log1p(s-1) + u
 end
 
 logsumexp!(x) = logsumexp!(x,x)
@@ -117,13 +115,14 @@ Sets `lse = ∑_k exp(x[i,j,k])`
 
 Uses temporary array `tmp`
 """
-@generated function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, A<:Array{T}, AA<:AbstractArray{T}}
-    quote
+function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, A<:Array{T}, AA<:AbstractArray{T}}
         ndims(q) == 1+ndims(lse) || throw(DimensionMismatch())
         xsizes = size(x)
         xsizes == size(q) || throw(DimensionMismatch("size(x) = $(size(x)) but size(q) = $(size(q))"))
         nk = last(xsizes)
-        xsizes[1:end-1] ==  size(lse) == size(tmpmax) || throw(DimensionMismatch("size(x) = $(size(x)),  size(lse) = $(size(lse)), and size(tmpmax) = $(size(tmpmax))"))
+        for i = OneTo(ndims(lse))
+            size(q,i) == size(lse,i) == size(tmpmax,i) || throw(DimensionMismatch("size(x) = $(size(x)),  size(lse) = $(size(lse)), and size(tmpmax) = $(size(tmpmax))"))
+        end
         0 < maxk <= nk || throw(DomainError(maxk))
         1 == stride1(q) == stride1(x) || throw(error("Arrays not strided"))
 
@@ -135,16 +134,29 @@ Uses temporary array `tmp`
 
         xx = reshape(x, :, nk)
         qq = reshape(q, :, nk)
+        tmpmaxvec = vec(tmpmax)
+        lsevec = vec(lse)
 
-        for k in OneTo(nk)
-            @vectorize $T for i = 1:length(lse)
-                tmp = exp(xx[i,k] - tmpmax[i])
-                lse[i] += tmp
-                k <= maxk && (qq[i,k] = tmp)
+        for k in OneTo(maxk)
+            qk = uview(qq, :, k)
+            xk = uview(xx, :, k)
+            @avx for i in eachindex(lsevec)
+                tmp = exp(xk[i] - tmpmaxvec[i])
+                lsevec[i] += tmp
+                qk[i] = tmp
             end
         end
+
+        for k in maxk+1:nk
+            qk = uview(qq, :, k)
+            xk = uview(xx, :, k)
+            @avx for i in eachindex(lsevec)
+                tmp = exp(xk[i] - tmpmaxvec[i])
+                lsevec[i] += tmp
+            end
+        end
+
         qq[:,OneTo(maxk)] ./= vec(lse)
-    end
 end
 
 "use in vfit!"
