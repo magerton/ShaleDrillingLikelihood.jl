@@ -8,6 +8,7 @@ using Test
 using StatsFuns
 using Random
 using BenchmarkTools
+using InteractiveUtils
 
 using StatsFuns: softmax!
 
@@ -39,6 +40,7 @@ end
 
         bmark = logsumexp(x)
         @test bmark ≈ logsumexp!(z1,x)
+        # @show @code_warntype logsumexp!(z1,x)
 
         fill!(z1,0)
         softmax!(z1,y)
@@ -78,6 +80,7 @@ println("printme")
     lsetest = logsumexp3test!(x)
 
     # test softmax3 broadcast
+    # @show @code_warntype softmax3!(q, lse, tmpmax, x, 1)
     softmax3!(q, lse, tmpmax, x)
     @test sum(q; dims=3) ≈ ones(ni,nj)
     @test q ≈ qcopy

@@ -115,13 +115,14 @@ Sets `lse = ∑_k exp(x[i,j,k])`
 
 Uses temporary array `tmp`
 """
-@generated function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, A<:Array{T}, AA<:AbstractArray{T}}
-    quote
+function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) where {T<:Real, A<:Array{T}, AA<:AbstractArray{T}}
         ndims(q) == 1+ndims(lse) || throw(DimensionMismatch())
         xsizes = size(x)
         xsizes == size(q) || throw(DimensionMismatch("size(x) = $(size(x)) but size(q) = $(size(q))"))
         nk = last(xsizes)
-        xsizes[1:end-1] ==  size(lse) == size(tmpmax) || throw(DimensionMismatch("size(x) = $(size(x)),  size(lse) = $(size(lse)), and size(tmpmax) = $(size(tmpmax))"))
+        for i = OneTo(ndims(lse))
+            size(q,i) == size(lse,i) == size(tmpmax,i) || throw(DimensionMismatch("size(x) = $(size(x)),  size(lse) = $(size(lse)), and size(tmpmax) = $(size(tmpmax))"))
+        end
         0 < maxk <= nk || throw(DomainError(maxk))
         1 == stride1(q) == stride1(x) || throw(error("Arrays not strided"))
 
@@ -133,16 +134,25 @@ Uses temporary array `tmp`
 
         xx = reshape(x, :, nk)
         qq = reshape(q, :, nk)
+        tmpmaxvec = vec(tmpmax)
+        lsevec = vec(lse)
 
-        for k in OneTo(nk)
-            for i = 1:length(lse)
-                tmp = exp(xx[i,k] - tmpmax[i])
-                lse[i] += tmp
-                k <= maxk && (qq[i,k] = tmp)
+        for k in OneTo(maxk)
+            @avx for i in eachindex(lsevec)
+                tmp = exp(xx[i,k] - tmpmaxvec[i])
+                lsevec[i] += tmp
+                qq[i,k] = tmp
             end
         end
+
+        for k in maxk+1:nk
+            @avx for i in eachindex(lsevec)
+                tmp = exp(xx[i,k] - tmpmaxvec[i])
+                lsevec[i] += tmp
+            end
+        end
+
         qq[:,OneTo(maxk)] ./= vec(lse)
-    end
 end
 
 "use in vfit!"
