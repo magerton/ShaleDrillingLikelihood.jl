@@ -79,19 +79,33 @@ println("printme")
 
     lsetest = logsumexp3test!(x)
 
-    # test softmax3 broadcast
+    # softmax3 w/ matrices
     # @show @code_warntype softmax3!(q, lse, tmpmax, x, 1)
+    fill!(q,0)
+    fill!(lse,0)
+    softmax3!(q, lse, tmpmax, x, 1)
+    @test all(sum(q; dims=3) .<= 1)
+
+    fill!(q,0)
+    fill!(lse,0)
     softmax3!(q, lse, tmpmax, x)
     @test sum(q; dims=3) ≈ ones(ni,nj)
     @test q ≈ qcopy
 
     # test w/ view
+    nkm1 = nk-1
+    @views qvw = q[:,:,1:nkm1]
+    @views xvw = x[:,:,1:nkm1]
+    # @show @code_warntype softmax3!(qvw, lse, tmpmax, xvw, 1)
     fill!(q,0)
     fill!(lse,0)
-    @views qvw = q[:,:,1:end]
-    @views xvw = x[:,:,1:end]
-    # @show @code_warntype softmax3!(qvw, lse, tmpmax, xvw, 1)
     softmax3!(qvw, lse, tmpmax, xvw, 1)
+    @test all(sum(qvw; dims=3) .<= 1)
+
+    fill!(q,0)
+    fill!(lse,0)
+    softmax3!(qvw, lse, tmpmax, xvw)
+    @test sum(qvw; dims=3) ≈ ones(ni,nj)
 
     # test logsumexp
     fill!(q,0)
