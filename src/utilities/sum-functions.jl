@@ -80,28 +80,26 @@ Based on code from
 https://arxiv.org/pdf/1412.8695.pdf eq 3.8 for p(y)
 https://discourse.julialang.org/t/fast-logsumexp/22827/7?u=baggepinnen for stable logsumexp
 """
-@generated function logsumexp!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
-    quote
-        n = length(x)
-        length(r) == n || throw(DimensionMismatch())
-        isempty(x) && return -T(Inf)
-        1 == stride1(r) == stride1(x) || throw(error("Arrays not strided"))
+function logsumexp!(r::AbstractArray{T}, x::AbstractArray{T}) where {T}
+    n = length(x)
+    length(r) == n || throw(DimensionMismatch())
+    isempty(x) && return -T(Inf)
+    1 == stride1(r) == stride1(x) || throw(error("Arrays not strided"))
 
-        u = maximum(x)                                       # max value used to re-center
-        abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
+    u = maximum(x)                                       # max value used to re-center
+    abs(u) == Inf && return any(isnan, x) ? T(NaN) : u   # check for non-finite values
 
-        s = zero(T)
-        @vectorize $T for i = 1:n
-            tmp = exp(x[i] - u)
-            r[i] = tmp
-            s += tmp
-        end
-
-        invs = inv(s)
-        r .*= invs
-
-        return log1p(s-1) + u
+    s = zero(T)
+    for i = 1:n
+        tmp = exp(x[i] - u)
+        r[i] = tmp
+        s += tmp
     end
+
+    invs = inv(s)
+    r .*= invs
+
+    return log1p(s-1) + u
 end
 
 logsumexp!(x) = logsumexp!(x,x)
@@ -137,7 +135,7 @@ Uses temporary array `tmp`
         qq = reshape(q, :, nk)
 
         for k in OneTo(nk)
-            @vectorize $T for i = 1:length(lse)
+            for i = 1:length(lse)
                 tmp = exp(xx[i,k] - tmpmax[i])
                 lse[i] += tmp
                 k <= maxk && (qq[i,k] = tmp)
