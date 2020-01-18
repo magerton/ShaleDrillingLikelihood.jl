@@ -61,7 +61,7 @@ function arg_settings()
         # Payoffs
         "--cost"
             arg_type = AbstractDrillingCost
-            default = DrillingCost_TimeFE(2008,2012)
+            default = DrillingCost_TimeFE(2008.5,2012.5)
             group = "payoff"
         "--extension"
             arg_type = AbstractExtensionCost
