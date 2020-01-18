@@ -45,6 +45,8 @@ struct DrillingRevenue{
     royalty::Roy
 end
 
+# zvars(x::DrillingRevenue) = vcat(:price, zvars(tech(x)) )
+
 DrillingRevenue(Cn, Tech, Tax) = DrillingRevenue(Cn, Tech, Tax, Learn(), WithRoyalty())
 
 @inline constr( x::DrillingRevenue) = x.constr
@@ -97,6 +99,9 @@ baseyear(x::NoTrend) = TIME_TREND_BASE
 baseyear(x::TimeFE) = x.start
 baseyear(x::DrillingRevenue) = baseyear(tech(x))
 baseyear(x::DrillReward) = baseyear(revenue(x))
+
+# zvars(x::NoTrend) = Vector{Symbol}(undef,0)
+# zvars(x::AbstractTechChange) = [:year,]
 
 const DrillingRevenueTimeTrend = DrillingRevenue{Cn,TimeTrend} where {Cn}
 const DrillingRevenueNoTrend   = DrillingRevenue{Cn,NoTrend} where {Cn}
