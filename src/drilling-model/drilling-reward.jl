@@ -67,12 +67,6 @@ function coefnames(x::DrillReward)
     return vcat(c, e, r)
 end
 
-# function zvars(x::DrillReward)
-#     c = zvars(cost(   x))
-#     e = zvars(extend( x))
-#     r = zvars(revenue(x))
-#     return Set(vcat(c,e,r))
-# end
 # -----------------------------------------
 # deprecate
 # -----------------------------------------

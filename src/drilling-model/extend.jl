@@ -30,5 +30,3 @@ extensioncost(::ExtensionCost_Constant, θ) = θ[1]
     return sgn ? extensioncost(x,θ) : azero(θ)
 end
 coefnames(::ExtensionCost_Constant) = ["\\alpha_{ext}",]
-
-# zvars(x::AbstractExtensionCost) = Vector{Symbol}(undef,0)

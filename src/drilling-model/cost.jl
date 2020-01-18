@@ -31,8 +31,6 @@ yearrange(x::AbstractDrillingCost_TimeFE) = x.yearrange
 @inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = Int(clamp(t, start(x), stop(x)) - start(x) + 1)
 @inline time_idx(x, obs) = time_idx(x,year(obs))
 
-# zvars(x::AbstractDrillingCost) = Vector{Symbol}(undef,0)
-
 # -------------------------------------------
 # Drilling Cost
 # -------------------------------------------
@@ -199,6 +197,3 @@ function coefnames(x::DrillingCost_TimeFE_rig_costdiffs)
     cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
     return vcat(cfs, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d=1}", "\\alpha_{D>0,d>1}", "\\alpha_{rig}")
 end
-
-# zvars(x::AbstractDrillingCost_TimeFE) = [:year,]
-# zvars(x::Union{DrillingCost_TimeFE_rig_costdiffs, DrillingCost_TimeFE_rigrate}) = [:rig, :year,]
