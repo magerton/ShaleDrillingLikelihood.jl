@@ -1,8 +1,4 @@
-using ShaleDrillingLikelihood: PriceTuple,
-    PriceCostTuple,
-    PriceCostYearTuple,
-    PriceYearTuple,
-    zero_out_small_probs!
+using ShaleDrillingLikelihood: zero_out_small_probs!
 
 import ShaleDrillingLikelihood: logprice, logrigrate
 
@@ -16,7 +12,7 @@ export GridTransition
 
 mysteprange(a,b,n) = range(a,b;length=n)
 
-function PriceGrid(z::Vector{PriceTuple}, delta, len)
+function PriceGrid(z, delta, len)
     x = first.(z)
     prng = range(minimum(x)-delta, maximum(x)+delta; length=len)
     sigsq = var(diff(x))
@@ -25,7 +21,7 @@ function PriceGrid(z::Vector{PriceTuple}, delta, len)
     return prng, P
 end
 
-function PriceCostGrid(z::Vector{T}, delta, len) where {T<:Union{PriceCostTuple, PriceCostYearTuple}}
+function PriceCostGrid(z, delta, len)
     p = logprice.(z)
     c = logrigrate.(z)
     pc = hcat(p,c)
@@ -50,12 +46,13 @@ function PriceCostGrid(z::Vector{T}, delta, len) where {T<:Union{PriceCostTuple,
     return pcrng, P
 end
 
-function YearGrid(z::Vector{T}, args...) where {T<:Union{PriceYearTuple, PriceCostYearTuple}}
+function YearGrid(z, args...)
     y = ShaleDrillingLikelihood.year.(z)
     miny, maxy = extrema(y)
-    yrng = miny : maxy
+    yrng = UnitRange(miny, maxy)
     nyears = length(yrng)
     nyearsm1 = nyears-1
+    @assert nyearsm1 == maxy-miny
 
     l = zeros(nyearsm1)
     m = vcat(fill(3/4,nyearsm1), 1.0)
@@ -65,19 +62,26 @@ function YearGrid(z::Vector{T}, args...) where {T<:Union{PriceYearTuple, PriceCo
     return yrng, P
 end
 
-function GridTransition(z::Vector{<:PriceTuple}, delta, len; minp=minp_default())
+function GridTransition(rwrd::DrillReward{R,C}, z::Vector, delta::Number, len::Number; minp=minp_default()) where {
+        R, C<:Union{DrillingCost_constant, DrillingCost_dgt1}
+    }
     rng, P = PriceGrid(z,delta,len)
     zero_out_small_probs!(P, minp)
     return tuple(rng), sparse(P)
 end
 
-function GridTransition(z::Vector{<:PriceCostTuple}, delta, len; minp=minp_default())
-    rng, P = PriceCostGrid(z, delta, len)
-    zero_out_small_probs!(P, minp)
-    return rng, sparse(P)
-end
+# # rigrate + price
+# function GridTransition(rwrd::DrillReward{R,C}, z, delta, len; minp=minp_default()) where {
+#         R, C<:Union{DrillingCost_constant, DrillingCost_dgt1}
+#     }
+#     rng, P = PriceCostGrid(z, delta, len)
+#     zero_out_small_probs!(P, minp)
+#     return rng, sparse(P)
+# end
 
-function GridTransition(z::Vector{<:PriceYearTuple}, delta, len; minp=minp_default())
+function GridTransition(rwrd::DrillReward{R,C}, z::Vector, delta::Number, len::Number; minp=minp_default()) where {
+        R, C<:AbstractDrillingCost_TimeFE
+    }
     p = tuple.(logprice.(z))
     prng, pP = PriceGrid(p, delta, len)
     yrng, yP = YearGrid(z)
@@ -87,7 +91,9 @@ function GridTransition(z::Vector{<:PriceYearTuple}, delta, len; minp=minp_defau
     return rng, sparse(P)
 end
 
-function GridTransition(z::Vector{<:PriceCostYearTuple}, delta, len; minp=minp_default())
+function GridTransition(rwrd::DrillReward{R,C}, z::Vector, delta::Number, len::Number; minp=minp_default()) where {
+        R, C<:Union{DrillingCost_TimeFE_rigrate, DrillingCost_TimeFE_rig_costdiffs}
+    }
     pcrng, pcP = PriceCostGrid(z,delta,len)
     yrng, yP = YearGrid(z)
     rng = (pcrng..., yrng)
@@ -96,7 +102,6 @@ function GridTransition(z::Vector{<:PriceCostYearTuple}, delta, len; minp=minp_d
     return rng, sparse(P)
 end
 
-GridTransition(etv::ExogTimeVars, args...; kwargs...) = GridTransition(_timevars(etv), args...; kwargs...)
-
-GridTransition(d::DataDrillPrimitive, args...; kwargs...) = GridTransition(zchars(d), args...; kwargs...)
+GridTransition(rwrd::DrillReward, etv::ExogTimeVars, args...; kwargs...) = GridTransition(rwrd, _timevars(etv), args...; kwargs...)
+GridTransition(d::DataDrillPrimitive, args...; kwargs...) = GridTransition(reward(d), zchars(d), args...; kwargs...)
 GridTransition(d::DataDrill,          args...; kwargs...) = zspace(_model(d)), ztransition(_model(d))

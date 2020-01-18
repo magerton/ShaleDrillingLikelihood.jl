@@ -135,7 +135,7 @@ validnum(x) = isfinite(x) && !ismissing(x)
 
 logprice(  r::DataFrameRow) = log(r[:well_revenue] / r[:ppi2009])
 logrigrate(r::DataFrameRow) = log(r[:dayrate_c]    / r[:ppi2009])
-myyear(    r::DataFrameRow) = Int(floor(r[:qtrdate]))
+myyear(    r::DataFrameRow, baseyr=BaseYear()) = floor(r[:qtrdate] - baseyr) + baseyr
 year_clamp(r::DataFrameRow, lb, ub) = clamp(myyear(r), lb, ub)
 
 @deprecate logcost(r) logrigrate(r)
@@ -150,7 +150,7 @@ function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_constant, D
     return f
 end
 
-function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_TimeFE, DrillingCost_TimeFE_costdiffs}}
+function ztuple(d::DrillReward{R,C}) where {R, C<:AbstractDrillingCost_TimeFE}
     f(r) = (logprice(r), myyear(r))
     return f
 end
