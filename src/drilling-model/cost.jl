@@ -28,7 +28,7 @@ yearrange(x::AbstractDrillingCost_TimeFE) = x.yearrange
 @inline start(x::AbstractDrillingCost_TimeFE) = first(yearrange(x))
 @inline stop(x::AbstractDrillingCost_TimeFE) = last(yearrange(x))
 @inline startstop(x::AbstractDrillingCost_TimeFE) = start(x), stop(x)
-@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = Int(clamp(t, start(x), stop(x)) - start(x) + 1)
+@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Number) = Int(clamp(t, start(x), stop(x)) - start(x) + 1)
 @inline time_idx(x, obs) = time_idx(x,year(obs))
 
 # -------------------------------------------
