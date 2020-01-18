@@ -122,10 +122,11 @@ Theta(m::DrillingCost_dgt1, args...; kwargs...) = vcat(-5.5, 1.0)
 
 function Theta(m::DrillingCost_TimeFE, args...; kwargs...)
     c2plus = 1.407
-    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+    n = length(ShaleDrillingLikelihood.yearrange(m))
+    if n == 5
         timefe = [-9.48651914568503, -6.198466654405615, -4.859543515359247, -4.391926980826075, -4.464122201335934,]
     else
-        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+        throw(error("no starting values for length(yearrange($m)) == 5"))
     end
     return vcat(timefe, c2plus)
 end
@@ -133,20 +134,22 @@ end
 function Theta(m::DrillingCost_TimeFE_rigrate, args...; kwargs...)
     c2plus = 1.407
     crig = -1.0
-    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+    n = length(ShaleDrillingLikelihood.yearrange(m))
+    if n == 5
         timefe = [-9.48651914568503, -6.198466654405615, -4.859543515359247, -4.391926980826075, -4.464122201335934,]
     else
-        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+        throw(error("no starting values for length(yearrange($m)) == 5"))
     end
     return vcat(timefe, c2plus, crig)
 end
 
 
 function Theta(m::DrillingCost_TimeFE_costdiffs, args...; kwargs...)
-    if ShaleDrillingLikelihood.start(m) == 2008 && ShaleDrillingLikelihood.stop(m) == 2012
+    n = length(ShaleDrillingLikelihood.yearrange(m))
+    if n == 5
         timefe = [-10.548923591552184, -7.034018996118814, -5.758999044446409, -5.539143772743451, -5.579481358288621,]
     else
-        throw(error("no starting values for start $(start(m)) and stop $(stop(m))"))
+        throw(error("no starting values for length(yearrange($m)) == 5"))
     end
     return vcat(timefe, 0.017248457193998108, -1.155685021020903, 1.6270414642692912,)
 end

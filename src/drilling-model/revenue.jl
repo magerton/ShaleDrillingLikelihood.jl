@@ -8,6 +8,7 @@ export AbstractTaxType,
     GathProcess,
     NoTrend,
     TimeTrend,
+    TimeFE,
     Unconstrained,
     Constrained,
     DrillingRevenue,
@@ -75,7 +76,7 @@ const DrillingRevenueUnconstrained = DrillingRevenue{Unconstrained}
 # Technology
 # -----------------
 
-const TIME_TREND_BASE = 2008.0
+const TIME_TREND_BASE = 2008.5
 
 struct NoTrend <: AbstractTechChange  end
 struct TimeTrend <: AbstractTechChange
@@ -88,13 +89,18 @@ end
 yearrange(x::TimeFE) = x.yearrange
 start(x::TimeFE) = first(yearrange(x))
 stop(x::TimeFE) = last(yearrange(x))
-_nparm(x::TimeFE) = length(yearrange(x))
+_nparm(x::TimeFE) = length(yearrange(x))-1
 TimeFE(a,b) = TimeFE(UnitRange(a,b))
 TimeFE() = TimeFE(2008.5, 2016.5)
+function coefnames(x::TimeFE)
+    yrng = UnitRange(start(x)+1, stop(x))
+    cfnms = ["\\alpha_{" * string(yr) *"}" for yr in yrng]
+    return cfnms
+end
 
 baseyear(x::TimeTrend) = x.baseyear
 baseyear(x::NoTrend) = TIME_TREND_BASE
-baseyear(x::TimeFE) = x.start
+baseyear(x::TimeFE) = start(x)
 baseyear(x::DrillingRevenue) = baseyear(tech(x))
 baseyear(x::DrillReward) = baseyear(revenue(x))
 
@@ -181,7 +187,7 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline _nparm(x::DrillingRevenue{Constrained}) = 2
 @inline _nparm(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
 @inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
-@inline _nparm(x::DrillingRevenue{Unconstrained, TimeFE}) = 4 + length(tech(x))
+@inline _nparm(x::DrillingRevenue{Unconstrained, TimeFE}) = 4 + _nparm(tech(x))
 
 @inline idx_0(x::DrillingRevenue) = 1
 @inline idx_g(x::DrillingRevenue) = 2
@@ -425,6 +431,8 @@ coefnames(x::DrillingRevenue{Unconstrained, TimeTrend}) =
     ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\alpha_t", "\\theta_\\rho"]
 coefnames(x::DrillingRevenue{Constrained}) =
     ["\\alpha_0", "\\theta_\\rho"]
+coefnames(x::DrillingRevenue{Unconstrained, TimeFE}) = vcat(
+    "\\alpha_0", "\\alpha_g", "\\alpha_\\psi", coefnames(tech(x)), "\\theta_\\rho")
 
 # ----------------------------------------------------------------
 # dψ is the same across many functions

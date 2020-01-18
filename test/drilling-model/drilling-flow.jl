@@ -57,6 +57,8 @@ const DOPRINT = false
             DrillingRevenue(Unconstrained(),TimeTrend(),NoTaxes(), Learn(), WithRoyalty()),
             DrillingRevenue(Unconstrained(),TimeTrend(),WithTaxes(), Learn(), WithRoyalty()),
 
+            DrillingRevenue(Unconstrained(),TimeFE(),WithTaxes(), Learn(), WithRoyalty()),
+
             DrillingRevenue(Constrained(),NoTrend(),NoTaxes(), Learn(), NoRoyalty()),
             DrillingRevenue(Constrained(),NoTrend(),WithTaxes(), Learn(), NoRoyalty()),
             DrillingRevenue(Constrained(),TimeTrend(),NoTaxes(), Learn(), NoRoyalty()),
