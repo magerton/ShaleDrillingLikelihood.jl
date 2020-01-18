@@ -122,6 +122,7 @@ struct DataDrillPrimitive{
 end
 
 
+reward(x::DataDrillPrimitive) = x.reward
 
 struct DataDrill{M<:AbstractDrillModel, ETV<:ExogTimeVars, ITup<:Tuple, XT} <: AbstractDataDrill
     model::M
@@ -162,6 +163,7 @@ end
 
 DataDrill(d::AbstractDataDrill) = _data(d)
 DataDrill(g::AbstractDataStructure) = DataDrill(_data(g))
+reward(x::DataDrill) = reward(_model(x))
 
 function DataDrill(d::AbstractDataDrill, m::AbstractDrillModel)
     statespace(d) == statespace(m) || throw(error("state space not same"))

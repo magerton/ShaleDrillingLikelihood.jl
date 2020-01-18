@@ -23,10 +23,12 @@ end
 
 "Abstract Type for Costs w Fixed Effects"
 abstract type AbstractDrillingCost_TimeFE <: AbstractDrillingCost end
-@inline start(    x::AbstractDrillingCost_TimeFE) = x.start
-@inline stop(     x::AbstractDrillingCost_TimeFE) = x.stop
+(x::Type{T})(a, b) where {T<:AbstractDrillingCost_TimeFE} = T(UnitRange(Float64(a), Float64(b)))
+yearrange(x::AbstractDrillingCost_TimeFE) = x.yearrange
+@inline start(x::AbstractDrillingCost_TimeFE) = first(yearrange(x))
+@inline stop(x::AbstractDrillingCost_TimeFE) = last(yearrange(x))
 @inline startstop(x::AbstractDrillingCost_TimeFE) = start(x), stop(x)
-@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = clamp(t, start(x), stop(x)) - start(x) + 1
+@inline time_idx( x::AbstractDrillingCost_TimeFE, t::Integer) = Int(clamp(t, start(x), stop(x)) - start(x) + 1)
 @inline time_idx(x, obs) = time_idx(x,year(obs))
 
 # -------------------------------------------
@@ -70,10 +72,11 @@ coefnames(::DrillingCost_dgt1) = ["\\alpha_{d=1}", "\\alpha_{d>1}"]
 
 "Time FE for 2008-2012"
 struct DrillingCost_TimeFE <: AbstractDrillingCost_TimeFE
-    start::Int16
-    stop::Int16
+    yearrange::UnitRange{Float64}
+    # start::Float64
+    # stop::Float64
 end
-@inline _nparm(x::DrillingCost_TimeFE) = 2 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE) = 1 + length(yearrange(x))
 @inline function flow!(grad, u::DrillingCost_TimeFE, d, obs, θ, sim, dograd::Bool)
     T = eltype(θ)
     dograd && fill!(grad, 0)
@@ -99,10 +102,11 @@ end
 
 "Time FE for 2008-2012 with shifters for (D==0,d>1), (D>1,d==1), (D>1,d>1)"
 struct DrillingCost_TimeFE_costdiffs <: AbstractDrillingCost_TimeFE
-    start::Int16
-    stop::Int16
+    yearrange::UnitRange{Float64}
+    # start::Float64
+    # stop::Float64
 end
-@inline _nparm(x::DrillingCost_TimeFE_costdiffs) = 4 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_costdiffs) = 3 + length(yearrange(x))
 @inline function flow!(grad, u::DrillingCost_TimeFE_costdiffs, d, obs, θ, sim, dograd::Bool)
     T = eltype(θ)
     dograd && fill!(grad, 0)
@@ -131,10 +135,11 @@ end
 
 "Time FE w rig rates for 2008-2012"
 struct DrillingCost_TimeFE_rigrate <: AbstractDrillingCost_TimeFE
-    start::Int16
-    stop::Int16
+    yearrange::UnitRange{Float64}
+    # start::Float64
+    # stop::Float64
 end
-@inline _nparm(x::DrillingCost_TimeFE_rigrate) = 3 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_rigrate) = 2 + length(yearrange(x))
 @inline function flow!(grad, u::DrillingCost_TimeFE_rigrate, d, obs, θ, sim, dograd::Bool)
     T = eltype(θ)
     dograd && fill!(grad, 0)
@@ -164,10 +169,11 @@ end
 
 "Time FE for 2008-2012 with shifters for (D==0,d>1), (D>1,d==1), (D>1,d>1)"
 struct DrillingCost_TimeFE_rig_costdiffs <: AbstractDrillingCost_TimeFE
-    start::Int16
-    stop::Int16
+    yearrange::UnitRange{Float64}
+    # start::Float64
+    # stop::Float64
 end
-@inline _nparm(x::DrillingCost_TimeFE_rig_costdiffs) = 5 + stop(x) - start(x)
+@inline _nparm(x::DrillingCost_TimeFE_rig_costdiffs) = 4 + length(yearrange(x))
 @inline function flow!(grad, u::DrillingCost_TimeFE_rig_costdiffs, d, obs, θ, sim, dograd::Bool)
     dograd && fill!(grad, 0)
     d == 0 && return zero(T)
