@@ -73,78 +73,23 @@ end
 if "SLURM_JOBID" in keys(ENV)
     DATADIR = "/home/magerton/haynesville/intermediate_data"
 else
-    DATADIR = "E:/projects/haynesville/intermediate_data"
+    DATADIR = "D:/projects/haynesville/intermediate_data"
 end
 
 # --------------- create data ---------------
 
 # load in data from disk
 rdatapath = joinpath(DATADIR, DATAPATH)
-
-# using FileIO
-# rdata = load(rdatapath)
-#
-# qc = rdata["qchars"]
-#
-# using Dates
-# using CategoricalArrays
-# using DataFrames, Query, StatsModels
-# using MixedModels
-#
-#
-# dts = qc[1:10,:well_start_date]
-#
-# function yearmonth_float(t)
-#     ym = yearmonth(t)
-#     return first(ym) + (last(ym)-1)/12
-# end
-#
-# function ym_to_ur(ur::UnitRange, ym::Float64)
-#     baseyr = first(ur)
-#     lastyr = last(ur)
-#     y = floor(ym - baseyr) + baseyr
-#     return clamp(y, baseyr, lastyr)
-# end
-#
-# ym_to_ur(ur::UnitRange, t::Date) = ym_to_ur(ur, yearmonth_float(t))
-# ym_to_ur(rwrd::DrillReward, x) = ym_to_ur(yearrange(tech(rwrd)), x)
-#
-# qc[!,:well_start_year] = map(t -> ym_to_ur(UnitRange(2008.5, 2016.5),t), qc[!,:well_start_date])
-# qc[!,:well_start_fe] = CategoricalArray(qc[!,:well_start_year])
-# qc[!,:intercept] .= 1.0
-# qc[!,:icat] .= CategoricalVector(qc[!,:i])
-#
-# fm = @formula(logcumgas_r ~ log_ogip + well_start_year_cat + 1 + (1|icat) + (1|iD))
-# res = fit!( LinearMixedModel(fm, qc) )
-# res
-#
-# modelmatrix(ModelFrame(@formula(logcumgas_r ~ log_ogip + well_start_year_cat + 1), qc))
-#
-# ymset = sort(collect(Set(yms)))
-# Vector(ymset)
-#
-#
-# yearmonth_float.(dts)
-# ur = UnitRange(2008.5, 2016.5)
-# map(t -> searchsortedlast(ur,yearmonth_float(t))-1, dts)
-#
-# _qchars[!,:α_t] .= year.(_qchars[!,:well_start_date]) .- baseyear(rwrd)
-REV = DrillingRevenue(Unconstrained(), TimeFE(2008.5,2016.5), GathProcess())
-REWARD = DrillReward(REV, COST, EXT)
-
 println_time_flush("loading $rdatapath")
 data_royalty    = DataRoyalty(REWARD, rdatapath)
 data_produce    = DataProduce(REWARD, rdatapath)
 data_drill_prim = DataDrillPrimitive(REWARD, rdatapath)
 println_time_flush("Data imported")
 
-xx = ThetaProduceStarting(REWARD, rdatapath)
 thetarho0 = ThetaRho()
 theta0_royalty = Theta(data_royalty; θρ = thetarho0)
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
-
-
 
 # transition matrices
 zrng, ztrans = GridTransition(data_drill_prim, EXTEND_GRID, NUM_P; minp=MINP)
@@ -158,8 +103,6 @@ data_drill = DataDrill(data_drill_prim, ddm)
 
 evdims = size(EVobj(value_function(ddm)))
 println_time_flush("EV dimension is $evdims, implying $(intstr(prod(evdims))) states")
-
-CoefLinks(data_drill)
 
 # full dataset
 dataset_full = DataSetofSets(data_drill, data_royalty, data_produce, CoefLinks(data_drill))

@@ -39,11 +39,11 @@ function arg_settings()
 
         "--maxtimeCnstr"
             arg_type = Int
-            default = 3 * 60^2
+            default = 0 * 60^2
             group = "comp"
         "--maxtimeFull"
             arg_type = Int
-            default  = 24 * 60^2
+            default  = 0 * 60^2
             group = "comp"
         "--noPar"
             action = :store_true
@@ -69,7 +69,7 @@ function arg_settings()
             group = "payoff"
         "--revenue"
             arg_type = DrillingRevenue
-            default = DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() )
+            default = DrillingRevenue(Unconstrained(), TimeFE(2008.5,2016.5), GathProcess() )
             group = "payoff"
 
         "--anticipateT1EV"
@@ -84,11 +84,11 @@ function arg_settings()
         # Approximation
         "--numP"
             arg_type=Int
-            default=51
+            default=13
             group="approx"
         "--numPsi"
             arg_type=Int
-            default=51
+            default=21
             group="approx"
         "--extendPriceGrid"
             arg_type=Float64
