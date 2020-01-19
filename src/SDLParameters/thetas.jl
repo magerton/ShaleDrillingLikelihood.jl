@@ -32,7 +32,8 @@ end
 function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
     rwrd_c = ConstrainedProblem(m, theta)
     theta_rev = vw_revenue(m, theta)
-    r = [x for (i,x) in enumerate(theta_rev) if i ∉ ConstrainedIdx(revenue(m))]
+    idxit = Base.Iterators.flatten(ConstrainedIdx(revenue(m)))
+    r = [x for (i,x) in enumerate(theta_rev) if i ∉ idxit]
     c = vw_cost(m,theta)
     e = vw_extend(m,theta)
     return vcat(c,e,r)

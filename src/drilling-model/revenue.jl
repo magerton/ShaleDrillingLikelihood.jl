@@ -226,8 +226,7 @@ function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
 end
 
 ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x, θ))
-
-ConstrainedIdx(x::DrillingRevenueTimeTrend) = idx_g(x), idx_ψ(x), idx_t(x)
+ConstrainedIdx(x::AbstractDrillingRevenue) = idx_g(x), idx_ψ(x), idx_t(x)
 ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
 
 function UnconstrainedFmConstrainedIdx(x::DrillingRevenueConstrained)
