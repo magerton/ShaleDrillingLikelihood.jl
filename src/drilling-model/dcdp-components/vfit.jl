@@ -167,7 +167,8 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     # for dubV/dθt
     sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
-    gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
+    # gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
+    gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=2)
 end
 
 function gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
@@ -176,13 +177,42 @@ function gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
         qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
 
-        # Consider https://juliamath.github.io/IterativeSolvers.jl/dev/preconditioning/#Preconditioning-1
         fact = lu(IminusTEVp(t))
 
         # Note: cannot do this with @view(dEV0[:,j,:])
         ΠsumdubVj .= view(ΠsumdubV, :, j, :)
         ldiv!(dev0tmpj, fact, ΠsumdubVj) # ΠsumdubV[:,j,:])
         dEV0[:,j,:] .= dev0tmpj
+    end
+end
+
+
+function gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=1)
+    nz, nψ, nθt = size(dEV0)
+
+    # tmpvars
+    βqdEV0 = sumdubV
+    q0 = view(ubV(t), :, :, 1)
+
+    # get some good starting values for iterative solver
+    dEV0 .= ΠsumdubV
+    for it = 1:gradinfmaxit
+        βqdEV0 .= discount(ddm) .* q0 .* dEV0
+        A_mul_B_md!(dEV0, ztransition(ddm), βqdEV0, 1)
+        dEV0 .+= ΠsumdubV
+    end
+
+    # solve linear system for infinite horizon gradient
+    for j in OneTo(nψ)
+        qj = view(ubV(t), :, j, 1)
+        update_IminusTVp!(t, ddm, qj)
+        for k = OneTo(nθt)
+            dEV0jk = uview(dEV0, :, j, k)
+            ΠsumdubVjk = uview(ΠsumdubV, :, j, k)
+            if any(dEV0jk != 0)
+                gmres!(dEV0jk, IminusTEVp(t), ΠsumdubVjk; initially_zero=false)
+            end
+        end
     end
 end
 

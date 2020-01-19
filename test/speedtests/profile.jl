@@ -35,12 +35,13 @@ for i = 1:2
 end
 
 # profile
+Profile.clear()
 @profile test_serial_simloglik!(ew, theta_peturb, true; vftol=VFTOL)
 Juno.profiletree()
 Juno.profiler()
 
 # different VF Tols
-for VFTOL in (1e-6, 1e-7, 1e-8, 1e-9, 1e-10)
+for VFTOL in (1e-7,) # 1e-6, 1e-7, 1e-8, 1e-9, 1e-10)
     println("VFTOL = $VFTOL")
     @btime test_serial_simloglik!($ew, $theta_peturb, true; vftol=$VFTOL)
 end
