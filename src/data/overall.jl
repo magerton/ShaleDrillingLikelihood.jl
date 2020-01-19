@@ -53,6 +53,11 @@ function DataSetofSets(d,r,p, cfp::Vector, cfd::Vector)
     DataSetofSets(d,r,p, map(f -> f(p), cfp), map(f -> f(d), cfd))
 end
 
+function DataSetofSets(d,r,p, ct::Tuple{Vector,Vector})
+    DataSetofSets(d,r,p,ct...)
+end
+
+
 function DataSetofSets(d,r,p,cfl::Vector{<:Tuple})
     return DataSetofSets(d,r,p, first.(cfl), last.(cfl))
 end

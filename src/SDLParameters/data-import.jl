@@ -1,5 +1,6 @@
 using ShaleDrillingLikelihood: DrillingRevenueTimeTrend,
     DrillingRevenueNoTrend,
+    DrillingRevenueTimeFE,
     baseyear,
     tech,
     range_i_to_ip1,
@@ -7,7 +8,8 @@ using ShaleDrillingLikelihood: DrillingRevenueTimeTrend,
     DateQuarter,
     state_idx,
     InitialDrilling,
-    j1chars
+    j1chars,
+    yearrange
 
 
 export FormulaProduce, FormulaRoyalty, ThetaProduceStarting
@@ -39,26 +41,58 @@ const cols = Dict(
 
 # variables for regressions
 function FormulaProduce(::DrillReward{<:DrillingRevenueTimeTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept + (1|icat) + (1|iD))
-    full = @formula(logcumgas_r ~ 0 + log_ogip + α_t + intercept)
+    strt = @formula(logcumgas_r ~ 1 + log_ogip + α_t + (1|icat) + (1|iD))
+    full = @formula(logcumgas_r ~ 1 + log_ogip + α_t)
     fm = startvalues ? strt : full
     return fm
 end
 function FormulaProduce(::DrillReward{<:DrillingRevenueNoTrend}, startvalues=false)
-    strt = @formula(logcumgas_r ~ 0 + log_ogip + intercept  + (1|icat) + (1|iD))
-    full = @formula(logcumgas_r ~ 0 + log_ogip + intercept)
+    strt = @formula(logcumgas_r ~ 1 + log_ogip  + (1|icat) + (1|iD))
+    full = @formula(logcumgas_r ~ 1 + log_ogip)
     fm = startvalues ? strt : full
     return fm
 end
+function FormulaProduce(::DrillReward{<:DrillingRevenueTimeFE}, startvalues=false)
+    strt = @formula(logcumgas_r ~ 1 + log_ogip + well_start_fe  + (1|icat) + (1|iD))
+    full = @formula(logcumgas_r ~ 1 + log_ogip + well_start_fe)
+    fm = startvalues ? strt : full
+    return fm
+end
+
 FormulaProduce(x::DynamicDrillModel) = FormulaProduction(reward(x))
+
+
+function yearmonth_float(t)
+    ym = yearmonth(t)
+    return first(ym) + (last(ym)-1)/12
+end
+
+function ym_to_ur(ur::UnitRange, ym::Float64)
+    baseyr = first(ur)
+    lastyr = last(ur)
+    y = floor(ym - baseyr) + baseyr
+    return clamp(y, baseyr, lastyr)
+end
+
+ym_to_ur(ur::UnitRange, t::Date) = ym_to_ur(ur, yearmonth_float(t))
+ym_to_ur(rwrd::DrillReward, x) = ym_to_ur(yearrange(tech(revenue(rwrd))), x)
+
+
+function update_qchars!(_qchars::DataFrame, rwrd)
+    _qchars[!,:α_t]  .= year.(_qchars[!,:well_start_date]) .- baseyear(rwrd)
+    _qchars[!,:icat] .= CategoricalVector(_qchars[!,:i])
+    wsy = map(t -> ym_to_ur(rwrd, t), _qchars[!,:well_start_date])
+    _qchars[!,:well_start_fe] = CategoricalArray(wsy)
+    return _qchars
+end
+
 
 function DataProduce(rwrd::DrillReward, path; model=ProductionModel(), kwargs...)
 
     # load in data
     alldata = load(path)
     _qchars = alldata[cols[:qchars]]
-    _qchars[!,:intercept] .= 1
-    _qchars[!,:α_t]       .= year.(_qchars[!,:well_start_date]) .- baseyear(rwrd)
+    update_qchars!(_qchars,rwrd)
 
     # formula
     startvalues = false
@@ -68,6 +102,8 @@ function DataProduce(rwrd::DrillReward, path; model=ProductionModel(), kwargs...
     qmf = ModelFrame(fm, _qchars)
     y = response(qmf)
     X = Matrix(modelmatrix(qmf)')
+    X[1:end-1,:] .= X[2:end,:]
+    X[end,:] .= 1
 
     @assert all(@view(X[end,:]) .== 1)
 
@@ -82,15 +118,14 @@ function ThetaProduceStarting(rwrd::DrillReward, path)
 
     alldata = load(path)
     _qchars = alldata[cols[:qchars]]
-    _qchars[!,:intercept] .= 1
-    _qchars[!,:α_t]  .= year.(_qchars[!,:well_start_date]) .- baseyear(rwrd)
-    _qchars[!,:icat] .= CategoricalVector(_qchars[!,:i])
+    update_qchars!(_qchars,rwrd)
 
     startingvals = true
     fm = FormulaProduce(rwrd, startingvals)
     res = fit!(LinearMixedModel(fm, _qchars))
     σwell, σψ, σϵ = vcat(std(res)...)
-    qcoef = vcat(σψ, coef(res)..., σϵ, σwell)
+    cf = coef(res)
+    qcoef = vcat(σψ, cf[2:end], cf[1], σϵ, σwell)
     return qcoef
 end
 
