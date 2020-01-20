@@ -138,6 +138,7 @@ function print_parsed_args(x::Dict)
     parm = [
         "computeStarting",
         "theta",
+        "convertKappa"
     ]
     payoff = [
         "revenue",

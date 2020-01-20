@@ -93,11 +93,6 @@ theta0_royalty = Theta(data_royalty; θρ = thetarho0)
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
 
-if CONVERT_KAPPA
-    kap = theta_royalty_κ(data_royalty, theta0_royalty)
-    update_kappa_level_to_cumsum!(kap)
-end
-
 # transition matrices
 zrng, ztrans = GridTransition(data_drill_prim, EXTEND_GRID, NUM_P; minp=MINP)
 println_time_flush("Z range is\n\t$zrng with lengths $(length.(zrng))")
@@ -155,6 +150,13 @@ if length(THETA0_FULL_OVERRIDE) == length(theta0_full)
     theta0_full .= THETA0_FULL_OVERRIDE
 elseif length(THETA0_FULL_OVERRIDE) != 0
     @warn "Not using theta supplied - incorrect length"
+end
+
+if CONVERT_KAPPA
+    let r = theta_royalty(dataset_full, theta0_full),
+        kap = theta_royalty_κ(data_royalty, r)
+        update_kappa_level_to_cumsum!(kap)
+    end
 end
 
 let thts = split_thetas(dataset_full, theta0_full)
