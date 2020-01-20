@@ -87,6 +87,7 @@ struct TimeFE <: AbstractTechChange
     yearrange::UnitRange{Float64}
 end
 yearrange(x::TimeFE) = x.yearrange
+yearrange(x::AbstractTechChange) = UnitRange(2008.5, 2016.5)
 start(x::TimeFE) = first(yearrange(x))
 stop(x::TimeFE) = last(yearrange(x))
 _nparm(x::TimeFE) = length(yearrange(x))-1
@@ -225,8 +226,7 @@ function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
 end
 
 ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x, θ))
-
-ConstrainedIdx(x::DrillingRevenueTimeTrend) = idx_g(x), idx_ψ(x), idx_t(x)
+ConstrainedIdx(x::AbstractDrillingRevenue) = idx_g(x), idx_ψ(x), idx_t(x)
 ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
 
 function UnconstrainedFmConstrainedIdx(x::DrillingRevenueConstrained)

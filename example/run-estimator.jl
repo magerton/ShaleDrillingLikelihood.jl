@@ -128,7 +128,7 @@ end
 # ------------------- set up workers -----------------------
 
 if DO_PAR
-    pids = start_up_workers(ENV)
+    pids = start_up_workers(ENV; nprocs=8)
     @everywhere using ShaleDrillingLikelihood
     println_time_flush("Library loaded on workers")
 end

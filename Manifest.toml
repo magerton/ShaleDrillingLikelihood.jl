@@ -272,9 +272,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[Interpolations]]
 deps = ["AxisAlgorithms", "LinearAlgebra", "OffsetArrays", "Random", "Ratios", "SharedArrays", "SparseArrays", "StaticArrays", "WoodburyMatrices"]
-git-tree-sha1 = "e4a219889f33a8c2435c26bf1bca6f4fbf8c1c0b"
+git-tree-sha1 = "96b16bb44b1037f42a50e3fa9ba38dd78c9c1a3e"
 uuid = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
-version = "0.12.6"
+version = "0.12.7"
 
 [[InvertedIndices]]
 deps = ["Test"]
@@ -350,9 +350,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["LinearAlgebra", "MacroTools", "Parameters", "SIMDPirates", "SLEEFPirates", "VectorizationBase"]
-git-tree-sha1 = "a8d158a4971113443269739f3cc51ae992e95a58"
+git-tree-sha1 = "7031825758fc2953a854e5a4f2842b1ccde6b5e4"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.3.6"
+version = "0.3.8"
 
 [[LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
@@ -426,9 +426,9 @@ uuid = "86f7a689-2022-50b4-a561-43c23ac3c673"
 version = "0.9.3"
 
 [[OffsetArrays]]
-git-tree-sha1 = "87d0a91efe29352d5caaa271ae3927083c096e33"
+git-tree-sha1 = "fcfb0d1acd89dd37bbfce2873c8401713a855f80"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "0.11.4"
+version = "1.0.1"
 
 [[OpenBLAS_jll]]
 deps = ["Libdl", "Pkg"]

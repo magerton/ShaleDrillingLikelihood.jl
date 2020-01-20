@@ -4,13 +4,15 @@ using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
 
 export updateThetaUnconstrained!, ThetaConstrained, ThetaRho
 
-ThetaRho() = 0.76
+ThetaRho() = 0.726029
 AlphaPsi() = 0x1.55b10dcc51d5fp-2
 AlphaG() = 0x1.075c51cf96449p-1
 AlphaT() = STARTING_α_t
 Alpha0() = -2.8
 BetaPsi() = 0.11805850128182346
-
+AlphaTFE() = [ 0.20665908809883377, 0.1661000339389365, 0.14007105659535182,
+    0.14457016546750073, 0.19677616668888495, 0.26422850311680984,
+    0.5206302285265718, 0.635563439673686,]
 Sigma_eta() = 0x1.8c7275fb0e3d2p-4
 Sigma_u() = 0x1.2ca92ef5843d8p-2
 Gamma0() = -0x1.c98f8c57dd39bp+3
@@ -30,7 +32,8 @@ end
 function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
     rwrd_c = ConstrainedProblem(m, theta)
     theta_rev = vw_revenue(m, theta)
-    r = [x for (i,x) in enumerate(theta_rev) if i ∉ ConstrainedIdx(revenue(m))]
+    idxit = Base.Iterators.flatten(ConstrainedIdx(revenue(m)))
+    r = [x for (i,x) in enumerate(theta_rev) if i ∉ idxit]
     c = vw_cost(m,theta)
     e = vw_extend(m,theta)
     return vcat(c,e,r)
@@ -87,11 +90,13 @@ function Theta(d::DataRoyalty; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
 end
 
 function Theta(d::DataProduce; αψ=AlphaPsi(), αg=AlphaG(), αt=AlphaT(),
-        ση=Sigma_eta(), σu=Sigma_u(), γ0=Gamma0(), kwargs...)
+         αTFE=AlphaTFE(), ση=Sigma_eta(), σu=Sigma_u(), γ0=Gamma0(), kwargs...)
     if _num_x(d) == 2
         return vcat(αψ, αg, γ0,     ση, σu)
     elseif _num_x(d) == 3
         return vcat(αψ, αg, αt, γ0, ση, σu)
+    elseif _num_x(d) == 10
+        return vcat(αψ, αg, αTFE, γ0, ση, σu)
     end
     throw(error("no starting values available"))
 end
@@ -112,6 +117,13 @@ function Theta(m::DrillingRevenue{Unconstrained, TimeTrend};
     θρ=ThetaRho(), αψ=AlphaPsi(), αg=AlphaG(), αT=AlphaT(), α0=Alpha0(), kwargs...)
     return vcat(α0, αg, αψ, αT, θρ)
 end
+
+function Theta(m::DrillingRevenue{Unconstrained, TimeFE};
+    θρ=ThetaRho(), αψ=AlphaPsi(), αg=AlphaG(), αT=AlphaT(), αTFE=AlphaTFE(), α0=Alpha0(), kwargs...)
+    _nparm(tech(m)) == length(αTFE) || throw(DimensionMismatch())
+    return vcat(α0, αg, αψ, αTFE, θρ)
+end
+
 
 # cost
 # ---------
@@ -162,16 +174,24 @@ Theta(m::ExtensionCost_Constant, args...; kwargs...) = vcat(-1.0)
 
 CoefLinks(r) = (zeros(Int,0), zeros(Int,0))
 
-CoefLinks(r::DrillingRevenue{Unconstrained, NoTrend}) =
+CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, NoTrend}}) =
     [(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]
 
-CoefLinks(r::DrillingRevenue{Unconstrained, TimeTrend}) =
+CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, TimeTrend}}) =
     [
         (idx_produce_ψ, idx_drill_ψ,),
         (idx_produce_g, idx_drill_g),
         (idx_produce_t, idx_drill_t),
     ]
 
-CoefLinks(r::DrillReward) = CoefLinks(revenue(r))
+function CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, TimeFE}})
+    idx_d_t = idx_drill_t(r)
+    idx_p_t = idx_produce_t() .+ (idx_d_t .- first(idx_d_t))
+    cfd = vcat(idx_drill_ψ(r), idx_drill_g(r), idx_d_t)
+    cfp = vcat(idx_produce_ψ(), idx_produce_g(), idx_p_t)
+    return (cfp, cfd,)
+end
+
+# CoefLinks(r::DrillReward) = CoefLinks(revenue(r))
 CoefLinks(m::DynamicDrillModel) = CoefLinks(reward(m))
 CoefLinks(d::DataDrill) = CoefLinks(_model(d))

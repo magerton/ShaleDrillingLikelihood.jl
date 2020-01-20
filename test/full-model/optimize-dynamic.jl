@@ -75,37 +75,4 @@ println("print to keep from blowing up")
 
     end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 end # module

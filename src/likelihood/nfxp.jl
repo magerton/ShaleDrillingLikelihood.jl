@@ -12,7 +12,7 @@ export RemoteEstObj,
 "workers() but excluding master"
 getworkers() = filter(i -> i != 1, workers())
 
-function start_up_workers(ENV::Base.EnvDict)
+function start_up_workers(ENV::Base.EnvDict; nprocs = Sys.CPU_THREADS)
     # send primitives to workers
     oldworkers = getworkers()
     println_time_flush("removing workers $oldworkers")
@@ -24,7 +24,9 @@ function start_up_workers(ENV::Base.EnvDict)
         flush(stdout)
         pids = addprocs_slurm(num_cpus_to_request)
     else
-        pids = addprocs()
+        cputhrds = Sys.CPU_THREADS
+        cputhrds < nprocs && @warn "using nprocs = $cputhrds < $nprocs specified"
+        pids = addprocs(min(nprocs, cputhrds))
     end
     println_time_flush("Workers added: $pids")
     return pids

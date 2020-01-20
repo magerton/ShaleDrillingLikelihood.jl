@@ -70,6 +70,7 @@ function arg_settings()
         "--revenue"
             arg_type = DrillingRevenue
             default = DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() )
+            # default = DrillingRevenue(Unconstrained(), TimeFE(2008.5,2016.5), GathProcess() )
             group = "payoff"
 
         "--anticipateT1EV"
