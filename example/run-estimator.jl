@@ -13,7 +13,7 @@ end
 using CountPlus, Distributed, JLD2
 using Optim: minimizer, Options, BFGS, NelderMead
 using ShaleDrillingLikelihood: value_function, EVobj, cost,
-    theta_royalty_κ, update_kappa_level_to_cumsum!
+    theta_royalty_κ, update_kappa_level_to_cumsum!, theta_royalty
 using SparseArrays: nonzeros
 using Formatting: generate_formatter
 
