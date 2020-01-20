@@ -27,7 +27,12 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     update_ψ1!, update_dψ1dθρ!, _psi1, _u, _v, _dψ1dθρ,
     update_xbeta!, _am, _bm, _cm, _qm,
     llthreads!, _i, _nparm,
-    logsumexp!
+    logsumexp!,
+    theta_royalty_level_to_cumsum,
+    theta_royalty_cumsum_to_level,
+    kappa_level_to_cumsum,
+    kappa_cumsum_to_level
+
 
 @testset "RoyaltyModelNoHet" begin
     k = 3
@@ -36,24 +41,30 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     RM = RoyaltyModelNoHet()
     Random.seed!(1234)
 
-    X      = randn(k,nobs)
-    eps    = randn(nobs)
+    X       = randn(k,nobs)
+    epsilon = randn(nobs)
 
-    theta = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
+    theta0 = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
+    theta = vcat(theta0[1:end-1], sqrt(2*(theta0[end] - theta0[end-1])))
+    @test kappa_level_to_cumsum(theta0[end-1:end]) ≈ theta[end-1:end]
+    @test kappa_cumsum_to_level(theta[end-1:end]) ≈ theta0[end-1:end]
     @test length(theta) == k + L - 1
 
-    rstar = X'*theta[1:k] .+ eps
-    l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
+    rstar = X'*theta[1:k] .+ epsilon
+    l = map((r) ->  searchsortedfirst(theta0[k+1:end], r), rstar)
     data = DataRoyalty(RM, l, X, 1:L)
     update_xbeta!(data, theta[1:k])
+
+    @test theta ≈ theta_royalty_level_to_cumsum(data, theta0)
+    @test theta0 ≈ theta_royalty_cumsum_to_level(data, theta)
 
     @test length(theta) == _nparm(data) == _nparm(first(first(data)))
 
     @test theta_royalty_ρ(    data, theta) == Float64[]
     @test theta_royalty_ψ(    data, theta) == Float64[]
     @test all(theta_royalty_β(data, theta) .== theta[1:3])
-    @test theta_royalty_κ(    data, theta, 1) == -0.5
-    @test theta_royalty_κ(    data, theta, 2) ==  0.5
+    @test theta_royalty_κ(    data, theta, 1) == theta[4]
+    @test theta_royalty_κ(    data, theta, 2) == theta[5]
 
     @test idx_royalty_κ(data, 1) == 4
     @test idx_royalty_κ(data, 2) == 5
@@ -90,6 +101,8 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     # check that it solves
     res = optimize(OnceDifferentiable(f, fg!, fg!, theta), theta*0.1, BFGS(), Optim.Options(time_limit = 1.0))
+    @show res
+    @show res.minimizer
     @test maximum(abs.(res.minimizer .- theta)) < 0.25
 end
 
@@ -105,7 +118,8 @@ end
     # make data
     X      = randn(k,nobs)
     eps    = randn(nobs)
-    theta  = [0.1, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    theta0  = [0.1, 1.0,    -2.0, 2.0, 2.0,    -0.6, 0.6]  # dψdρ, ψ, β, κ
+    theta = vcat(theta0[1:end-2], kappa_level_to_cumsum(theta0[end-1:end]))
 
     data = DataRoyalty(500, theta, L)
 
@@ -124,7 +138,7 @@ end
 
     let obs = first(first(data)), simi = view(uv,1)
         print("")
-        @show @benchmark simloglik_royalty!($obs, $theta, $simi, true)
+        # @show @benchmark simloglik_royalty!($obs, $theta, $simi, true)
         print("")
     end
 

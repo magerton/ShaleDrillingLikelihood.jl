@@ -73,6 +73,13 @@ function choice_in_model(d::DataOrObsRoyalty, l::Integer)
     throw(DomainError(l, "$l outside of 1:$(num_choices(d))"))
 end
 
+function choice_in_model(d, ls)
+    for l in ls
+        choice_in_model(d,l)
+    end
+    return nothing
+end
+
 # Iteration over data
 #---------------------------
 
@@ -127,9 +134,9 @@ idx_royalty_ψ(d::Union{DataOrObsRoyalty{<:RoyaltyModelNoHet},RoyaltyModelNoHet}
 idx_royalty_β(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = (1:_num_x(d))
 idx_royalty_κ(d::DataOrObsRoyalty{<:RoyaltyModelNoHet}) = _num_x(d) .+ (1:num_choices(d)-1)
 
-function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l::Integer)
+function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModelNoHet}, l)
     choice_in_model(d,l)
-    return _num_x(d) + l
+    return _num_x(d) .+ l
 end
 
 idx_royalty_ρ(d::Union{DataOrObsRoyalty{RoyaltyModel},RoyaltyModel}) = 1
@@ -140,13 +147,36 @@ function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, l::Integer)
     choice_in_model(d,l)
     return 2 + _num_x(d) + l
 end
+function idx_royalty_κ(d::DataOrObsRoyalty{RoyaltyModel}, ls::AbstractVector)
+    choice_in_model(d,ls)
+    return (2 + _num_x(d)) .+ ls
+end
+
 
 # get coefs
 theta_royalty_ρ(d, theta) = theta[idx_royalty_ρ(d)]
 theta_royalty_ψ(d, theta) = theta[idx_royalty_ψ(d)]
 theta_royalty_β(d, theta) = view(theta, idx_royalty_β(d))
 theta_royalty_κ(d, theta) = view(theta, idx_royalty_κ(d))
-theta_royalty_κ(d, theta, l) = theta[idx_royalty_κ(d,l)]
+theta_royalty_κ(d, theta, l::Integer) = theta[idx_royalty_κ(d,l)]
+theta_royalty_κ(d, theta, ls) = view(theta, idx_royalty_κ(d,ls))
+
+kappa_level_to_cumsum(x) = vcat(first(x), sqrt.(2 .* diff(x)) )
+kappa_cumsum_to_level(x) = first(x) .+ vcat(0, 0.5 .* cumsum(x[2:end].^2))
+
+function theta_royalty_level_to_cumsum(d,x)
+    xnew = copy(x)
+    kap = theta_royalty_κ(d,x)
+    xnew[idx_royalty_κ(d)] .= kappa_level_to_cumsum(kap)
+    return xnew
+end
+function theta_royalty_cumsum_to_level(d,x)
+    xnew = copy(x)
+    kap = theta_royalty_κ(d,x)
+    xnew[idx_royalty_κ(d)] .= kappa_cumsum_to_level(kap)
+    return xnew
+end
+
 
 # @deprecate theta_roy(d, theta) theta_royalty(d,theta)
 

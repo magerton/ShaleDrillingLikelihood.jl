@@ -190,3 +190,15 @@ function logsumexp3test!(x::AbstractArray3{T}) where {T}
     end
     return lse
 end
+
+
+
+@inline function sumsq(x, start::Integer, stop::Integer)
+    @assert start >= 1
+    @assert stop <= length(x)
+    s = zero(eltype(x))
+    @inbounds @simd for i in start:stop
+        s += x[i]*x[i]
+    end
+    return s
+end

@@ -12,23 +12,13 @@ function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     return η1, η2
 end
 
-@inline function sumsq(x,start::Integer,stop::Integer)
-    @assert start >= 1
-    @assert stop <= length(x)
-    s = zero(eltype(x))
-    @inbounds @simd for i in start:stop
-        s += x[i]*x[i]
-    end
-    return s
-end
-
 @inline function kappa_sums(obs, theta::AbstractVector{T})::NTuple{2,T} where {T}
     l = _y(obs)
     L = num_choices(obs)
 
     kappas = theta_royalty_κ(obs, theta)
-    ksum = 0.5*sumsq(kappas, 2, l-1)
     k0 = first(kappas)
+    ksum = 0.5*sumsq(kappas, 2, l-1)
 
     if l == 1
         return (typemin(T), k0)
@@ -185,16 +175,14 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
     if l == 1
         grad[idx_royalty_κ(obs,l)] += bqm
     elseif l < L
-        grad[idx_royalty_κ(obs,1)] += cqm
-        for j = 2:l-1
-            grad[idx_royalty_κ(obs,j)] += cqm*theta_royalty_κ(obs,theta,j)
-        end
-        grad[idx_royalty_κ(obs,l)] += bqm*theta_royalty_κ(obs,theta,l)
+        idx = 2:l-1
+        grad[idx_royalty_κ(obs,1)]    += cqm
+        grad[idx_royalty_κ(obs,idx)] .+= cqm .* theta_royalty_κ(obs, theta, idx)
+        grad[idx_royalty_κ(obs,l)]    += bqm  * theta_royalty_κ(obs, theta, l)
     elseif l == L
-        grad[idx_royalty_κ(obs,1)]     -= aqm
-        for j = 2:l-1
-            grad[idx_royalty_κ(obs,j)] -= aqm*theta_royalty_κ(obs,theta,j)
-        end
+        idx = 2:l-1
+        grad[idx_royalty_κ(obs,1)]   -= aqm
+        grad[idx_royalty_κ(obs,idx)] -= aqm .* theta_royalty_κ(obs, theta, idx)
     else
         throw(DomainError(l))
     end
@@ -251,14 +239,30 @@ function ll_inner!(gradtmp::AbstractVector, grp::ObservationGroupRoyalty, dograd
     F, LL = lik_loglik_royalty(obs, eta12)
     l = _y(obs)
     L = num_choices(obs)
+    theta = θ
 
     if dograd
         a, b = normpdf.(eta12) ./ F
         c = dlogcdf_trunc(eta12...)
 
         gradtmp[idx_royalty_β(obs)] .= - c .* _x(obs)
-        l > 1  && ( gradtmp[idx_royalty_κ(obs, l-1)] = -a )
-        l < L  && ( gradtmp[idx_royalty_κ(obs, l)  ] =  b )
+        # l > 1  && ( gradtmp[idx_royalty_κ(obs, l-1)] = -a )
+        # l < L  && ( gradtmp[idx_royalty_κ(obs, l)  ] =  b )
+
+        if l == 1
+            gradtmp[idx_royalty_κ(obs,l)] += b
+        elseif l < L
+            idx = 2:l-1
+            gradtmp[idx_royalty_κ(obs,1)]    += c
+            gradtmp[idx_royalty_κ(obs,idx)] .+= c .* theta_royalty_κ(obs, theta, idx)
+            gradtmp[idx_royalty_κ(obs,l)]    += b  * theta_royalty_κ(obs, theta, l)
+        elseif l == L
+            idx = 2:l-1
+            gradtmp[idx_royalty_κ(obs,1)]   -= a
+            gradtmp[idx_royalty_κ(obs,idx)] -= a .* theta_royalty_κ(obs, theta, idx)
+        else
+            throw(DomainError(l))
+        end
     end
     return LL
 end
