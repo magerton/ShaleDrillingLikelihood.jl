@@ -262,4 +262,7 @@ include("counterfactuals/wrapper.jl")
 
 include("likelihood/posteriors.jl")
 
+include("precompile.jl")
+__precompile__()
+
 end # module
