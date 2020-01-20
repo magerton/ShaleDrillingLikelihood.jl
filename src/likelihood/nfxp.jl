@@ -230,11 +230,11 @@ end
 simloglik!(i, theta, dograd; kwargs...) =
     simloglik!(i, theta, dograd, get_g_RemoteEstObj(); kwargs...)
 
-function serial_simloglik!(ew, theta, dograd; kwargs...)
+function serial_simloglik!(ew, theta, dograd; n::Integer=num_i(LocalEstObj(ew)), kwargs...)
     check_theta(ew,theta)
     reo = RemoteEstObj(ew)
     update_reo!(reo, theta)
-    map(i -> simloglik!(i, theta, dograd, reo; kwargs...), OneTo(ew))
+    map(i -> simloglik!(i, theta, dograd, reo; kwargs...), OneTo(n))
     return update!(ew, theta, dograd)
 end
 
