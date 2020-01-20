@@ -230,7 +230,7 @@ end
 simloglik!(i, theta, dograd; kwargs...) =
     simloglik!(i, theta, dograd, get_g_RemoteEstObj(); kwargs...)
 
-function serial_simloglik!(ew, theta, dograd; n::Integer=num_i(LocalEstObj(ew)) kwargs...)
+function serial_simloglik!(ew, theta, dograd; n::Integer=num_i(LocalEstObj(ew)), kwargs...)
     check_theta(ew,theta)
     reo = RemoteEstObj(ew)
     update_reo!(reo, theta)
