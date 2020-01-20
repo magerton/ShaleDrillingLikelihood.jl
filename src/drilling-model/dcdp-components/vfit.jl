@@ -145,13 +145,9 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
 
     nz, nψ, nk, nd = size(dubVperm(t))
     nd >= 2 || throw(error("Need dubV with at least 2+ action possibilities"))
-    nψ >= nk  || throw(error("Need nψ >= length(theta)"))
 
     sumdubV   = view(dubVperm(t), :,:,:,1)
     ΠsumdubV  = view(dubVperm(t), :,:,:,2)
-
-    ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
-    dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
 
     if anticipate_t1ev(ddm)
         softmax3!(ubV(t), lse(t), tmp(t), ubV(t))
@@ -167,12 +163,17 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     # for dubV/dθt
     sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
-    # gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
+    # gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
     gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=2)
 end
 
-function gradinf_inner_direct!(dEV0, dev0tmpj, ΠsumdubVj, ΠsumdubV, t, ddm)
-    nψ = size(dEV0, 2)
+function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
+    nz, nψ, nk = size(dEV0)
+    nψ >= nk  || throw(error("Need nψ >= length(theta)"))
+
+    ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
+    dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
+
     for j in OneTo(nψ)
         qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
