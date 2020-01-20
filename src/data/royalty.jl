@@ -163,6 +163,9 @@ theta_royalty_κ(d, theta, ls) = view(theta, idx_royalty_κ(d,ls))
 
 kappa_level_to_cumsum(x) = vcat(first(x), sqrt.(2 .* diff(x)) )
 kappa_cumsum_to_level(x) = first(x) .+ vcat(0, 0.5 .* cumsum(x[2:end].^2))
+function update_kappa_level_to_cumsum!(x)
+    x .= kappa_level_to_cumsum(x)
+end
 
 function theta_royalty_level_to_cumsum(d,x)
     xnew = copy(x)
@@ -187,7 +190,7 @@ function check_theta(d::DataOrObsRoyalty, theta)
     _nparm(d) == length(theta) || throw(DimensionMismatch("_nparm(d) = $(_nparm(d)) != length(theta) = $(length(theta))"))
     all(isfinite.(theta)) || throw(error("theta = $theta not finite"))
     kappa = theta_royalty_κ(d,theta)
-    issorted(kappa) || @warn "kappa = $kappa not sorted"
+    # issorted(kappa) || @warn "kappa = $kappa not sorted"
     return true
 end
 

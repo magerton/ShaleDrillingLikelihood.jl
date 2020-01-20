@@ -205,7 +205,7 @@ end
 function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bool=true)
 
     model = _model(data)
-    theta_royalty_check(data, θ) || return -Inf
+    # theta_royalty_check(data, θ) || return -Inf
 
     k = _num_x(data)
     n = length(data)

@@ -57,6 +57,9 @@ function arg_settings()
             arg_type = Vector{Float64}
             default = zeros(0)
             group = "param"
+        "--convertKappa"
+            action = :store_true
+            group = "param"
 
         # Payoffs
         "--cost"
