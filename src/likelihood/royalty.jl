@@ -4,11 +4,43 @@
 
 function η12(obs::ObservationRoyalty, theta::AbstractVector, zm::Real)
     l = _y(obs)
-    L = num_choices(obs)
-    η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
-    η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
+    # L = num_choices(obs)
+    # η1 = l == 1 ? typemin(zm) : theta_royalty_κ(obs, theta, l-1) - zm
+    # η2 = l == L ? typemax(zm) : theta_royalty_κ(obs, theta, l)   - zm
+    η1, η2 = kappa_sums(obs, theta) .- zm
     η1 < η2 || throw(error("$η1 = η1 < η2=$η2 is false"))
     return η1, η2
+end
+
+@inline function sumsq(x,start::Integer,stop::Integer)
+    @assert start >= 1
+    @assert stop <= length(x)
+    s = zero(eltype(x))
+    @inbounds @simd for i in start:stop
+        s += x[i]*x[i]
+    end
+    return s
+end
+
+@inline function kappa_sums(obs, theta::AbstractVector{T})::NTuple{2,T} where {T}
+    l = _y(obs)
+    L = num_choices(obs)
+
+    kappas = theta_royalty_κ(obs, theta)
+    ksum = 0.5*sumsq(kappas, 2, l-1)
+    k0 = first(kappas)
+
+    if l == 1
+        return (typemin(T), k0)
+    elseif 1 < l < L
+        tmp = k0+ksum
+        klsq = 0.5*kappas[l]^2
+        return (tmp, tmp+klsq)
+    elseif l == L
+        return (k0+ksum, typemax(T))
+    else
+        throw(DomainError(l))
+    end
 end
 
 const invsqrthalfπ = 1/sqrthalfπ
@@ -141,12 +173,31 @@ function grad_simloglik_royalty!(grad::AbstractVector, obs::ObservationRoyalty, 
 
     βψ = theta_royalty_ψ(obs, theta) # parameters
 
+    aqm = dot(qm,am)
+    bqm = dot(qm,bm)
+    cqm = dot(qm,cm)
+
     # gradient
     grad[idx_royalty_ρ(obs)] -= sumprod3(dψ1dρ, qm, cm) * βψ
     grad[idx_royalty_ψ(obs)] -= sumprod3(ψ1,    qm, cm)
-    grad[idx_royalty_β(obs)] -= dot(qm, cm) .* x
-    l > 1 && ( grad[idx_royalty_κ(obs,l-1)] -= dot(qm, am) )
-    l < L && ( grad[idx_royalty_κ(obs,l)]   += dot(qm, bm) )
+    grad[idx_royalty_β(obs)] -= cqm .* x
+
+    if l == 1
+        grad[idx_royalty_κ(obs,l)] += bqm
+    elseif l < L
+        grad[idx_royalty_κ(obs,1)] += cqm
+        for j = 2:l-1
+            grad[idx_royalty_κ(obs,j)] += cqm*theta_royalty_κ(obs,theta,j)
+        end
+        grad[idx_royalty_κ(obs,l)] += bqm*theta_royalty_κ(obs,theta,l)
+    elseif l == L
+        grad[idx_royalty_κ(obs,1)]     -= aqm
+        for j = 2:l-1
+            grad[idx_royalty_κ(obs,j)] -= aqm*theta_royalty_κ(obs,theta,j)
+        end
+    else
+        throw(DomainError(l))
+    end
 end
 
 function simloglik!(grad::AbstractVector, grp::ObservationGroupRoyalty, theta, sim, dograd; kwargs...)

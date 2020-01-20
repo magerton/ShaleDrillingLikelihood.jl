@@ -20,7 +20,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     theta_royalty_check,
     simloglik_royalty!,
     grad_simloglik_royalty!,
-    _LLm,
+    # _LLm,
     logsumexp_and_softmax!,
     ObservationRoyalty, DataRoyalty, _y, _x, _xbeta, num_choices, _num_x,
     SimulationDraws,
@@ -44,7 +44,7 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     rstar = X'*theta[1:k] .+ eps
     l = map((r) ->  searchsortedfirst(theta[k+1:end], r), rstar)
-    data = DataRoyalty(RM, l, X)
+    data = DataRoyalty(RM, l, X, 1:L)
     update_xbeta!(data, theta[1:k])
 
     @test length(theta) == _nparm(data) == _nparm(first(first(data)))

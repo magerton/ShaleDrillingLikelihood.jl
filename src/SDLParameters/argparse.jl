@@ -39,11 +39,11 @@ function arg_settings()
 
         "--maxtimeCnstr"
             arg_type = Int
-            default = 3 * 60^2
+            default = 0 * 60^2
             group = "comp"
         "--maxtimeFull"
             arg_type = Int
-            default  = 24 * 60^2
+            default  = 0 * 60^2
             group = "comp"
         "--noPar"
             action = :store_true
@@ -85,15 +85,15 @@ function arg_settings()
         # Approximation
         "--numP"
             arg_type=Int
-            default=51
+            default=13
             group="approx"
         "--numPsi"
             arg_type=Int
-            default=51
+            default=13
             group="approx"
         "--extendPriceGrid"
             arg_type=Float64
-            default=log(3)
+            default=log(2)
             group="approx"
         "--minTransProb"
             arg_type=Float64
