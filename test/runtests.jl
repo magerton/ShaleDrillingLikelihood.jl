@@ -16,6 +16,9 @@ include("data/data-structure.jl")
 include("data/drilling.jl")
 include("data/overall.jl")
 
+include("likelihood/royalty.jl")
+include("likelihood/production.jl")
+
 include("drilling-model/test-flow.jl")
 
 include("drilling-model/state-space.jl")

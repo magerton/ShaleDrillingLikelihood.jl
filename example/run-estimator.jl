@@ -12,7 +12,8 @@ end
 
 using CountPlus, Distributed, JLD2
 using Optim: minimizer, Options, BFGS, NelderMead
-using ShaleDrillingLikelihood: value_function, EVobj, cost
+using ShaleDrillingLikelihood: value_function, EVobj, cost,
+    theta_royalty_κ, update_kappa_level_to_cumsum!
 using SparseArrays: nonzeros
 using Formatting: generate_formatter
 
@@ -40,6 +41,7 @@ DO_PAR = !pargs["noPar"]
 # parms
 COMPUTE_INITIAL_VALUES = pargs["computeStarting"]
 THETA0_FULL_OVERRIDE = pargs["theta"]
+CONVERT_KAPPA = pargs["convertKappa"]
 
 #payoffs
 COST = pargs["cost"]
@@ -90,6 +92,11 @@ thetarho0 = ThetaRho()
 theta0_royalty = Theta(data_royalty; θρ = thetarho0)
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
+
+if CONVERT_KAPPA
+    kap = theta_royalty_κ(data_royalty, theta0_royalty)
+    update_kappa_level_to_cumsum!(kap)
+end
 
 # transition matrices
 zrng, ztrans = GridTransition(data_drill_prim, EXTEND_GRID, NUM_P; minp=MINP)

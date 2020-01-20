@@ -350,9 +350,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["LinearAlgebra", "MacroTools", "Parameters", "SIMDPirates", "SLEEFPirates", "VectorizationBase"]
-git-tree-sha1 = "7031825758fc2953a854e5a4f2842b1ccde6b5e4"
+git-tree-sha1 = "6cbed613c08c98eaac3fdc25cf2f8b12d70dd6d5"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.3.8"
+version = "0.3.11"
 
 [[LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
@@ -592,15 +592,15 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SIMDPirates]]
 deps = ["MacroTools", "VectorizationBase"]
-git-tree-sha1 = "500294a8b1001bdda2483fc6d675956798ad8764"
+git-tree-sha1 = "3303ab900288f497c738c34bd474f40b456ac8ef"
 uuid = "21efa798-c60a-11e8-04d3-e1a92915a26a"
-version = "0.1.6"
+version = "0.1.8"
 
 [[SLEEFPirates]]
 deps = ["SIMDPirates", "VectorizationBase"]
-git-tree-sha1 = "4733445246d3d5536c7aee1bffb55ab37b88347b"
+git-tree-sha1 = "fa6a943f329172eec0f6b1d6b35369631b1d3443"
 uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
-version = "0.1.3"
+version = "0.1.5"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -713,9 +713,9 @@ version = "0.3.0"
 
 [[TimeZones]]
 deps = ["Dates", "EzXML", "Mocking", "Printf", "Serialization", "Unicode"]
-git-tree-sha1 = "0271dc890dd1447da1568510937bd5b3a6b51b58"
+git-tree-sha1 = "24a7474411886cede89529f9b848989b783d954e"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
-version = "0.9.2"
+version = "0.10.5"
 
 [[TranscodingStreams]]
 deps = ["Random", "Test"]
@@ -749,9 +749,9 @@ version = "1.0.0"
 
 [[VectorizationBase]]
 deps = ["CpuId", "LinearAlgebra"]
-git-tree-sha1 = "a2576763aa20968ffb5668e2e15d45ae8e364d05"
+git-tree-sha1 = "1bd385bfeb18cd919d85cf1a1c9e510bfa4c6d4d"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
-version = "0.1.9"
+version = "0.1.10"
 
 [[VersionParsing]]
 git-tree-sha1 = "80229be1f670524750d905f8fc8148e5a8c4537f"
