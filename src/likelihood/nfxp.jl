@@ -24,7 +24,9 @@ function start_up_workers(ENV::Base.EnvDict; nprocs = Sys.CPU_THREADS)
         flush(stdout)
         pids = addprocs_slurm(num_cpus_to_request)
     else
-        pids = addprocs(nprocs)
+        cputhrds = Sys.CPU_THREADS
+        cputhrds < nprocs && @warn "using nprocs = $cputhrds < $nprocs specified"
+        pids = addprocs(min(nprocs, cputhrds))
     end
     println_time_flush("Workers added: $pids")
     return pids

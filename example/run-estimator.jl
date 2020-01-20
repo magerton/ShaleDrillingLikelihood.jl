@@ -73,7 +73,7 @@ end
 if "SLURM_JOBID" in keys(ENV)
     DATADIR = "/home/magerton/haynesville/intermediate_data"
 else
-    DATADIR = "D:/projects/haynesville/intermediate_data"
+    DATADIR = "E:/projects/haynesville/intermediate_data"
 end
 
 # --------------- create data ---------------
@@ -128,7 +128,7 @@ end
 # ------------------- set up workers -----------------------
 
 if DO_PAR
-    pids = start_up_workers(ENV)
+    pids = start_up_workers(ENV; nprocs=8)
     @everywhere using ShaleDrillingLikelihood
     println_time_flush("Library loaded on workers")
 end
