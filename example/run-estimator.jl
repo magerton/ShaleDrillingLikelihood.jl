@@ -120,6 +120,10 @@ println_time_flush("Data created")
 
 if COMPUTE_INITIAL_VALUES
     roy_short = DataRoyalty(RoyaltyModelNoHet(), data_royalty)
+    # thet_roy = theta0_royalty[3:end]
+    # kap = theta_royalty_κ(roy_short, thet_roy)
+    # update_kappa_level_to_cumsum!(kap)
+    # res_royalty = solve_model(roy_short, thet_roy)
     res_royalty = solve_model(roy_short, theta0_royalty[3:end])
     theta0_royalty[3:end] .= minimizer(res_royalty)
 
