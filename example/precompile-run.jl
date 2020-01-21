@@ -45,6 +45,10 @@ THETA0_FULL_OVERRIDE = pargs["theta"]
 COST = pargs["cost"]
 EXT = pargs["extension"]
 REV = pargs["revenue"]
+#
+# THETA0_FULL_OVERRIDE=[-10.74244, -8.16438, -7.25647, -6.9641, -6.94902,     1.57742, -1.16717, -3.07728,    0.6, 0.355,   0.268, 0.261, 0.261, 0.148, 0.290, 0.261, 0.513, 0.638,     1.40348,             0.1, 0.6293, 1.1674, -1.6306, 0.1370,    4.2669, 0.8183, 1.3028, 1.3365, 1.0687,         -14.458, 0.09679, 0.275]
+# REV = DrillingRevenue(Unconstrained(), TimeFE(2008, 2016), GathProcess() )
+# COST = DrillingCost_TimeFE(2008, 2012)
 REWARD = DrillReward(REV, COST, EXT)
 ANTICIPATE = pargs["anticipateT1EV"]
 DISCOUNT = pargs["discount"]
@@ -117,4 +121,6 @@ ew = EstimationWrapper(leo, reo)
 
 dograd = true
 
+println_time_flush("Starting LL eval")
 serial_simloglik!(ew, theta0_full, dograd; n=1)
+println_time_flush("Done!")
