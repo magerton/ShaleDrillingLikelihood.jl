@@ -111,32 +111,26 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
     check_finite(theta)
 
     βψ = theta_royalty_ψ(obs, theta)
-    κ = theta_royalty_κ(obs, theta)
+    @inbounds for m in OneTo(M)
+        zm  = xbeta + βψ * psi[m]
+        eta12 = η12(obs, theta, zm)
 
-    if issorted(κ)
-        @inbounds for m in OneTo(M)
-            zm  = xbeta + βψ * psi[m]
-            eta12 = η12(obs, theta, zm)
-
-            if dograd == false
-                LL = loglik_royalty(obs, eta12)
-                isfinite(LL) || @warn "LL = $LL not finite"
-                LLm[m] += LL
-            else
-                η1, η2 = eta12
-                F,LL  = lik_loglik_royalty(obs, eta12)
-                isfinite(LL) || @warn "LL = $LL not finite. η1, η2 = $eta12 and choice =$l"
-                isfinite(F) || F <= 0 || @warn "F = $F not finite or zero"
-                LLm[m] += LL
-                am[m] = normpdf(η1) / F
-                bm[m] = normpdf(η2) / F
-                cm[m] = dlogcdf_trunc(η1, η2)
-            end
+        if dograd == false
+            LL = loglik_royalty(obs, eta12)
+            isfinite(LL) || @warn "LL = $LL not finite"
+            LLm[m] += LL
+        else
+            η1, η2 = eta12
+            F,LL  = lik_loglik_royalty(obs, eta12)
+            isfinite(LL) || @warn "LL = $LL not finite. η1, η2 = $eta12 and choice =$l"
+            isfinite(F) || F <= 0 || @warn "F = $F not finite or zero"
+            LLm[m] += LL
+            am[m] = normpdf(η1) / F
+            bm[m] = normpdf(η2) / F
+            cm[m] = dlogcdf_trunc(η1, η2)
         end
-    else
-        # @warn "royalty κ = $κ not sorted"
-        fill!(LLm, -Inf)
     end
+
     return nothing
 end
 
