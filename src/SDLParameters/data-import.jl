@@ -186,12 +186,14 @@ function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_constant, D
 end
 
 function ztuple(d::DrillReward{R,C}) where {R, C<:AbstractDrillingCost_TimeFE}
-    f(r) = (logprice(r), myyear(r))
+    y(r) = myyear(r, ShaleDrillingLikelihood.start(cost(d)))
+    f(r) = (logprice(r),  y(r))
     return f
 end
 
 function ztuple(d::DrillReward{R,C}) where {R, C<:Union{DrillingCost_TimeFE_rigrate, DrillingCost_TimeFE_rig_costdiffs}}
-    f(r) = (logprice(r), logrigrate(r), myyear(r), )
+    y(r) = myyear(r, ShaleDrillingLikelihood.start(cost(d)))
+    f(r) = (logprice(r), logrigrate(r), y(r), )
     return f
 end
 
