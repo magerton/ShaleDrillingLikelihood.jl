@@ -90,6 +90,7 @@ println_time_flush("Data imported")
 
 thetarho0 = ThetaRho()
 theta0_royalty = Theta(data_royalty; θρ = thetarho0)
+update_kappa_level_to_cumsum!(theta_royalty_κ(data_royalty, theta0_royalty))
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
 
