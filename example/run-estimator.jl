@@ -152,7 +152,7 @@ elseif length(THETA0_FULL_OVERRIDE) != 0
     @warn "Not using theta supplied - incorrect length"
 end
 
-if false # CONVERT_KAPPA
+if CONVERT_KAPPA
     let r = theta_royalty(dataset_full, theta0_full),
         kap = theta_royalty_κ(data_royalty, r)
         update_kappa_level_to_cumsum!(kap)
