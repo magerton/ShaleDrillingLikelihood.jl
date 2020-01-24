@@ -224,7 +224,9 @@ function Theta_NoTech(d::DataSetofSets, theta::Vector, TECH_YEAR_ZERO::Integer)
     basey = baseyear(tech(R))
     alphat = thet_r[idx_t(R)]
 
-    thet_r[idx_0(R)] -= alphat*(basey - TECH_YEAR_ZERO)
+    if tech(R) isa TimeTrend
+        thet_r[idx_0(R)] -= alphat*(basey - TECH_YEAR_ZERO)
+    end
     thet_r[idx_t(R)] = 0
 
     return theta_notech
