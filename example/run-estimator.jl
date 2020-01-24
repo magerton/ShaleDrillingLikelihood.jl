@@ -190,8 +190,8 @@ leodatadrill = ShaleDrillingLikelihood.drill(leodata)
 ddmnovf = DDM_NoVF(_model(leodatadrill))
 
 println_time_flush("saving data to\n\t$fn")
-
-jldopen(fn, "w"; compress=true) do file
+# jldopen(fn, "w"; compress=true) do file
+jldopen(fn, true, true, true, IOStream; compress=true) do file
     file["DATAPATH"] = DATAPATH
     file["M"]        = ShaleDrillingLikelihood._num_sim(ShaleDrillingLikelihood.sim(reo))
     file["ddm_novf"] = ddmnovf
