@@ -169,7 +169,7 @@ end
 
 function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
     nz, nψ, nk = size(dEV0)
-    nψ >= nk  || throw(error("Need nψ >= length(theta)"))
+    nψ >= nk  || throw(error("Need nψ=$(nψ) >= length(theta) = $(length(theta))"))
 
     ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
     dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
