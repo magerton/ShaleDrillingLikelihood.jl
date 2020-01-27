@@ -163,8 +163,8 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     # for dubV/dθt
     sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
-    gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
-    # gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=2)
+    # gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
+    gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=2)
 end
 
 function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
