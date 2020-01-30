@@ -46,6 +46,9 @@ else
     DATADIR = "E:/projects/haynesville/intermediate_data"
 end
 
+# JLD2FILE = "E:/projects/ShaleDrillingResults/2020-01/17493674/estimation-results-17493674-no-rigs-data_all_leases.jld2"
+# JLD2FILE = "E:/projects/ShaleDrillingResults/2020-01/17493743/estimation-results-17493743-WITH-rigs-data_all_leases.jld2"
+
 println_time_flush("Loading results from $JLD2FILE")
 file = jldopen(JLD2FILE, "r")
     DATAPATH = file["DATAPATH"]
