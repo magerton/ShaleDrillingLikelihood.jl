@@ -32,6 +32,7 @@ function simulate_lease!(simprim::SimulationPrimitives,
 
         tday, tmrw = today_tomorrow(simtmp, zt)
         _Eeps = dot(tday, Eeps(simtmp))
+        @assert isfinite(_Eeps) || throw(error("_Eeps = $_Eeps is not finite!"))
 
         for si in _x(obs):length(wp) #_x(obs) is state if never drilled
             PrTday = tday[si]

@@ -88,6 +88,7 @@ num_states(x::SimulationTmp) = length(sa(x))
 function reset!(x::SimulationTmp, s0::Integer)
     fill!(sa(x), 0)
     fill!(sb(x), 0)
+    fill!(Eeps(x), 0)
     setindex!(sa(x), 1, s0)
     setindex!(sb(x), 1, s0)
     return nothing
