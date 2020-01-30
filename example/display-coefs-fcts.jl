@@ -153,8 +153,8 @@ function nms_coef_se_sumstat(jld2file,
         "\$\\sigma_\\epsilon\$" => sigeps,
         "Avg cost" => -avgcost,
         "Log lik" => LL,
-        "Num \$z\$" => nz,
-        "Num \$\\psi\$" => npsi,
+        "Num \$z\$ gridpoints" => nz,
+        "Num \$\\psi\$ gridpoints" => npsi,
         "Num simulations" => M,
     )
 
