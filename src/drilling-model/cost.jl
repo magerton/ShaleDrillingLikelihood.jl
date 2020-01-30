@@ -93,7 +93,7 @@ end
     return r::T
 end
 function coefnames(x::DrillingCost_TimeFE)
-    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    cfs = ["\\alpha_{c,$y}" for y in start(x):stop(x)]
     return vcat(cfs, "\\alpha_{d>1}")
 end
 
@@ -126,7 +126,7 @@ end
 end
 
 function coefnames(x::DrillingCost_TimeFE_costdiffs)
-    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    cfs = ["\\alpha_{c,$y}" for y in start(x):stop(x)]
     return vcat(cfs, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d=1}", "\\alpha_{D>0,d>1}")
 end
 
@@ -160,7 +160,7 @@ end
 end
 
 function coefnames(x::DrillingCost_TimeFE_rigrate)
-    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    cfs = ["\\alpha_{c,$y}" for y in start(x):stop(x)]
     return vcat(cfs, "\\alpha_{d>1}", "\\alpha_{rig}")
 end
 
@@ -194,6 +194,6 @@ end
 end
 
 function coefnames(x::DrillingCost_TimeFE_rig_costdiffs)
-    cfs = ["\\alpha_{$y}" for y in start(x):stop(x)]
+    cfs = ["\\alpha_{c,$y}" for y in start(x):stop(x)]
     return vcat(cfs, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d=1}", "\\alpha_{D>0,d>1}", "\\alpha_{rig}")
 end

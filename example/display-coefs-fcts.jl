@@ -62,6 +62,7 @@ function coef_translate(nm)
         "\\kappa_4"   =>  "0.2 | 0.225",
         "\\kappa_5"   =>  "0.225 | 0.25",
         "\\gamma_{3}" =>  "Intercept",
+        "\\gamma_{10}" =>  "Intercept",
     )
     if nm in keys(coefdict)
         nm2 = coefdict[nm]
@@ -69,7 +70,9 @@ function coef_translate(nm)
         nm2 = nm
     end
 
-    return texify(nm2)
+    nm3 = replace.(nm2, r"(\d{4})\.\d+" => s"\1")
+
+    return texify(nm3)
 end
 
 function nms_coef_se_sumstat(jld2file,
@@ -155,7 +158,7 @@ function nms_coef_se_sumstat(jld2file,
         "Num simulations" => M,
     )
 
-    idxnew = vcat(idx_r[2:end], idx_d, idx_p[4:end])
+    idxnew = vcat(idx_r[2:end], idx_d, idx_p[end-2:end])
 
     return (nms[idxnew], coef[idxnew], se[idxnew], sumstats)
 
@@ -185,13 +188,14 @@ tablenotes(note)                 = "\\begin{tablenotes}[flushleft]\n\\item\\scri
 right_to_left(textbl)            = replace(textbl, r"\\begin\{tabular\}\{r\|([^\}]+)\}" => s"\\begin{tabular}{l\1}")
 footer()                         = "\\end{threeparttable}\n\\end{adjustbox}\n\\end{table}"
 add_leasing_heading(textable)    = replace(textable, r"(\n +\$ *\\psi\^0 *\$)"   => s" & \\multicolumn{4}{c}{\\emph{Leasing}   } \\\\ \\addlinespace[1pt]\1")
-add_drilling_heading(textable)   = replace(textable, r"(\n +\$ *\\alpha\\_\{2008} *\$)" => s" & \\multicolumn{4}{c}{\\emph{Drilling}  } \\\\ \\addlinespace[1pt]\1")
+add_drilling_heading(textable)   = replace(textable, r"(\n +\$ *\\alpha\\_\{c,2008} *\$)" => s" & \\multicolumn{4}{c}{\\emph{Drilling}  } \\\\ \\addlinespace[1pt]\1")
 add_production_heading(textable) = replace(textable, r"(\n +Intercept)"          => s" & \\multicolumn{4}{c}{\\emph{Production}} \\\\ \\addlinespace[1pt]\1")
+fix_underscores(textable)        = replace(textable, r"\\_" => s"_")
 
 
 function make_table(rt::IndexedTable, caption::String, label::String, note::String)
     out = header(caption, label) *
-    (rt |> to_tex |> addlinespace |> hline_to_midrule |> right_to_left |> add_leasing_heading |> add_drilling_heading |> add_production_heading) *
+    (rt |> to_tex |> addlinespace |> hline_to_midrule |> right_to_left |> add_leasing_heading |> add_drilling_heading |> add_production_heading |> fix_underscores) *
     tablenotes(note) *footer()
     return out
 end
