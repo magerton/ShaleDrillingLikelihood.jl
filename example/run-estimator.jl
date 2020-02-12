@@ -171,16 +171,17 @@ if false # CONVERT_KAPPA
 end
 
 let thts = split_thetas(dataset_full, theta0_full)
+    println_time_flush("Parameters are")
     println("theta0_drill = $(round.(thts[1]; digits=3))")
     println("theta0_roy   = $(round.(thts[2]; digits=3))")
     println("theta0_pdxn  = $(round.(thts[3]; digits=3))")
 end
 
 if DO_FULL
-    println("Starting full model solution")
+    println_time_flush("Starting full model solution")
     res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, MAXTIME_FULL)
 else
-    println("Evaluating likelihood only")
+    println_time_flush("Evaluating likelihood only")
     ew_u = evaluate_likelihood(dataset_full, theta0_full, M_full)
 end
 
