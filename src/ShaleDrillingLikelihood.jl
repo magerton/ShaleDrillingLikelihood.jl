@@ -6,9 +6,9 @@ using LinearAlgebra
 using Base.Threads
 using Halton
 using Dates
-using Calculus
+using Calculus # cut?
 using Distributions
-using Test
+using Test # cut?
 using SparseArrays
 using AxisAlgorithms
 using Interpolations
@@ -33,7 +33,7 @@ import Base: length, size, iterate,
     step
 
 import StatsBase: coeftable, coefnames
-import ArgParse: parse_item
+import ArgParse: parse_item # SDL
 
 export coefnames, print_in_binary_for_copy_paste
 
@@ -50,7 +50,7 @@ using IterativeSolvers
 # using IncompleteLU: ilu
 # using Preconditioners: DiagonalPreconditioner, UpdatePreconditioner!
 
-using InteractiveUtils: subtypes
+using InteractiveUtils: subtypes # showtypetree in test
 
 # Real arrays
 const AbstractRealArray{T,N} = AbstractArray{T,N} where {T<:Real,N}
