@@ -166,6 +166,17 @@ function Theta(m::DrillingCost_TimeFE_costdiffs, args...; kwargs...)
     return vcat(timefe, 0.017248457193998108, -1.155685021020903, 1.6270414642692912,)
 end
 
+function Theta(m::DrillingCost_DoubleTimeFE, args...; kwargs...)
+    n = length(ShaleDrillingLikelihood.yearrange(m))
+    if n == 5
+        x = [-10.755, -7.973, -6.463, -6.114, -5.986,]
+        timefe = vcat(x, x .- 0.765358)
+    else
+        throw(error("no starting values for length(yearrange($m)) == 5"))
+    end
+    return vcat(timefe, 0.230703, 0.765358+2.01314)
+end
+
 # extension
 # ---------
 Theta(m::ExtensionCost_Zero    , args...; kwargs...) = zeros(0)

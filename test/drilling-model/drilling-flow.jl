@@ -48,6 +48,7 @@ const DOPRINT = false
             DrillingCost_TimeFE(2008,2012),
             DrillingCost_TimeFE(2009,2011),
             DrillingCost_TimeFE_rigrate(2008,2012),
+            DrillingCost_DoubleTimeFE(2008,2012),
             DrillingRevenue(Constrained(),NoTrend(),NoTaxes(), Learn(), WithRoyalty()),
             DrillingRevenue(Constrained(),NoTrend(),WithTaxes(), Learn(), WithRoyalty()),
             DrillingRevenue(Constrained(),TimeTrend(),NoTaxes(), Learn(), WithRoyalty()),

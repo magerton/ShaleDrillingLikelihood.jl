@@ -5,8 +5,8 @@ export     AbstractDrillingCost,
     DrillingCost_constant,
     DrillingCost_dgt1,
     DrillingCost_TimeFE_costdiffs,
-    DrillingCost_TimeFE_rig_costdiffs
-
+    DrillingCost_TimeFE_rig_costdiffs,
+    DrillingCost_DoubleTimeFE
 
 @inline flowdψ(::AbstractDrillingCost, d, obs, theta, sim) = azero(theta)
 @inline function flow!(grad, u::AbstractPayoffFunction, d, obs, θ, sim)
@@ -132,6 +132,38 @@ end
 
 
 
+"Time FE for 2008-2012 with bonkers flexibility"
+struct DrillingCost_DoubleTimeFE <: AbstractDrillingCost_TimeFE
+    yearrange::UnitRange{Float64}
+end
+@inline _nparm(x::DrillingCost_DoubleTimeFE) = 2*(1+length(yearrange(x)))
+@inline function flow!(grad, u::DrillingCost_DoubleTimeFE, d, obs, θ, sim, dograd::Bool)
+    T = eltype(θ)
+    dograd && fill!(grad, 0)
+    d == 0 && return zero(T)
+
+    n = length(yearrange(u))
+    tidx = time_idx(u,obs)
+    Dgt0 = _Dgt0(obs)
+    dgt1 = d > 1
+
+    coef_tidx = tidx + Dgt0*n
+    dgt1idx = 2*n + 1 + Dgt0
+
+    r = d * ( θ[coef_tidx] + dgt1*θ[dgt1idx] )
+
+    if dograd
+        grad[coef_tidx]  = d
+        grad[dgt1idx]    = d * dgt1
+    end
+    return r::T
+end
+
+function coefnames(x::DrillingCost_DoubleTimeFE)
+    cfs0 = ["\\alpha_{c,D=0,$y}" for y in start(x):stop(x)]
+    cfs1 = ["\\alpha_{c,D>0,$y}" for y in start(x):stop(x)]
+    return vcat(cfs0, cfs1, "\\alpha_{D=0,d>1}", "\\alpha_{D>0,d>1}")
+end
 
 "Time FE w rig rates for 2008-2012"
 struct DrillingCost_TimeFE_rigrate <: AbstractDrillingCost_TimeFE
