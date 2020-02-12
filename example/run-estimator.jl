@@ -68,6 +68,8 @@ elseif cost(REWARD) isa DrillingCost_TimeFE_rigrate
     HASRIGS = "WITH-rigs"
 elseif cost(REWARD) isa DrillingCost_TimeFE_costdiffs
     HASRIGS = "COSTDIFF"
+elseif cost(REWARD) isa DrillingCost_DoubleTimeFE
+    HASRIGS = "no-rigs-dbl-timefe"
 else
     throw(error("don't have values for this cost fct"))
 end
@@ -174,6 +176,7 @@ if DO_FULL
     println("Starting full model solution")
     res_u, ew_u = solve_model(dataset_full, theta0_full, M_full, MAXTIME_FULL)
 else
+    println("Evaluating likelihood only")
     ew_u = evaluate_likelihood(dataset_full, theta0_full, M_full)
 end
 
