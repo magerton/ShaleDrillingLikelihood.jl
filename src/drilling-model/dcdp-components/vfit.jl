@@ -169,10 +169,6 @@ end
 
 function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
     nz, nψ, nk = size(dEV0)
-    nψ >= nk  || throw(error("Need nψ=$(nψ) >= length(theta) = $(length(theta))"))
-
-    ΠsumdubVj = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
-    dev0tmpj  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
 
     for j in OneTo(nψ)
         qj = view(ubV(t), :, j, 1)
@@ -181,9 +177,9 @@ function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
         fact = lu(IminusTEVp(t))
 
         # Note: cannot do this with @view(dEV0[:,j,:])
-        ΠsumdubVj .= view(ΠsumdubV, :, j, :)
-        ldiv!(dev0tmpj, fact, ΠsumdubVj) # ΠsumdubV[:,j,:])
-        dEV0[:,j,:] .= dev0tmpj
+        ΠsumdubVj(t) .= view(ΠsumdubV, :, j, :)
+        ldiv!(dev0tmpj(t), fact, ΠsumdubVj(t)) # ΠsumdubV[:,j,:])
+        dEV0[:,j,:] .= dev0tmpj(t)
     end
 end
 

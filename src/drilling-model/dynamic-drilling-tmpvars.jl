@@ -38,15 +38,19 @@ struct DCDPTmpVars{
     IminusTEVp::SM
     tmpEVj::Vector{T}
 
-    function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, dubVfullperm::AA4, q::AA3b, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM, tmpEVj) where {AA3, AA3b, AA4, SM}
+    ΠsumdubVj::Matrix{T} #  = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
+    dev0tmpj::Matrix{T}  #  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
+
+    function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, dubVfullperm::AA4, q::AA3b, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM, tmpEVj, ΠsumdubVj, dev0tmpj) where {AA3, AA3b, AA4, SM}
         (nθt, nz, nψ, nd) = size(dubVfull)
         (     nz, nψ, nθt, nd) == size(dubVfullperm) || throw(DimensionMismatch())
         (nz, nψ, nd) == size(ubVfull) == size(q) || throw(DimensionMismatch())
         (nz,nψ) == size(lse) == size(tmp) == size(tmp_cart) || throw(DimensionMismatch())
+        (nz,nθt) == size(dev0tmpj) == size(ΠsumdubVj) || throw(DimensionMismatch())
         nψ == checksquare(Πψtmp) || throw(DimensionMismatch())
         nz == checksquare(IminusTEVp) == length(tmpEVj)|| throw(DimensionMismatch())
         T = eltype(ubVfull)
-        return new{T,SM,AA3,AA3b,AA4}(ubVfull, dubVfull, dubVfullperm, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp, tmpEVj)
+        return new{T,SM,AA3,AA3b,AA4}(ubVfull, dubVfull, dubVfullperm, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp, tmpEVj, ΠsumdubVj, dev0tmpj)
     end
 end
 
@@ -54,16 +58,8 @@ const dcdp_tmpvars = DCDPTmpVars
 const DCDPTmpVarsArray{T,SM} = DCDPTmpVars{T,SM,Array{T,3},Array{T,3},Array{T,4}}
 const DCDPTmpVarsView = DCDPTmpVars{T,SM,AA3} where {T,SM,AA3<:SubArray}
 
-ubVfull(     x::DCDPTmpVars) = x.ubVfull
-dubVfull(    x::DCDPTmpVars) = x.dubVfull
-dubVfullperm(x::DCDPTmpVars) = x.dubVfullperm
-q(           x::DCDPTmpVars) = x.q
-lse(         x::DCDPTmpVars) = x.lse
-tmp(         x::DCDPTmpVars) = x.tmp
-tmp_cart(    x::DCDPTmpVars) = x.tmp_cart
-Πψtmp(       x::DCDPTmpVars) = x.Πψtmp
-IminusTEVp(  x::DCDPTmpVars) = x.IminusTEVp
-tmpEVj(      x::DCDPTmpVars) = x.tmpEVj
+@getFieldFunction DCDPTmpVars ubVfull dubVfull dubVfullperm q lse tmp tmp_cart
+@getFieldFunction DCDPTmpVars Πψtmp IminusTEVp tmpEVj ΠsumdubVj dev0tmpj
 
 size(x::DCDPTmpVars) = size(dubVfullperm(x))
 
@@ -95,7 +91,13 @@ function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T
     Πψtmp = Matrix{T}(undef, nψ, nψ)
     IminusTEVp = ensure_diagonal(ztransition)
     tmpEVj = Vector{T}(undef, nz)
-    return DCDPTmpVars(ubVfull, dubVfull, dubVperm, q, lse, tmp, tmp_cart, Πψtmp, IminusTEVp, tmpEVj)
+    ΠsumdubVj = Matrix{T}(undef, nz, nθt)
+    dev0tmpj = similar(ΠsumdubVj)
+
+    return DCDPTmpVars(
+        ubVfull, dubVfull, dubVperm, q, lse, tmp, tmp_cart,
+        Πψtmp, IminusTEVp, tmpEVj, ΠsumdubVj, dev0tmpj
+    )
 end
 
 function view(t::DCDPTmpVars, idxd::AbstractVector)
@@ -105,7 +107,8 @@ function view(t::DCDPTmpVars, idxd::AbstractVector)
     @views dubV = view(dubVfull(t),:,:,:,idxd)
     @views dubvperm = view(dubVfullperm(t),:,:,:,idxd)
     @views qq   = view(q(t), :,:,idxd)
-    return dcdp_tmpvars(ubV, dubV, dubvperm, qq, lse(t), tmp(t), tmp_cart(t), Πψtmp(t), IminusTEVp(t), tmpEVj(t))
+    return dcdp_tmpvars(ubV, dubV, dubvperm, qq, lse(t), tmp(t), tmp_cart(t),
+        Πψtmp(t), IminusTEVp(t), tmpEVj(t), ΠsumdubVj(t), dev0tmpj(t))
 end
 
 
