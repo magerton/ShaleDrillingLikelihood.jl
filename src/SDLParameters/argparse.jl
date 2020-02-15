@@ -12,7 +12,7 @@ function arg_settings()
     add_arg_group(s, "Approximation", "approx")
     add_arg_group(s, "Parameters", "param")
 
-    @add_arg_table s begin
+    @add_arg_table! s begin
 
         # Dataset
         "--dataset", "-d"

@@ -6,7 +6,7 @@ export parse_commandline_counterfactuals, print_parsed_args_counterfactuals
 function arg_settings_counterfactuals()
     s = ArgParseSettings()
 
-    @add_arg_table s begin
+    @add_arg_table! s begin
 
         "--jld2"
             arg_type = String
