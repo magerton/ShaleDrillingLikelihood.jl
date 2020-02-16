@@ -33,6 +33,7 @@ using Base: product
 using LinearAlgebra: checksquare
 using ArgParse
 using Base.Meta: parse
+import ArgParse: parse_item # SDL
 
 import ShaleDrillingLikelihood: ichars, zchars,
     DataRoyalty, DataProduce, DataDrillPrimitive, DataDrill

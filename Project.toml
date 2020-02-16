@@ -25,13 +25,11 @@ LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Query = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"
 RCall = "6f49c342-dc21-5d91-9882-a32aef131414"
 RData = "df47a6cb-8c03-5eed-afd8-b6050d6c41da"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -42,22 +40,5 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 
 [compat]
+ArgParse = ">= 0.6.2"
 julia = "≥ 1.1.0"
-
-[extras]
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
-InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
-Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Test", "Random", "BenchmarkTools", "Optim", "LinearAlgebra", "StatsBase", "Calculus", "StatsFuns", "InteractiveUtils"]

@@ -6,9 +6,9 @@ using LinearAlgebra
 using Base.Threads
 using Halton
 using Dates
-using Calculus # cut?
+using Calculus
 using Distributions
-using Test # cut?
+using Test
 using SparseArrays
 using AxisAlgorithms
 using Interpolations
@@ -23,7 +23,6 @@ using StatsBase
 using ClusterManagers
 using DataFrames
 using UnsafeArrays
-using ArgParse
 
 # extend these methods
 import Base: length, size, iterate,
@@ -33,7 +32,6 @@ import Base: length, size, iterate,
     step
 
 import StatsBase: coeftable, coefnames
-import ArgParse: parse_item # SDL
 
 export coefnames, print_in_binary_for_copy_paste
 
