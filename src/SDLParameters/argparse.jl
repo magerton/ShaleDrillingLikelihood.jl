@@ -7,10 +7,10 @@ export parse_commandline, print_parsed_args
 function arg_settings()
     s = ArgParseSettings()
 
-    add_arg_group(s, "Computation", "comp")
-    add_arg_group(s, "Payoffs", "payoff")
-    add_arg_group(s, "Approximation", "approx")
-    add_arg_group(s, "Parameters", "param")
+    add_arg_group!(s, "Computation", "comp")
+    add_arg_group!(s, "Payoffs", "payoff")
+    add_arg_group!(s, "Approximation", "approx")
+    add_arg_group!(s, "Parameters", "param")
 
     @add_arg_table! s begin
 
