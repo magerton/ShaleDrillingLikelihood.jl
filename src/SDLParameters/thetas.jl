@@ -9,6 +9,7 @@ AlphaPsi() = 0x1.55b10dcc51d5fp-2
 AlphaG() = 0x1.075c51cf96449p-1
 AlphaT() = STARTING_α_t
 Alpha0() = -2.8
+AlphaD() = -0.2
 BetaPsi() = 0.11805850128182346
 AlphaTFE() = [ 0.20665908809883377, 0.1661000339389365, 0.14007105659535182,
     0.14457016546750073, 0.19677616668888495, 0.26422850311680984,
@@ -90,11 +91,13 @@ function Theta(d::DataRoyalty; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
 end
 
 function Theta(d::DataProduce; αψ=AlphaPsi(), αg=AlphaG(), αt=AlphaT(),
-         αTFE=AlphaTFE(), ση=Sigma_eta(), σu=Sigma_u(), γ0=Gamma0(), kwargs...)
+         αTFE=AlphaTFE(), ση=Sigma_eta(), σu=Sigma_u(), γ0=Gamma0(), αD=AlphaD(), kwargs...)
     if _num_x(d) == 2
         return vcat(αψ, αg, γ0,     ση, σu)
     elseif _num_x(d) == 3
         return vcat(αψ, αg, αt, γ0, ση, σu)
+    elseif _num_x(d) == 4
+        return vcat(αψ, αg, αt, αD, γ0, ση, σu)
     elseif _num_x(d) == 10
         return vcat(αψ, αg, αTFE, γ0, ση, σu)
     end
@@ -116,6 +119,11 @@ end
 function Theta(m::DrillingRevenue{Unconstrained, TimeTrend};
     θρ=ThetaRho(), αψ=AlphaPsi(), αg=AlphaG(), αT=AlphaT(), α0=Alpha0(), kwargs...)
     return vcat(α0, αg, αψ, αT, θρ)
+end
+
+function Theta(m::DrillingRevenue{Unconstrained, TimeTrendDgt0};
+    θρ=ThetaRho(), αψ=AlphaPsi(), αg=AlphaG(), αT=AlphaT(), α0=Alpha0(), αD=AlphaD(), kwargs...)
+    return vcat(α0, αg, αψ, αT, αD, θρ)
 end
 
 function Theta(m::DrillingRevenue{Unconstrained, TimeFE};
@@ -194,6 +202,14 @@ CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, TimeTrend}}) =
         (idx_produce_ψ, idx_drill_ψ,),
         (idx_produce_g, idx_drill_g),
         (idx_produce_t, idx_drill_t),
+    ]
+
+CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, TimeTrendDgt0}}) =
+    [
+        (idx_produce_ψ, idx_drill_ψ,),
+        (idx_produce_g, idx_drill_g),
+        (idx_produce_t, idx_drill_t),
+        (idx_produce_D, idx_drill_D),
     ]
 
 function CoefLinks(r::DrillReward{<:DrillingRevenue{Unconstrained, TimeFE}})

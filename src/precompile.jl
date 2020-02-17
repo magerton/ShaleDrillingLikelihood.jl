@@ -4,9 +4,10 @@ function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
 
     revs = (
-        DrillingRevenue{Unconstrained,NoTrend,   GathProcess, Learn, WithRoyalty},
-        DrillingRevenue{Unconstrained,TimeTrend, GathProcess, Learn, WithRoyalty},
-        DrillingRevenue{Unconstrained,TimeFE,    GathProcess, Learn, WithRoyalty},
+        DrillingRevenue{Unconstrained, NoTrend,       GathProcess, Learn, WithRoyalty},
+        DrillingRevenue{Unconstrained, TimeTrend,     GathProcess, Learn, WithRoyalty},
+        DrillingRevenue{Unconstrained, TimeFE,        GathProcess, Learn, WithRoyalty},
+        DrillingRevenue{Unconstrained, TimeTrendDgt0, GathProcess, Learn, WithRoyalty},
     )
 
     costs = (

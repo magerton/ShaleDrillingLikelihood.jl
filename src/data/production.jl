@@ -145,12 +145,15 @@ theta_produce(d, theta) = view(theta, idx_produce(d))
 idx_produce_ψ() = 1
 idx_produce_g() = 2
 idx_produce_t() = 3
+idx_produce_D() = 4
 idx_produce_ψ(  d::Union{AbstractDataStructureProduction,ProductionModel}) =
     idx_produce_ψ()
 idx_produce_g(  d::Union{AbstractDataStructureProduction,ProductionModel}) =
     idx_produce_g()
 idx_produce_t(  d::Union{AbstractDataStructureProduction,ProductionModel}) =
     idx_produce_t()
+idx_produce_D(  d::Union{AbstractDataStructureProduction,ProductionModel}) =
+    idx_produce_D()
 idx_produce_β(  d::AbstractDataStructureProduction) = 1 .+ (1:_num_x(d))
 idx_produce_σ2η(d::AbstractDataStructureProduction) = 2 + _num_x(d)
 idx_produce_σ2u(d::AbstractDataStructureProduction) = 3 + _num_x(d)

@@ -1,6 +1,7 @@
 using ShaleDrillingLikelihood: DrillingRevenueTimeTrend,
     DrillingRevenueNoTrend,
     DrillingRevenueTimeFE,
+    DrillingRevenueTimeTrendDgt0,
     baseyear,
     tech,
     range_i_to_ip1,
@@ -46,6 +47,14 @@ function FormulaProduce(::DrillReward{<:DrillingRevenueTimeTrend}, startvalues=f
     fm = startvalues ? strt : full
     return fm
 end
+
+function FormulaProduce(::DrillReward{<:DrillingRevenueTimeTrendDgt0}, startvalues=false)
+    strt = @formula(logcumgas_r ~ 1 + log_ogip + α_t + Dgt0 + (1|icat) + (1|iD))
+    full = @formula(logcumgas_r ~ 1 + log_ogip + α_t + Dgt0)
+    fm = startvalues ? strt : full
+    return fm
+end
+
 function FormulaProduce(::DrillReward{<:DrillingRevenueNoTrend}, startvalues=false)
     strt = @formula(logcumgas_r ~ 1 + log_ogip  + (1|icat) + (1|iD))
     full = @formula(logcumgas_r ~ 1 + log_ogip)
