@@ -23,6 +23,8 @@ using ShaleDrillingLikelihood: simulate,
     idx_drill_g,
     idx_produce_t,
     idx_drill_t,
+    idx_drill_D,
+    idx_produce_D,
     total_wells_drilled,
     DataDynamicDrill,
     num_choices,
@@ -33,6 +35,7 @@ using Base: product
 using LinearAlgebra: checksquare
 using ArgParse
 using Base.Meta: parse
+import ArgParse: parse_item # SDL
 
 import ShaleDrillingLikelihood: ichars, zchars,
     DataRoyalty, DataProduce, DataDrillPrimitive, DataDrill

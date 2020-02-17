@@ -21,7 +21,9 @@ export AbstractTaxType,
     NoLearningProblem,
     STARTING_α_ψ,
     STARTING_log_ogip,
-    STARTING_α_t
+    STARTING_α_t,
+    STARTING_α_D,
+    TimeTrendDgt0
 
 # ----------------------------------------------------------------
 # Drilling revenue variations
@@ -63,12 +65,14 @@ struct Constrained   <: AbstractConstrainedType
     log_ogip::Float64
     α_ψ::Float64
     α_t::Float64
+    α_D::Float64
 end
-Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTING_α_t, args...) = Constrained(log_ogip, α_ψ, α_t)
+Constrained(; log_ogip=STARTING_log_ogip, α_ψ = STARTING_α_ψ, α_t = STARTING_α_t, α_D = STARTING_α_D, args...) = Constrained(log_ogip, α_ψ, α_t, α_D)
 
 @inline theta_g(x::Constrained) = x.log_ogip
 @inline theta_ψ(x::Constrained) = x.α_ψ
 @inline theta_t(x::Constrained) = x.α_t
+@inline theta_D(x::Constrained) = x.α_D
 
 const DrillingRevenueConstrained = DrillingRevenue{Constrained}
 const DrillingRevenueUnconstrained = DrillingRevenue{Unconstrained}
@@ -76,16 +80,23 @@ const DrillingRevenueUnconstrained = DrillingRevenue{Unconstrained}
 # Technology
 # -----------------
 
+abstract type AbstractTimeTrend <: AbstractTechChange end
+
 const TIME_TREND_BASE = 2008.5
 
 struct NoTrend <: AbstractTechChange  end
-struct TimeTrend <: AbstractTechChange
+struct TimeTrend <: AbstractTimeTrend
     baseyear::Float64
 end
-TimeTrend() = TimeTrend(TIME_TREND_BASE)
+struct TimeTrendDgt0 <: AbstractTimeTrend
+    baseyear::Float64
+end
+(::Type{T})() where {T<:AbstractTimeTrend} = T(TIME_TREND_BASE)
 struct TimeFE <: AbstractTechChange
     yearrange::UnitRange{Float64}
 end
+
+# Special TimeFE stuff
 yearrange(x::TimeFE) = x.yearrange
 yearrange(x::AbstractTechChange) = UnitRange(2008.5, 2016.5)
 start(x::TimeFE) = first(yearrange(x))
@@ -99,19 +110,23 @@ function coefnames(x::TimeFE)
     return cfnms
 end
 
-baseyear(x::TimeTrend) = x.baseyear
+baseyear(x::AbstractTimeTrend) = x.baseyear
 baseyear(x::NoTrend) = TIME_TREND_BASE
 baseyear(x::TimeFE) = start(x)
 baseyear(x::DrillingRevenue) = baseyear(tech(x))
 baseyear(x::DrillReward) = baseyear(revenue(x))
 
-const DrillingRevenueTimeTrend = DrillingRevenue{Cn,TimeTrend} where {Cn}
-const DrillingRevenueNoTrend   = DrillingRevenue{Cn,NoTrend} where {Cn}
-const DrillingRevenueTimeFE    = DrillingRevenue{Cn,TimeFE} where {Cn}
+const DrillingRevenueTimeTrend         = DrillingRevenue{Cn,TimeTrend} where {Cn}
+const DrillingRevenueTimeTrendDgt0     = DrillingRevenue{Cn,TimeTrendDgt0} where {Cn}
+const DrillingRevenueAbstractTimeTrend = DrillingRevenue{Cn,T} where {Cn,T<:AbstractTimeTrend}
+const DrillingRevenueNoTrend           = DrillingRevenue{Cn,NoTrend} where {Cn}
+const DrillingRevenueTimeFE            = DrillingRevenue{Cn,TimeFE} where {Cn}
 
-@inline centered_time(x::DrillingRevenue, z::Tuple) = year(z) - baseyear(tech(x))
-@inline trend_component(x::DrillingRevenueTimeTrend, θ, z) = theta_t(x,θ) * centered_time(x, z)
-@inline trend_component(x::DrillingRevenueNoTrend, θ, z) = 0
+@inline centered_time(  x::DrillingRevenue, z::Tuple) = year(z) - baseyear(tech(x))
+@inline trend_component(x::DrillingRevenueTimeTrend,     θ, obs) = theta_t(x,θ) * centered_time(x, zchars(obs))
+@inline trend_component(x::DrillingRevenueNoTrend,       θ, obs) = 0
+@inline trend_component(x::DrillingRevenueTimeTrendDgt0, θ, obs) = theta_t(x,θ)*centered_time(x,zchars(obs)) + _Dgt0(obs)*theta_D(x,θ)
+
 
 @inline function idx_year(x::DrillingRevenueTimeFE, z)
     timefe = tech(x)
@@ -125,8 +140,8 @@ const DrillingRevenueTimeFE    = DrillingRevenue{Cn,TimeFE} where {Cn}
     end
 end
 
-function trend_component(x::DrillingRevenueTimeFE, θ, z)
-    i = idx_year(x,z)
+function trend_component(x::DrillingRevenueTimeFE, θ, obs)
+    i = idx_year(x,zchars(obs))
     if i > 0
         return theta_t(x,θ,i)
     else
@@ -134,15 +149,19 @@ function trend_component(x::DrillingRevenueTimeFE, θ, z)
     end
 end
 
-@inline function gradt!(grad, x::DrillingRevenueNoTrend, rev, θ, z)
+@inline function gradt!(grad, x::DrillingRevenueNoTrend, rev, θ, obs)
     nothing
 end
-@inline function gradt!(grad, x::DrillingRevenueTimeTrend, rev, θ, z)
-    grad[idx_t(x)] = rev*centered_time(x, z)
+@inline function gradt!(grad, x::DrillingRevenueTimeTrend, rev, θ, obs)
+    grad[idx_t(x)] = rev*centered_time(x, zchars(obs))
 end
-@inline function gradt!(grad, x::DrillingRevenueTimeFE, rev, θ, z)
+@inline function gradt!(grad, x::DrillingRevenueTimeTrendDgt0, rev, θ, obs)
+    grad[idx_t(x)] = rev*centered_time(x, zchars(obs))
+    grad[idx_D(x)] = rev*_Dgt0(obs)
+end
+@inline function gradt!(grad, x::DrillingRevenueTimeFE, rev, θ, obs)
     grad[idx_t(x)] .= 0
-    i = idx_year(x,z)
+    i = idx_year(x,zchars(obs))
     if i > 0
         grad[idx_t(x,i)] = rev
     end
@@ -188,25 +207,29 @@ const DrillingRevenueMaxLearning = DrillingRevenue{Cn,Tech,Tax,MaxLearning} wher
 @inline _nparm(x::DrillingRevenue{Constrained}) = 2
 @inline _nparm(x::DrillingRevenue{Unconstrained, NoTrend}) = 4
 @inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrend}) = 5
+@inline _nparm(x::DrillingRevenue{Unconstrained, TimeTrendDgt0}) = 6
 @inline _nparm(x::DrillingRevenue{Unconstrained, TimeFE}) = 4 + _nparm(tech(x))
 
 @inline idx_0(x::DrillingRevenue) = 1
 @inline idx_g(x::DrillingRevenue) = 2
 @inline idx_ψ(x::DrillingRevenue) = 3
-@inline idx_t(x::DrillingRevenueTimeTrend) = 4
+@inline idx_t(x::DrillingRevenueAbstractTimeTrend) = 4
 @inline idx_t(x::DrillingRevenueTimeFE) = 3 .+ OneTo(_nparm(tech(x)))
 function idx_t(x::DrillingRevenueTimeFE, i)
     1 <= i <= _nparm(tech(x)) || throw(DomainError(i))
     return 3 + i
 end
+@inline idx_D(x::DrillingRevenueTimeTrendDgt0) = 5
 @inline idx_ρ(x::DrillingRevenue) = _nparm(x)
 
 @inline theta_0(x::DrillingRevenue, θ) = θ[idx_0(x)]
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
-@inline theta_t(x::DrillingRevenue{Unconstrained, TimeTrend}, θ) = θ[idx_t(x)]
+@inline theta_t(x::DrillingRevenue{Unconstrained}, θ) = θ[idx_t(x)]
 @inline theta_t(x::DrillingRevenue{Unconstrained, TimeFE}, θ) = uview(θ, idx_t(x))
 @inline theta_t(x::DrillingRevenue{Unconstrained, TimeFE}, θ, i) = θ[idx_t(x,i)]
+@inline theta_D(x::DrillingRevenue{Unconstrained, TimeTrendDgt0},θ) = θ[idx_D(x)]
+@inline theta_D(x, θ) = zero(Float64)
 @inline theta_ρ(x, θ) = θ[idx_ρ(x)]
 function theta_t(x::DrillingRevenue{Unconstrained, NoTrend}, θ)
     # @warn "No t in $x. setting to $STARTING_α_t"
@@ -221,13 +244,15 @@ function ConstrainedCoefs(x::DrillingRevenueUnconstrained, theta)
     g   = theta_g(x, theta)
     psi = theta_ψ(x, theta)
     t   = theta_t(x, theta)
-    out = (log_ogip=g, α_ψ=psi, α_t=STARTING_α_t,)
+    D   = theta_D(x, theta)
+    out = (log_ogip=g, α_ψ=psi, α_t=t, α_D=D)
     return out
 end
 
 ConstrainedCoefs(x::DrillReward, θ) = ConstrainedCoefs(revenue(x), vw_revenue(x, θ))
 ConstrainedIdx(x::AbstractDrillingRevenue) = idx_g(x), idx_ψ(x), idx_t(x)
 ConstrainedIdx(x::DrillingRevenueNoTrend) = idx_g(x), idx_ψ(x)
+ConstrainedIdx(x::DrillingRevenueTimeTrendDgt0) = idx_g(x), idx_ψ(x), idx_t(x), idx_D(x)
 
 function UnconstrainedFmConstrainedIdx(x::DrillingRevenueConstrained)
     xu = UnconstrainedProblem(x)
@@ -253,6 +278,7 @@ const REAL_DISCOUNT_AND_DECLINE = 0x1.8e06b611ed4d8p-1  #  0.777394952476835= su
 const STARTING_α_ψ      = 0x1.7587cc6793516p-2 # 0.365
 const STARTING_log_ogip = 0x1.401755c339009p-1 # 0.625
 const STARTING_α_t      = 0.01948
+const STARTING_α_D      = 0.0
 
 struct NoTaxes <: AbstractTaxType end
 
@@ -370,7 +396,7 @@ function flow(x::DrillingRevenueNoTaxes, d::Integer, obs::ObservationDrill, θ::
     exp(
         theta_0(x,θ) + logprice(obs) + theta_g(x,θ)*geology(obs) +
         Eexpψ(x, d, obs, θ, sim) +
-        trend_component(x, θ, z)
+        trend_component(x, θ, obs)
     )
     return u
 end
@@ -381,7 +407,7 @@ function flow(x::DrillingRevenue, d::Integer, obs::ObservationDrill, θ::Abstrac
     exp(
         theta_0(x,θ) + theta_g(x,θ)*geology(obs) +
         Eexpψ(x, d, obs, θ, sim) +
-        trend_component(x, θ, z)
+        trend_component(x, θ, obs)
     ) * (
         price(obs) - cost_per_mcf(x)
     )
@@ -406,7 +432,7 @@ function flow!(grad, x::DrillingRevenue{Unconstrained}, d, obs, θ, sim, dograd:
         grad[idx_0(x)] = rev
         grad[idx_g(x)] = rev*geology(obs)
         grad[idx_ψ(x)] = rev*dEexpψdα_ψ(x, d, obs, θ, sim)
-        gradt!(grad, x, rev, θ, z)
+        gradt!(grad, x, rev, θ, obs)
         grad[idx_ρ(x)] = rev*dEexpψdσ(x, d, obs, θ, sim)
     end
     return rev
@@ -429,6 +455,8 @@ coefnames(x::DrillingRevenue{Unconstrained, NoTrend}) =
     ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\theta_\\rho"]
 coefnames(x::DrillingRevenue{Unconstrained, TimeTrend}) =
     ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\alpha_t", "\\theta_\\rho"]
+coefnames(x::DrillingRevenue{Unconstrained, TimeTrendDgt0}) =
+    ["\\alpha_0", "\\alpha_g", "\\alpha_\\psi", "\\alpha_t", "\\alpha_D", "\\theta_\\rho"]
 coefnames(x::DrillingRevenue{Constrained}) =
     ["\\alpha_0", "\\theta_\\rho"]
 coefnames(x::DrillingRevenue{Unconstrained, TimeFE}) = vcat(
