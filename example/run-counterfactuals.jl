@@ -48,6 +48,7 @@ end
 
 # JLD2FILE = "E:/projects/ShaleDrillingResults/2020-01/17493674/estimation-results-17493674-no-rigs-data_all_leases.jld2"
 # JLD2FILE = "E:/projects/ShaleDrillingResults/2020-01/17493743/estimation-results-17493743-WITH-rigs-data_all_leases.jld2"
+# JLD2FILE = "E:/projects/ShaleDrillingResults/2020-02/18273309/estimation-results-18273309-no-rigs-dbl-timefe-data_all_leases.jld2"
 
 println_time_flush("Loading results from $JLD2FILE")
 file = jldopen(JLD2FILE, "r")
@@ -94,6 +95,8 @@ PP = PerpetualProblem(wp)
 # ------------------- average costs -----------------------
 
 cost_df = average_cost_df(dataset_full, theta)
+# using Plots, StatsPlots
+# @df cost_df plot(:date, -3.843351*[:cost1, :cost2], ylims=(0,Inf))
 
 # ------------------- simulation info -----------------------
 R = ShaleDrillingLikelihood.revenue(REWARD)

@@ -178,12 +178,11 @@ function theta_revenue(d::DataSetofSets, theta)
     return thet_r
 end
 
-function average_cost(dfull::DataSetofSets, theta, d::Int)
+function average_cost(dfull::DataSetofSets, theta, d::Int, x=length(statespace(_model(drill(dfull)))))
     theta_c = theta_cost(dfull, theta)
     ddrill = drill(dfull)
     zs = zchars(ddrill)
     m = _model(ddrill)
-    x = length(statespace(m))
     C = cost(reward(m))
 
     sim = SimulationDraw(0,0,0,zeros(Int,0))
@@ -200,7 +199,7 @@ end
 function average_cost_df(d::DataSetofSets, theta)
 
     zs = zchars(drill(d))
-    cost1 = average_cost(d, theta, 1)
+    cost1 = average_cost(d, theta, 1, 1)
     cost2 = average_cost(d, theta, 2)
 
     df = DataFrame(
