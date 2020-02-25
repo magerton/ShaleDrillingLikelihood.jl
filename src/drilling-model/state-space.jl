@@ -343,6 +343,10 @@ stateinfo(wp::AbstractUnitProblem, st::state) = (_d1(st), _Dgt0(st), _sgnext(st)
 
 @deprecate _sign_lease_extension(sidx::Integer,wp::AbstractUnitProblem) _sgnext(wp,sidx)
 
+@inline expires_today(wp::AbstractUnitProblem, sidx::Integer)             = sidx == end_ex0(wp)
+@inline expires_today(wp::AbstractUnitProblem, sidx::Integer, d::Integer) = expires_today(wp,sidx) && d==0
+@inline expires_today(wp::PerpetualProblem, args...) = false
+
 function _τrem(wp::AbstractUnitProblem, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
     sidx <= end_ex1(wp) && return end_ex1(wp)-sidx + _ext(wp)+1

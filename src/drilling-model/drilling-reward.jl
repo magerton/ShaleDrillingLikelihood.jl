@@ -1,24 +1,27 @@
 "Reward function for basic drilling model"
-struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost} <: AbstractStaticPayoff
+struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost,S<:AbstractScrapValue} <: AbstractStaticPayoff
     revenue::R
     drill::C
     extend::E
+    scrap::S
 end
 
 # access components
 revenue(x::DrillReward) = x.revenue
 drill(  x::DrillReward) = x.drill
 extend( x::DrillReward) = x.extend
+scrap(  x::DrillReward) = x.scrap
 cost(   x::DrillReward) = drill(x)
 
 # -----------------------------------------
 # lengths
 # -----------------------------------------
 
-_nparms(    x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(revenue(x)))
+_nparms(    x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(scrap(x)), _nparm(revenue(x)))
 _nparm(     x::DrillReward) = sum(_nparms(x))
 idx_cost(   x::DrillReward) = OneTo(_nparm(cost(x)))
 idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+  _nparm(cost(x))
+idx_scrap
 idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(cost(x)) + _nparm(extend(x)))
 idx_ρ(      x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
@@ -46,6 +49,9 @@ vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
     c = flow!(vw_cost(   x, grad), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
     e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
+
+    s = flow!(vw_scrap(  x, grad), scrap(  x), d, obs, vw_scrap(  x, θ), sim, dograd)
+
     r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
     return e+c+r
 end
