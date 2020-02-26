@@ -75,6 +75,10 @@ function arg_settings()
             default = DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() )
             # default = DrillingRevenue(Unconstrained(), TimeFE(2008.5,2016.5), GathProcess() )
             group = "payoff"
+        "--scrap"
+            arg_type = AbstractScrapValue
+            default = ScrapValue_Zero()
+            group = "payoff"
 
         "--anticipateT1EV"
             help = "T1ev shocks anticipated"
@@ -144,6 +148,7 @@ function print_parsed_args(x::Dict)
         "revenue",
         "cost",
         "extension",
+        "scrap",
         "anticipateT1EV",
         "discount",
     ]

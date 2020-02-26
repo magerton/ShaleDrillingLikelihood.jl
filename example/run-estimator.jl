@@ -47,11 +47,13 @@ CONVERT_KAPPA = pargs["convertKappa"]
 COST = pargs["cost"]
 EXT = pargs["extension"]
 REV = pargs["revenue"]
+SCRAP = pargs["scrap"]
 # DO_FULL = false
 # REV = DrillingRevenue(Unconstrained(), TimeTrendDgt0(), GathProcess() )
-# COST = DrillingCost_DoubleTimeFE(2008,2012)
-# THETA0_FULL_OVERRIDE = vcat(Theta(COST), -0x1.f9969f0c34a39p-1, -0x1.9d50b266c8aaap+1, 0x1.3728465d51ef1p-1, 0x1.65aedbd6e85c7p-2, 0x1.04eb663066b2ep-2, 0x1.ce6e1ff59b09cp-3, 0x1.ca90202dd4962p-3, 0x1.02e2074903a96p-3, 0x1.a437c9f99187bp-3, 0x1.75935eb453d24p-3, 0x1.9d9a6133afa1cp-2, 0x1.a2a59ffde8e76p-2, 0x1.08ec4cde6f181p-1, 0x1.0a8faaeb22e5cp-3, 0x1.3173946f5f246p-1, 0x1.2e47f4edf641dp+0, -0x1.b44da782aef52p+0, 0x1.202cf63ee1229p-3, 0x1.ea9dd6cfae08p+1, 0x1.a37dcf6b91926p-1, 0x1.4ebac47058e64p+0, 0x1.57aca1c6c837p+0, 0x1.12d657a279d24p+0, -0x1.de90f0f4615f1p+3, 0x1.8c7275466c94bp-4, 0x1.2c7c4f69b9434p-2)
-REWARD = DrillReward(REV, COST, EXT)
+# COST = DrillingCost_TimeFE_costdiffs(2008, 2012)
+# SCRAP = ScrapValue_Constant()
+# THETA0_FULL_OVERRIDE = vcat(-10.963, -7.769, -6.544, -6.36, -6.552, -0.181, -0.494, 2.229, -1.009,  Theta(SCRAP), -3.463, 0.725, 0.39, 0.051, -0.258, 1.174, 0.086, 0.603, 1.177, -1.682, 0.139, 3.93, 0.818, 1.305, 1.339, 1.071, -15.385, 0.097, 0.295)
+REWARD = DrillReward(REV, COST, EXT, SCRAP)
 ANTICIPATE = pargs["anticipateT1EV"]
 DISCOUNT = pargs["discount"]
 

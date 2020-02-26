@@ -75,7 +75,8 @@ export AbstractModel,
     AbstractPayoffComponent,
     AbstractDrillingRevenue,
     AbstractDrillingCost,
-    AbstractExtensionCost
+    AbstractExtensionCost,
+    AbstractScrapValue
 
 # for modeling
 abstract type AbstractModel end
@@ -102,6 +103,7 @@ abstract type AbstractPayoffComponent <: AbstractPayoffFunction end
 abstract type AbstractDrillingRevenue <: AbstractPayoffComponent end
 abstract type AbstractDrillingCost    <: AbstractPayoffComponent end
 abstract type AbstractExtensionCost   <: AbstractPayoffComponent end
+abstract type AbstractScrapValue      <: AbstractPayoffComponent end
 
 # also needed
 abstract type AbstractStateSpace end
@@ -215,7 +217,7 @@ include("drilling-model/state-space.jl")
 
 # reward function and components
 include("drilling-model/drilling-reward.jl")
-include("drilling-model/extend.jl")
+include("drilling-model/extend-and-scrap.jl")
 include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 

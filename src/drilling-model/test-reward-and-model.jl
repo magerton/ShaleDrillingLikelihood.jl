@@ -35,6 +35,8 @@ coefnames(m::TestDrillReward) = ["\\psi", "x", "z", "d", "\\theta\\rho"]
 @inline initial_state(m::TestStateSpace) = 1
 @inline _sgnext(      m::TestStateSpace, i) = i > 1
 @inline _sgnext(      m::TestStateSpace, i, d) = _sgnext(m,i) && d == 0
+expires_today(m::TestStateSpace, i) = i == 2
+expires_today(m::TestStateSpace, i, d) = expires_today(m,i) && d == 0
 
 
 function check_model_dims(d, obs::ObservationDrill{TestDrillModel}, theta)

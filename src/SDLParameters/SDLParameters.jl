@@ -12,7 +12,7 @@ using CategoricalArrays: CategoricalVector
 using MixedModels
 
 using ShaleDrillingLikelihood: simulate,
-    cost, extend, revenue,
+    cost, extend, revenue, scrap,
     lrmean, lrvar, lrstd,
     zero_out_small_probs,
     extra_parm,

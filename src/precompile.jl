@@ -18,14 +18,28 @@ function _precompile_()
         DrillingCost_DoubleTimeFE,
     )
 
+    scraps = (
+        ScrapValue_Zero,
+        ScrapValue_Constant,
+        ScrapValue_Price,
+    )
+
+    exts = (
+        ExtensionCost_Constant,
+    )
+
     for R in revs
         for C in costs
-            DR = DrillReward{R,C,ExtensionCost_Constant}
-            @assert precompile(Tuple{Type{DataDrillPrimitive}, DR, String})
-            @assert precompile(Tuple{Type{DataProduce},        DR, String})
-            @assert precompile(Tuple{Type{DataRoyalty},        DR, String})
-            @assert precompile(Tuple{Type{DynamicDrillModel},  DR, Float64,LeasedProblem,Tuple{StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}},UnitRange{Float64}},SparseArrays.SparseMatrixCSC{Float64,Int64},StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}},Bool})
-            @assert precompile(Tuple{Core.kwftype(typeof(SDL.GridTransition)),NamedTuple{(:minp,),Tuple{Float64}},typeof(SDL.GridTransition),DataDrillPrimitive{DR, ExogTimeVars{2,Tuple{Float64,Float64},StepRange{Dates.Date,Dates.Month}},Tuple{Float64,Float64},Int64,LeasedProblem},Float64,Int64})
+            for S in scraps
+                for E in exts
+                    DR = DrillReward{R,C,E,S}
+                    @assert precompile(Tuple{Type{DataDrillPrimitive}, DR, String})
+                    @assert precompile(Tuple{Type{DataProduce},        DR, String})
+                    @assert precompile(Tuple{Type{DataRoyalty},        DR, String})
+                    @assert precompile(Tuple{Type{DynamicDrillModel},  DR, Float64,LeasedProblem,Tuple{StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}},UnitRange{Float64}},SparseArrays.SparseMatrixCSC{Float64,Int64},StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}},Bool})
+                    @assert precompile(Tuple{Core.kwftype(typeof(SDL.GridTransition)),NamedTuple{(:minp,),Tuple{Float64}},typeof(SDL.GridTransition),DataDrillPrimitive{DR, ExogTimeVars{2,Tuple{Float64,Float64},StepRange{Dates.Date,Dates.Month}},Tuple{Float64,Float64},Int64,LeasedProblem},Float64,Int64})
+                end
+            end
         end
     end
 

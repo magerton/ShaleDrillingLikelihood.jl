@@ -55,6 +55,9 @@ statespace(m::AbstractDrillModel) = NotDefinedError(m)
 @inline _ψ(    obs::ObservationDrill, s::SimulationDraw) = _ψ(_model(obs), _x(obs), s)
 @inline _dψdθρ(obs::ObservationDrill, s::SimulationDraw) = _dψdθρ(_model(obs), _x(obs), s)
 
+@inline expires_today(            obs::ObservationDrill) = expires_today(statespace(obs), _x(obs), _y(obs))
+@inline expires_today(d::Integer, obs::ObservationDrill) = expires_today(statespace(obs), _x(obs), d)
+
 # -------------------------------------------
 # Payoffs...
 # -------------------------------------------

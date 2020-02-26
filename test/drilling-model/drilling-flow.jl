@@ -49,6 +49,10 @@ const DOPRINT = false
             DrillingCost_TimeFE(2009,2011),
             DrillingCost_TimeFE_rigrate(2008,2012),
             DrillingCost_DoubleTimeFE(2008,2012),
+
+            ScrapValue_Constant(),
+            ScrapValue_Price(),
+
             DrillingRevenue(Constrained(),NoTrend(),NoTaxes(), Learn(), WithRoyalty()),
             DrillingRevenue(Constrained(),NoTrend(),WithTaxes(), Learn(), WithRoyalty()),
             DrillingRevenue(Constrained(),TimeTrend(),NoTaxes(), Learn(), WithRoyalty()),
@@ -72,7 +76,9 @@ const DOPRINT = false
 
             ExtensionCost_Zero(),
             ExtensionCost_Constant(),
-            DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
+            DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant(), ScrapValue_Zero()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
+            DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant(), ScrapValue_Constant()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
+            DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant(), ScrapValue_Price()), # UnconstrainedProblem( StaticDrillingPayoff(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
             ConstrainedProblem(   DrillReward(DrillingRevenue(Unconstrained(),NoTrend(),NoTaxes()), DrillingCost_TimeFE(2009,2011), ExtensionCost_Constant()), ),
             DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant()),
         )

@@ -1,4 +1,4 @@
-using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend,
+using ShaleDrillingLikelihood: vw_revenue, vw_cost, vw_extend, vw_scrap,
     DrillingRevenueUnconstrained, DrillingRevenueConstrained,
     ConstrainedIdx, UnconstrainedFmConstrainedIdx
 
@@ -26,8 +26,9 @@ Theta(m::AbstractDynamicDrillModel, args...; kwargs...) = Theta(reward(m), args.
 function Theta(m::DrillReward, args...; kwargs...)
     c = Theta(cost(m), args...; kwargs...)
     e = Theta(extend(m), args...; kwargs...)
+    s = Theta(scrap(m), args...; kwargs...)
     r = Theta(revenue(m), args...; kwargs...)
-    return vcat(c,e,r)
+    return vcat(c,e,s,r)
 end
 
 function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
@@ -37,7 +38,8 @@ function ThetaConstrained(m::DrillReward{<:DrillingRevenueUnconstrained}, theta)
     r = [x for (i,x) in enumerate(theta_rev) if i ∉ idxit]
     c = vw_cost(m,theta)
     e = vw_extend(m,theta)
-    return vcat(c,e,r)
+    s = vw_scrap(m,theta)
+    return vcat(c,e,s,r)
 end
 
 function updateThetaUnconstrained!(m::DrillReward{<:DrillingRevenueConstrained}, thetau, thetac)
@@ -48,6 +50,7 @@ function updateThetaUnconstrained!(m::DrillReward{<:DrillingRevenueConstrained},
         throw(DimensionMismatch("_nparm(rwrd_u) = $(_nparm(rwrd_u)) != length(thetau) = $(length(thetau))"))
     vw_cost(rwrd_u, thetau) .= vw_cost(m, thetac)
     vw_extend(rwrd_u, thetau) .= vw_extend(m, thetac)
+    vw_scrap(rwrd_u, thetau) .= vw_scrap(m, thetac)
 
     revidx = UnconstrainedFmConstrainedIdx(revenue(m))
     thetarev_u = vw_revenue(rwrd_u, thetau)
@@ -191,6 +194,9 @@ end
 Theta(m::ExtensionCost_Zero    , args...; kwargs...) = zeros(0)
 Theta(m::ExtensionCost_Constant, args...; kwargs...) = vcat(-1.0)
 
+Theta(m::ScrapValue_Zero    , args...; kwargs...) = zeros(0)
+Theta(m::ScrapValue_Constant, args...; kwargs...) = vcat(0.1)
+Theta(m::ScrapValue_Price   , args...; kwargs...) = vcat(0.1, 0.1)
 
 CoefLinks(r) = (zeros(Int,0), zeros(Int,0))
 
