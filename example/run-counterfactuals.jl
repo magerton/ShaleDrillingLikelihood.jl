@@ -102,9 +102,10 @@ cost_df = average_cost_df(dataset_full, theta)
 R = ShaleDrillingLikelihood.revenue(REWARD)
 C = ShaleDrillingLikelihood.cost(REWARD)
 E = ShaleDrillingLikelihood.extend(REWARD)
+S = ShaleDrillingLikelihood.scrap(REWARD)
 
 DrillRev(lrn, roy) = DrillingRevenue(constr(R), tech(R), tax(R), lrn, roy)
-DrillRwrd(lrn, roy) = DrillReward(DrillRev(lrn,roy), C, E)
+DrillRwrd(lrn, roy) = DrillReward(DrillRev(lrn,roy), C, E, S)
 
 theta_notech = Theta_NoTech(dataset_full, theta, TECH_YEAR_ZERO)
 TSTOP = time_idx(zchars(drill(dataset_full)), DateQuarter(DATE_STOP))
