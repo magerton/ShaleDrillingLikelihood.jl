@@ -345,7 +345,8 @@ stateinfo(wp::AbstractUnitProblem, st::state) = (_d1(st), _Dgt0(st), _sgnext(st)
 
 @inline expires_today(wp::AbstractUnitProblem, sidx::Integer)             = sidx == end_ex0(wp)
 @inline expires_today(wp::AbstractUnitProblem, sidx::Integer, d::Integer) = expires_today(wp,sidx) && d==0
-@inline expires_today(wp::PerpetualProblem, args...) = false
+@inline expires_today(wp::PerpetualProblem, ::Integer, ::Integer) = false
+@inline expires_today(wp::PerpetualProblem, ::Integer) = false
 
 function _τrem(wp::AbstractUnitProblem, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
