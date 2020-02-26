@@ -118,6 +118,9 @@ ArgParse.parse_item(::Type{AbstractDrillingCost}, x::AbstractString) =
 ArgParse.parse_item(::Type{AbstractExtensionCost}, x::AbstractString) =
     eval(parse(x))::AbstractExtensionCost
 
+ArgParse.parse_item(::Type{AbstractScrapValue}, x::AbstractString) =
+    eval(parse(x))::AbstractScrapValue
+
 ArgParse.parse_item(::Type{DrillingRevenue}, x::AbstractString) =
     eval(parse(x))::DrillingRevenue
 
