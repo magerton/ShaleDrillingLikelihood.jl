@@ -81,7 +81,7 @@ println("print to keep from blowing up")
 @testset "Dynamic Drilling Model" begin
 
     Random.seed!(1234)
-    f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant())
+    f = DrillReward(DrillingRevenue(Constrained(),NoTrend(),NoTaxes()), DrillingCost_constant(), ExtensionCost_Constant(), ScrapValue_Constant())
     theta = randn(_nparm(f))
     # @show theta
 

@@ -217,7 +217,7 @@ include("drilling-model/state-space.jl")
 
 # reward function and components
 include("drilling-model/drilling-reward.jl")
-include("drilling-model/extend.jl")
+include("drilling-model/extend-and-scrap.jl")
 include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 

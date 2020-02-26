@@ -6,6 +6,8 @@ struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:Abstrac
     scrap::S
 end
 
+DrillReward(r,d,e) = DrillReward(r,d,e,ScrapValue_Zero())
+
 # access components
 revenue(x::DrillReward) = x.revenue
 drill(  x::DrillReward) = x.drill
@@ -17,21 +19,23 @@ cost(   x::DrillReward) = drill(x)
 # lengths
 # -----------------------------------------
 
-_nparms(    x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(scrap(x)), _nparm(revenue(x)))
-_nparm(     x::DrillReward) = sum(_nparms(x))
+@inline _nparms(    x::DrillReward) = (_nparm(cost(x)), _nparm(extend(x)), _nparm(scrap(x)), _nparm(revenue(x)))
+@inline _nparm(     x::DrillReward) = sum(_nparms(x))
+@inline _nparm_cost_ext_scrap(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x)) + _nparm(scrap(x))
+@inline _nparm_cost_ext(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x))
+
 idx_cost(   x::DrillReward) = OneTo(_nparm(cost(x)))
 idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+  _nparm(cost(x))
-idx_scrap
-idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ (_nparm(cost(x)) + _nparm(extend(x)))
+idx_scrap(  x::DrillReward) = OneTo(_nparm(scrap(x)))   .+ _nparm_cost_ext(x)
+idx_revenue(x::DrillReward) = OneTo(_nparm(revenue(x))) .+ _nparm_cost_ext_scrap(x)
 idx_ρ(      x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
 idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 
-_nparm_cost_ext(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x))
-idx_drill_g(x::DrillReward) = _nparm_cost_ext(x) + idx_g(revenue(x))
-idx_drill_ψ(x::DrillReward) = _nparm_cost_ext(x) + idx_ψ(revenue(x))
-idx_drill_t(x::DrillReward) = _nparm_cost_ext(x) .+ idx_t(revenue(x))
-idx_drill_D(x::DrillReward) = _nparm_cost_ext(x) .+ idx_D(revenue(x))
+idx_drill_g(x::DrillReward) = _nparm_cost_ext_scrap(x) + idx_g(revenue(x))
+idx_drill_ψ(x::DrillReward) = _nparm_cost_ext_scrap(x) + idx_ψ(revenue(x))
+idx_drill_t(x::DrillReward) = _nparm_cost_ext_scrap(x) .+ idx_t(revenue(x))
+idx_drill_D(x::DrillReward) = _nparm_cost_ext_scrap(x) .+ idx_D(revenue(x))
 
 idx_drill_g(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_g(reward(_model(d)))
 idx_drill_ψ(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_ψ(reward(_model(d)))
@@ -40,6 +44,7 @@ idx_drill_D(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_D(reward(_mod
 
 vw_cost(   x::DrillReward, theta) = uview(theta, idx_cost(x))
 vw_extend( x::DrillReward, theta) = uview(theta, idx_extend(x))
+vw_scrap(  x::DrillReward, theta) = uview(theta, idx_scrap(x))
 vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 
 # -----------------------------------------
@@ -49,11 +54,9 @@ vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
 function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
     c = flow!(vw_cost(   x, grad), cost(   x), d, obs, vw_cost(   x, θ), sim, dograd)
     e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
-
     s = flow!(vw_scrap(  x, grad), scrap(  x), d, obs, vw_scrap(  x, θ), sim, dograd)
-
     r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
-    return e+c+r
+    return c+e+s+r
 end
 
 function flowdψ(x::DrillReward, d, obs, θ, sim)
@@ -71,8 +74,9 @@ end
 function coefnames(x::DrillReward)
     c = coefnames(cost(   x))
     e = coefnames(extend( x))
+    s = coefnames(scrap(  x))
     r = coefnames(revenue(x))
-    return vcat(c, e, r)
+    return vcat(c, e, s, r)
 end
 
 # -----------------------------------------
