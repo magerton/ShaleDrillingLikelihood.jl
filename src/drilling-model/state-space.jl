@@ -77,19 +77,19 @@ _ext(   wp::PerpetualProblem) = 0
 @inline end_ex1(wp::LeasedProblemContsDrill) = _τ1max(wp)+1
 @inline end_ex0(wp::LeasedProblemContsDrill) = end_ex1(wp) + max(_τ0max(wp),_ext(wp))+1
 @inline end_lrn(wp::LeasedProblemContsDrill) = end_ex0(wp) + _dmax(wp)+1
-@inline end_inf(wp::LeasedProblemContsDrill) = end_lrn(wp) + 2*(_Dmax(wp)-1)+ 1
+@inline end_inf(wp::LeasedProblemContsDrill) = end_lrn(wp) + 2*_Dmax(wp)
 @inline strt_ex(wp::LeasedProblemContsDrill) = end_ex0(wp) - (_ext(wp)-1)     # t+d+2(D)+1 = (t+1) + (d+1) + 2*(D-1) + 1
 
 @inline end_ex1(wp::LeasedProblem) = _τ1max(wp)+1
 @inline end_ex0(wp::LeasedProblem) = end_ex1(wp) + max(_τ0max(wp),_ext(wp))+1
 @inline end_lrn(wp::LeasedProblem) = end_ex0(wp) + _dmax(wp)+1
-@inline end_inf(wp::LeasedProblem) = end_lrn(wp) + _Dmax(wp)
+@inline end_inf(wp::LeasedProblem) = end_lrn(wp) + _Dmax(wp)+1
 @inline strt_ex(wp::LeasedProblem) = end_ex0(wp) - (_ext(wp)-1)     # t+d+2(D)+1 = (t+1) + (d+1) + 2*(D-1) + 1
 
 @inline end_ex1(wp::PerpetualProblem) = 0
 @inline end_ex0(wp::PerpetualProblem) = 1
 @inline end_lrn(wp::PerpetualProblem) = end_ex0(wp) + _dmax(wp)
-@inline end_inf(wp::PerpetualProblem) = end_lrn(wp) + _Dmax(wp)
+@inline end_inf(wp::PerpetualProblem) = end_lrn(wp) + _Dmax(wp) + 1
 @inline strt_ex(wp::PerpetualProblem) = 1
 
 # ----------------------------------
@@ -105,10 +105,10 @@ _nSexp( wp::AbstractUnitProblem) = end_lrn(wp)
 # ----------------------------------
 
 exploratory_terminal(wp::AbstractUnitProblem) = end_ex0(wp)+1
-exploratory_learning(wp::AbstractUnitProblem) = end_ex0(wp)+2 : end_lrn(wp)
+exploratory_learning(wp::AbstractUnitProblem) = (end_ex0(wp)+1) : end_lrn(wp)
 
 exploratory_terminal(wp::PerpetualProblem) = end_ex0(wp)
-exploratory_learning(wp::PerpetualProblem) = end_ex0(wp)+1 : end_lrn(wp)
+exploratory_learning(wp::PerpetualProblem) = end_ex0(wp) : end_lrn(wp)
 
 # ----------------------------------
 # indices of where we are in things
@@ -120,7 +120,12 @@ exploratory_learning(wp::PerpetualProblem) = end_ex0(wp)+1 : end_lrn(wp)
 @inline ind_lrn(wp::AbstractUnitProblem) = end_lrn(wp)   : -1 : end_ex0(wp)+1
 @inline ind_inf(wp::AbstractUnitProblem) = end_inf(wp)-1 : -1 : end_lrn(wp)+1
 
-@inline inf_fm_lrn(wp::AbstractUnitProblem) = (end_lrn(wp)+1) .+ _nstates_per_D(wp)*(0:_dmax(wp)-1)
+@inline inf_fm_lrn(wp::AbstractUnitProblem) = (end_lrn(wp)+1) .+ (0:_dmax(wp))
+@inline function inf_fm_lrn(wp::LeasedProblemContsDrill)
+    a = end_lrn(wp)
+    it = (a+1, a .+ 2 .* (1:_dmax(wp)))
+    return collect(flatten(it))
+end
 
 # -------------------------------------------------------------------
 
@@ -166,8 +171,8 @@ function state_idx(wp::LeasedProblemContsDrill, t1::Integer, t0::Integer, D::Int
     t1 >= 0               && return end_ex1(wp) - t1
     t0 >= 0               && return end_ex0(wp) - t0
     D==0  && t0==-1       && return end_ex0(wp) + (1 + 0)
-    D<_Dmax(wp) && t0==-1 && return end_lrn(wp) +  1 + 2*(D - 1) + (1-d1)
-    D==_Dmax(wp)          && return end_lrn(wp) +  1 + 2*(_Dmax(wp)-1)   # drop last +1 since we have d1=1 at terminal
+    D<_Dmax(wp) && t0==-1 && return end_lrn(wp) +  2*D + (1-d1)
+    D==_Dmax(wp)          && return end_lrn(wp) +  2*D   # drop last +1 since we have d1=1 at terminal
     throw(error("invalid state"))
 end
 
@@ -175,14 +180,14 @@ function state_idx(wp::LeasedProblem, t1::Integer, t0::Integer, D::Integer, d1::
     t1 >= 0 && t0 ∉ (0,_ext(wp)) && throw(error("Cannot be in primary + extension simultaneously"))
     t1 >= 0                && return end_ex1(wp) - t1
     t0 >= 0                && return end_ex0(wp) - t0
-    D==0   && t0==-1       && return end_ex0(wp) + (1 + 0)
-    D<=_Dmax(wp) && t0==-1 && return end_lrn(wp) + D
+    D==0   && t0==-1       && return end_ex0(wp) + 1 + 0
+    D<=_Dmax(wp) && t0==-1 && return end_lrn(wp) + 1 + D
     throw(error("invalid state"))
 end
 
 function state_idx(wp::PerpetualProblem, t1::Integer, t0::Integer, D::Integer, d1::Integer)::Int
     D==0         && return end_ex0(wp)
-    D<=_Dmax(wp) && return end_lrn(wp) + D
+    D<=_Dmax(wp) && return end_lrn(wp) + D+1
     throw(error("invalid state"))
 end
 
@@ -201,8 +206,9 @@ function _regime(wp::AbstractUnitProblem, s::Integer)::Symbol
     s <= end_ex0(wp) && return :primary_or_extension
     s == end_ex0(wp) + 1 && return :expired
     s <= end_lrn(wp) && return :learn
+    s == end_lrn(wp) + 1 && return :infill_but_0
     s <= end_inf(wp) && return :infill
-    throw(DomainError())
+    throw(DomainError(s))
 end
 
 function _horizon(wp::PerpetualProblem, sidx::Integer)::Symbol
@@ -211,7 +217,7 @@ function _horizon(wp::PerpetualProblem, sidx::Integer)::Symbol
     sidx <= end_lrn(wp)  && return :Learning
     sidx <  end_inf(wp)  && return :Infinite
     sidx == end_inf(wp)  && return :Terminal
-    throw(DomainError())
+    throw(DomainError(sidx))
 end
 
 function _horizon(wp::LeasedProblem, sidx::Integer)::Symbol
@@ -221,7 +227,7 @@ function _horizon(wp::LeasedProblem, sidx::Integer)::Symbol
     sidx <= end_lrn(wp)   && return :Learning
     sidx <  end_inf(wp)   && return :Infinite
     sidx == end_inf(wp)   && return :Terminal
-    throw(DomainError())
+    throw(DomainError(sidx))
 end
 
 function _horizon(wp::LeasedProblemContsDrill, sidx::Integer)::Symbol
@@ -229,27 +235,28 @@ function _horizon(wp::LeasedProblemContsDrill, sidx::Integer)::Symbol
     sidx <= end_ex0(wp)   && return :Finite
     sidx == end_ex0(wp)+1 && return :Terminal
     sidx <= end_lrn(wp)   && return :Learning
-    sidx <  end_inf(wp)   && return isodd(end_inf(wp)-sidx) ? :Infinite : :Finite
+    sidx <  end_inf(wp)   && return iseven(end_inf(wp)-sidx) ? :Infinite : :Finite
     sidx == end_inf(wp)   && return :Terminal
-    throw(DomainError())
+    throw(DomainError(sidx))
 end
 
 function s_of_D(wp::PerpetualProblem, D::Integer)::UnitRange{Int}
-    D ∉ 0:_Dmax(wp) && throw(DomainError())
+    D ∉ 0:_Dmax(wp) && throw(DomainError(D))
     D == 0          && return 1:end_ex0(wp)
-    D <= _Dmax(wp)  && return end_lrn(wp) .+ (D:D)
+    D <= _Dmax(wp)  && return (end_lrn(wp)+1) .+ (D:D)
 end
 
 function s_of_D(wp::LeasedProblem, D::Integer)::UnitRange{Int}
-    D ∉ 0:_Dmax(wp) && throw(DomainError())
+    D ∉ 0:_Dmax(wp) && throw(DomainError(D))
     D == 0          && return 1:end_ex0(wp)+1
-    D <= _Dmax(wp)  && return end_lrn(wp) .+ (D:D)
+    D <= _Dmax(wp)  && return (end_lrn(wp)+1) .+ (D:D)
 end
 
 function s_of_D(wp::LeasedProblemContsDrill, D::Integer)::UnitRange{Int}
-    D ∉ 0:_Dmax(wp) && throw(DomainError())
+    D ∉ 0:_Dmax(wp) && throw(DomainError(D))
     D == 0          && return 1:end_ex0(wp)+1
-    D <= _Dmax(wp)  && return end_lrn(wp) .+ ((2*D-1):2*D)
+    D < _Dmax(wp)   && return (end_lrn(wp)+2*D) .+ (0:1)
+    D == _Dmax(wp)  && return end_inf(wp):end_inf(wp)
 end
 
 
@@ -257,24 +264,24 @@ function _D(wp::LeasedProblemContsDrill, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
     sidx <= end_ex0(wp) && return 0
     sidx <= end_lrn(wp) && return  sidx - end_ex0(wp) - 1
-    sidx <= end_inf(wp) && return (sidx - end_lrn(wp) + isodd(sidx-end_lrn(wp)) ) / 2
-    throw(DomainError())
+    sidx <= end_inf(wp) && return (sidx - end_lrn(wp) - isodd(sidx-end_lrn(wp)) ) / 2
+    throw(DomainError(sidx))
 end
 
 function _D(wp::LeasedProblem, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
     sidx <= end_ex0(wp) && return 0
     sidx <= end_lrn(wp) && return sidx - end_ex0(wp) - 1
-    sidx <= end_inf(wp) && return sidx - end_lrn(wp)
-    throw(DomainError())
+    sidx <= end_inf(wp) && return sidx - end_lrn(wp) - 1
+    throw(DomainError(sidx))
 end
 
 function _D(wp::PerpetualProblem, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
     sidx <= end_ex0(wp) && return 0
     sidx <= end_lrn(wp) && return sidx - end_ex0(wp)
-    sidx <= end_inf(wp) && return sidx - end_lrn(wp)
-    throw(DomainError())
+    sidx <= end_inf(wp) && return sidx - end_lrn(wp) - 1
+    throw(DomainError(sidx))
 end
 
 
@@ -284,7 +291,7 @@ function _d1(wp::LeasedProblemContsDrill, sidx::Integer)::Int
     sidx <= 0 && throw(DomainError(sidx, "s <= 0"))
     sidx <= end_ex0(wp)+1 && return 0
     sidx <= end_lrn(wp)   && return 1
-    sidx <  end_inf(wp)   && return isodd(sidx-end_lrn(wp))
+    sidx <  end_inf(wp)   && return iseven(sidx-end_lrn(wp))
     sidx == end_inf(wp)   && return 1
 end
 
@@ -376,7 +383,7 @@ function _dmax(wp::AbstractUnitProblem, sidx::Integer)
     sidx <= end_lrn(wp) && return 0
     sidx <  end_inf(wp) && return min((_Dmax(wp)-_D(wp,sidx)),_dmax(wp))
     sidx == end_inf(wp) && return 0
-    throw(DomainError())
+    throw(DomainError(sidx))
 end
 
 @inline actionspace(wp::AbstractUnitProblem) = 0:_dmax(wp)
@@ -389,7 +396,7 @@ end
 # ----------------------------------
 
 function state_space_vector(wp::LeasedProblemContsDrill)::Vector{state}
-    _dmax(wp) <= _Dmax(wp) || throw(DomainError("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
+    _dmax(wp) <= _Dmax(wp) || throw(error("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
     # Primary term with extension
     exp1 = [state(τ1,_ext(wp),0,0) for τ1 in _τ1max(wp):-1:0]
     # Exploratory drilling (with terminal lease expiration)
@@ -397,14 +404,15 @@ function state_space_vector(wp::LeasedProblemContsDrill)::Vector{state}
     # Integrated (wrt information) infill
     inf_int = [state(-1,-1,D,1) for D in 1:_dmax(wp)]  # τmax+1 + (0:dmax) (note overlap!)
     # Infill drilling with immediately prior drilling
+    infill0 = [state(-1,-1,0,0)]
     infill  = [state(-1,-1,D,d1) for D in 1:_Dmax(wp)-1 for d1 in 1:-1:0] # τmax + 2 + dmax + (1:2*Dmax-2)
     # Infill terminal
     inf_term = [state(-1,-1,_Dmax(wp),1)] # τmax + 2 + dmax + 2*Dmax - 2 + 1  = τmax + dmax + 2*Dmax + 1
-    return [exp1..., exp0..., inf_int..., infill..., inf_term...]
+    return [exp1..., exp0..., inf_int..., infill0..., infill..., inf_term...]
 end
 
 function state_space_vector(wp::LeasedProblem)::Vector{state}
-    _dmax(wp) <= _Dmax(wp) || throw(DomainError("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
+    _dmax(wp) <= _Dmax(wp) || throw(error("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
     # Primary term with extension
     exp1 = [state(τ1,_ext(wp),0,0) for τ1 in _τ1max(wp):-1:0]
     # Exploratory drilling (with terminal lease expiration)
@@ -412,12 +420,12 @@ function state_space_vector(wp::LeasedProblem)::Vector{state}
     # Integrated (wrt information) infill
     inf_int = [state(-1,-1,D,0) for D in 1:_dmax(wp)]  # τmax+1 + (0:dmax) (note overlap!)
     # Infill drilling with immediately prior drilling
-    infill  = [state(-1,-1,D,0) for D in 1:_Dmax(wp)] # τmax + 2 + dmax + (1:2*Dmax-2)
+    infill  = [state(-1,-1,D,0) for D in 0:_Dmax(wp)] # τmax + 2 + dmax + (1:2*Dmax-2)
     return [exp1..., exp0..., inf_int..., infill...]
 end
 
 function state_space_vector(wp::PerpetualProblem)::Vector{state}
-    _dmax(wp) <= _Dmax(wp) || throw(DomainError("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
+    _dmax(wp) <= _Dmax(wp) || throw(error("dmax=$_dmax(wp), Dmax=$_Dmax(wp)"))
     # Primary term with extension
     exp1 = [state(τ1,_ext(wp),0,0) for τ1 in _τ1max(wp):-1:0]
     # Exploratory drilling (with terminal lease expiration)
@@ -425,7 +433,7 @@ function state_space_vector(wp::PerpetualProblem)::Vector{state}
     # Integrated (wrt information) infill
     inf_int = [state(-1,-1,D,0) for D in 1:_dmax(wp)]
     # Infill drilling with immediately prior drilling
-    infill  = [state(-1,-1,D,0) for D in 1:_Dmax(wp)]
+    infill  = [state(-1,-1,D,0) for D in 0:_Dmax(wp)]
     return [exp1..., exp0..., inf_int..., infill...]
 end
 
@@ -445,14 +453,14 @@ function sprime(wp::LeasedProblemContsDrill, s::Integer, d::Integer)::Int
     elseif s == end_ex0(wp)+1
         return s
     elseif s <= end_lrn(wp)
-        return end_lrn(wp) + 2*(s-end_ex0(wp))-3  # was return endpts[3] + 2*d - 1. note d=(s-endpts[2]-1)
+        return end_lrn(wp) + 2*(s-end_ex0(wp)-1)  # was return endpts[3] + 2*d - 1. note d=(s-endpts[2]-1)
     elseif s < end_inf(wp)
-        d == 0  && return s + isodd(s-end_lrn(wp))
-        d >  0  && return s + 2*d - iseven(s-end_lrn(wp))
+        d == 0  && return s + iseven(s-end_lrn(wp))
+        d >  0  && return s + 2*d - isodd(s-end_lrn(wp))
     elseif s == end_inf(wp)
         return s
     else
-        throw(DomainError())
+        throw(DomainError(s))
     end
 end
 
@@ -468,13 +476,13 @@ function sprime(wp::LeasedProblem, s::Integer, d::Integer)::Int
     elseif s == end_ex0(wp)+1
         return s
     elseif s <= end_lrn(wp)
-        return end_lrn(wp) + (s-end_ex0(wp)-1)
+        return end_lrn(wp) + (s-end_ex0(wp))
     elseif s < end_inf(wp)
         return s + d
     elseif s == end_inf(wp)
         return s
     else
-        throw(DomainError())
+        throw(DomainError(s))
     end
 end
 
@@ -485,24 +493,50 @@ function sprime(wp::PerpetualProblem, s::Integer, d::Integer)::Int
         d == 0 && return s
         d >  0 && return end_ex0(wp) + d
     elseif s <= end_lrn(wp)
-        return end_lrn(wp) + (s-end_ex0(wp))
+        return end_lrn(wp) + (s-end_ex0(wp)+1)
     elseif s < end_inf(wp)
         return s + d
     elseif s == end_inf(wp)
         return s
     else
-        throw(DomainError())
+        throw(DomainError(s))
     end
 end
 
 sprimes(wp::AbstractUnitProblem, sidx::Integer) = (sprime(wp,sidx,d) for d in actionspace(wp,sidx))
+
+function post_learning(wp::LeasedProblem, s::Integer, d::Integer)
+    if end_ex0(wp) < s <= end_lrn(wp)
+        return end_lrn(wp) + (s-end_ex0(wp))
+    else
+        throw(DomainError(s))
+    end
+end
+
+function post_learning(wp::PerpetualProblem, s::Integer, d::Integer)
+    if end_ex0(wp) < s <= end_lrn(wp)
+        return end_lrn(wp) + (s-end_ex0(wp)+1)
+    else
+        throw(DomainError(s))
+    end
+end
+
+function post_learning(wp::LeasedProblemContsDrill, s::Integer, d::Integer)
+    if end_ex0(wp) < s <= end_lrn(wp)
+        return end_lrn(wp) + 2*(s-end_ex0(wp)-1)
+    else
+        throw(DomainError(s))
+    end
+end
+
+
 
 "retrieve next state, skipping through learning if necessary."
 function ssprime(wp::AbstractUnitProblem, s::Integer, d::Integer)::Int
     if s <= 0
         throw(DomainError(s, "s <= 0"))
     elseif s <= end_ex0(wp)
-        return d == 0 ? sprime(wp,s,d) : sprime(wp, sprime(wp,s,d), d)  # because of LEARNING transition
+        return d == 0 ? sprime(wp,s,d) : post_learning(wp, sprime(wp,s,d), d)  # because of LEARNING transition
     elseif s <= end_inf(wp)
         return sprime(wp,s,d)
     else

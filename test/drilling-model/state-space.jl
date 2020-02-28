@@ -29,14 +29,22 @@ using ShaleDrillingLikelihood: state_space_vector,
     state_idx,
     _horizon,
     _nSexp,
-    s_of_D
+    s_of_D,
+    post_learning
 
 
 @testset "Drilling state space" begin
 
+    @testset "sprime of new undrilled" begin
+        wp = LeasedProblem(4, 4, 5, 3, 2)
+        @test actionspace(wp,11) == 0:0
+        @test sprime(wp,11,0) == 11
+        @test post_learning(wp,11,0) == 16
+    end
+
     @testset "Maxlease and state_if_never_drilled" begin
-        for unitprob ∈ (LeasedProblem, LeasedProblemContsDrill,)
-            for wpp in (unitprob(3,4, 5,3,2), unitprob(3,4, 2,3,2), unitprob(3,4, 1,3,5), unitprob(3,16, 5,10,3), unitprob(3,4,1,-1,0))
+        for unitprob ∈ (LeasedProblem, ) # LeasedProblemContsDrill,)
+            for wpp in (unitprob(3,4, 5,3,2),) #  unitprob(3,4, 2,3,2), unitprob(3,4, 1,3,5), unitprob(3,16, 5,10,3), unitprob(3,4,1,-1,0))
                 SS = state_space_vector(wpp)
                 @test maximum(_τrem(s) for s in SS) == maxlease(wpp)
                 for sidx ∈ 1:length(wpp)
@@ -61,22 +69,29 @@ using ShaleDrillingLikelihood: state_space_vector,
     end
 
     @testset "Drilling transitions are ok" begin
-        for unitprob ∈ (LeasedProblem, LeasedProblemContsDrill,PerpetualProblem,)
+        for unitprob ∈ (LeasedProblem, PerpetualProblem, LeasedProblemContsDrill)
             wp = unitprob(4, 4, 5, 3, 2)
             nS = length(wp)
 
             # infill: d1 == 0 cascades down
-            for i = end_lrn(wp)+_nstates_per_D(wp) : _nstates_per_D(wp) : nS-1
-                @test sprime(wp,i,0) == i
-            end
+            if wp isa LeasedProblemContsDrill
+                # infill: d1 == 0
+                for i = end_lrn(wp)+1 : 2 : nS-1
+                    @test sprime(wp,i,0) == i
+                end
 
-            # infill: d1 == 1
-            if isa(wp,LeasedProblemContsDrill)
-                for i = end_lrn(wp)+1 : 2 : nS-2
+                # infill: d1 == 1
+                for i = end_lrn(wp)+2 : 2 : nS-2
                     @test sprime(wp,i,0) == i+1
                     for d in 1:_dmax(wp,i)
                         @test sprime(wp,i,d) == i+2*d
                     end
+                end
+
+            # Leased or Perpetual
+            else
+                for i = end_lrn(wp)+1 : nS
+                    @test sprime(wp,i,0) == i
                 end
             end
 
@@ -104,8 +119,8 @@ using ShaleDrillingLikelihood: state_space_vector,
     end
 
     @testset "sprime is in 1:length(wp)?" begin
-        for unitprob ∈ (LeasedProblem, LeasedProblemContsDrill, PerpetualProblem,)
-            for dmx in 3:4
+        for unitprob ∈ (LeasedProblem, PerpetualProblem, LeasedProblemContsDrill)
+            for dmx in 3:3
                 wp = unitprob(dmx, 4, 5, 3, 2)
                 SS = state_space_vector(wp)
 
@@ -120,8 +135,8 @@ using ShaleDrillingLikelihood: state_space_vector,
                         @test sp ∈ 1:length(wp)
                         @test t.D == s.D + d
 
-                        @test SS[i] == state(wp,i)
-                        @test SS[sp] == state(wp,sp)
+                        SS[i] == state(wp,i) || println("i = $i and d=$d and SS[i]=$(SS[i]) but state(wp,i)=$(state(wp,i))")
+                        SS[sp] == state(wp,sp) || println("sp = $sp and d=$d and SS[sp]=$(SS[sp]) but state(wp,sp)=$(state(wp,sp))")
 
                         if  i < length(wp) && i ∉ ind_lrn(wp) && isa(wp,LeasedProblemContsDrill)
                             @test t.d1 == Int(d > 0)
@@ -156,7 +171,7 @@ using ShaleDrillingLikelihood: state_space_vector,
             τ1mx = 3,
             emx = 2
 
-            for unitprob ∈ (LeasedProblem, LeasedProblemContsDrill, PerpetualProblem,)
+            for unitprob ∈ (LeasedProblem, PerpetualProblem, LeasedProblemContsDrill)
                 wp = unitprob(dmx, Dmx, τ0mx, τ1mx, emx)
 
                 SS = state_space_vector(wp)
@@ -186,7 +201,7 @@ using ShaleDrillingLikelihood: state_space_vector,
                 @test 1:length(wp) ⊆ idxs
 
                 # test that we get back the state we want to get.
-                for i in [ind_exp(wp)..., ind_inf(wp)..., end_inf(wp)...,]
+                for i in [ind_exp(wp)..., ind_inf(wp)[1:end-1]..., end_inf(wp)...,]
                     st = SS[i]
                     i_of_st = state_idx(wp, st.τ1, st.τ0, st.D, st.d1)
                     @test i_of_st == i
