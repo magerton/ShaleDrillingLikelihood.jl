@@ -64,7 +64,7 @@ println("print to keep from blowing up")
 
         theta1 = randn(_nparm(f1))
         theta2 = copy(theta1)
-        theta1[end] = 20
+        theta1[end] = 6.5
         theta2[end] = 0
 
         ddm1 = DynamicDrillModel(f1, 0.9, wp, zs, ztrans, ψs, false)

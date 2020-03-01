@@ -107,9 +107,9 @@ function solve_vf_explore!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dogra
     tvw = view(t, OneTo(dmaxp1))
 
      ubV0 = view(ubV(tvw),      :, :,    1)
-     ubV1 = view(ubV(tvw),      :, :,    2:dmaxp1)
+     ubV1 = view(ubV(tvw),      :, :,    1:dmaxp1)
     dubV0 = view(dubVperm(tvw), :, :, :, 1)
-    dubV1 = view(dubVperm(tvw), :, :, :, 2:dmaxp1)
+    dubV1 = view(dubVperm(tvw), :, :, :, 1:dmaxp1)
     βEV1  = view( EV(evs),      :, :,    exp2lrn)
     βdEV1 = view(dEV(evs),      :, :, :, exp2lrn)
 

@@ -1,5 +1,5 @@
 # module ShaleDrillingLikelihood_CounterfactualObjects_Test
-using Revise
+# using Revise
 
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
@@ -14,7 +14,8 @@ using ShaleDrillingLikelihood: drill, _x, _D, LeaseCounterfactual,
     split_thetas, SimulationTmp, SimulationPrimitives,
     simulationPrimitives_information, dataFramesForSimulations,
     SharedSimulations, update_sim_dataframes_from_simdata!,
-    value_function,check_theta, doSimulations, actionspace, statespace
+    value_function,check_theta, doSimulations, actionspace, statespace,
+    DevelopmentDrilling
 
 num_i = 50
 M = 10
@@ -87,13 +88,15 @@ lc = LeaseCounterfactual(l)
     for unit in ddata
         for regime in unit
             for lease in regime
-                lc = LeaseCounterfactual(lease)
-                @test length(lc) >= 0
-                obslast = 0
-                for (t,(obs,zt)) in enumerate(lc)
-                    if t == length(lc)
-                        wp = statespace(_model(obs))
-                        @test _x(obs) == end_ex0(wp)+1
+                if length(lease) > 0
+                    lc = LeaseCounterfactual(lease)
+                    # @show lease.i, lease.data.i, lease.data.data.i, length(lease), length(lc)
+                    @test length(lc) > 0
+                    for (t,(obs,zt)) in enumerate(lc)
+                        if t == length(lc)
+                            wp = statespace(_model(obs))
+                            @test _x(obs) == end_ex0(wp)+1
+                        end
                     end
                 end
             end

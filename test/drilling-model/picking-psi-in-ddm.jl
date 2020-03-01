@@ -123,7 +123,9 @@ println("print to keep from blowing up")
                 @test _dmax(wp,sidx) == 0
             end
         else
-            @test D > 0
+            if sidx != end_lrn(wp)+1
+                @test D > 0
+            end
             if sidx > end_lrn(wp)
                 @test _ψ(obs,sim) == _ψ2(sim)
                 @test _ψ(obs,sim) == u
@@ -134,7 +136,9 @@ println("print to keep from blowing up")
                     @test _dmax(wp,sidx) > 0
                     @test end_inf(wp) >= sp > sidx > end_lrn(wp)
                     @test sp == sprime(wp,sidx,1)
-                    @test 1 <= _D(wp,sidx)
+                    if sidx != end_lrn(wp)+1
+                        @test 1 <= _D(wp,sidx)
+                    end
                     @test _D(wp,sidx)+1 == _D(wp,sp)
                 else
                     @test _dmax(wp,sidx) == 0
