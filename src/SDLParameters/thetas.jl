@@ -66,7 +66,7 @@ end
 # Royalty
 function Theta(m::RoyaltyModel; θρ=ThetaRho(), kwargs...)
     #            θρ  ψ        g    x_r      κ₁   κ₂
-    return vcat(θρ, 1.0,    0.1, -0.3,    -0.6, 0.6)
+    return vcat(θρ, 1.0,    0.1, -0.3,    -0.6, sqrt(2*1.2))
 end
 
 # Production
@@ -88,6 +88,7 @@ function Theta(d::DataRoyalty; θρ=ThetaRho(), αψ=AlphaPsi(), kwargs...)
     if num_choices(d) == 6 && _num_x(d) == 4
         betas = [ 0.5966055028536498, 1.1822487035901503, -1.7017414563283797, 0.14048454874430671]
         kappas = [3.8373126232392716, 4.172804362649826, 5.0264099395765385, 5.925934015361181, 6.501397017005945]
+        ShaleDrillingLikelihood.update_kappa_level_to_cumsum!(kappas)
         return vcat(θρ, βψ, betas, kappas)
     end
     throw(error("no starting values available"))
@@ -197,6 +198,7 @@ Theta(m::ExtensionCost_Constant, args...; kwargs...) = vcat(-1.0)
 Theta(m::ScrapValue_Zero    , args...; kwargs...) = zeros(0)
 Theta(m::ScrapValue_Constant, args...; kwargs...) = vcat(0.1)
 Theta(m::ScrapValue_Price   , args...; kwargs...) = vcat(0.1, 0.1)
+Theta(m::ScrapValue_Constant_Discount, args...; kwargs...) = vcat(0.1, 0.3)
 
 CoefLinks(r) = (zeros(Int,0), zeros(Int,0))
 

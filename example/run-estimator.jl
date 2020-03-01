@@ -51,8 +51,8 @@ SCRAP = pargs["scrap"]
 # DO_FULL = false
 # REV = DrillingRevenue(Unconstrained(), TimeTrend(), GathProcess() )
 # COST = DrillingCost_TimeFE(2008, 2012)
-# SCRAP = ScrapValue_Constant()
-# THETA0_FULL_OVERRIDE = [-12.489, -8.965, -7.696, -7.131, -6.782, 1.576, -1.495, 0.1, -2.709, 0.597, 0.34, 0.022, 0.681, 0.12, 0.594, 1.183, -1.706, 0.14, 3.798, 0.819, 1.307, 1.342, 1.073, -14.926, 0x1.8c72626bfc357p-4, 0x1.59eda12744aacp-2, ]
+# SCRAP = ScrapValue_Constant_Discount()
+# THETA0_FULL_OVERRIDE = [-12.333, -8.836, -7.58, -7.028, -6.704, 1.571, -1.565, 0.5, 0.3, -2.665, 0.594, 0.345, 0.022, 0.697, 0.125, 0.596, 1.184, -1.707, 0.14, 3.829, 0.819, 1.307, 1.342, 1.073, -14.765, 0x1.8c69c7283fa24p-4, 0x1.4451b8be12f82p-2, ]
 REWARD = DrillReward(REV, COST, EXT, SCRAP)
 ANTICIPATE = pargs["anticipateT1EV"]
 DISCOUNT = pargs["discount"]
@@ -98,7 +98,7 @@ println_time_flush("Data imported")
 
 thetarho0 = ThetaRho()
 theta0_royalty = Theta(data_royalty; θρ = thetarho0)
-update_kappa_level_to_cumsum!(theta_royalty_κ(data_royalty, theta0_royalty))
+# update_kappa_level_to_cumsum!(theta_royalty_κ(data_royalty, theta0_royalty))
 theta0_produce = Theta(data_produce)
 theta0_drill   = Theta(REWARD; θρ=thetarho0)
 

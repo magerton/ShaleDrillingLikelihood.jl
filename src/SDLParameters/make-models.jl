@@ -3,7 +3,7 @@ export MakeTestData
 function MakeTestData(;
         nz = 15,
         nψ = 13,
-        num_i = 50,
+        num_i = 80,
         num_zt = 150,
         obs_per_well = 10:20,
         royalty_rates = RoyaltyRatesSmall(),

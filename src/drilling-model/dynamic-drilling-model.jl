@@ -74,6 +74,39 @@ end
     ) DynamicDrillModel(ddm, rwrd, wp)
 
 # -----------------------------------------
+# Special discounting
+# -----------------------------------------
+
+# special discounting
+@inline discount(rwrd, wp, sidx, d, beta, theta) =
+    expires_today(wp, sidx, d) ? zero(beta) : beta
+@inline function discount(rwrd::DrillReward_Scrap_Const_Disc, wp, sidx, d, beta, theta)
+    if expires_today(wp, sidx, d)
+        idx = last(idx_scrap(rwrd))
+        pr_transition = theta[idx]
+        return beta*pr_transition
+    else
+        return beta
+    end
+end
+
+@inline discount(ddm, sidx, d, theta) =
+    discount(reward(ddm), statespace(ddm), sidx, d, discount(ddm), theta)
+
+@inline discount(obs, d, theta) = discount(_model(obs), _x(obs), d, theta)
+@inline discount(obs,    theta) = discount(_model(obs), _x(obs), _y(obs), theta)
+
+dubV_ddiscount!(dubV0, ev0, ddm, sidx, d, theta) = nothing
+function dubV_ddiscount!(dubV0, ev0, ddm::DynamicDrillModel{<:Real,<:DrillReward_Scrap_Const_Disc}, sidx, d, theta)
+    rwrd = reward(ddm)
+    wp = statespace(ddm)
+    if expires_today(wp, sidx, d)
+        idx = last(idx_scrap(rwrd))
+        dubV0[:,:,idx] .+= discount(ddm) .* ev0
+    end
+end
+
+# -----------------------------------------
 # Outer constructors for VF from DDM
 # -----------------------------------------
 
@@ -117,10 +150,11 @@ end
 
 compute `β * E[ V(z',ψ'x') | z,ψ,x]` and also gradient
 """
-function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, sim, dograd)
+function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, sim, theta, dograd)
 
     mod = _model(obs)
     rwrd = reward(mod)
+    betaprob = discount(obs, d, theta)
     beta = discount(mod)
     nk = length(grad)
     nk == _nparm(rwrd) || throw(DimensionMismatch())
@@ -133,16 +167,24 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
     sp = sprime(statespace(mod), _x(obs), d)
     z = zchars(obs)
 
+    VF = vf_sitp(z..., psi, sp)
+
     if dograd
         dvf_sitp = dEV_scaled_itp(vf)
         @inbounds @simd for k in OneTo(nk)
-            grad[k] += beta * dvf_sitp(z..., psi, k, sp)
+            grad[k] += betaprob * dvf_sitp(z..., psi, k, sp)
         end
         dpsi = last(Interpolations.gradient(vf_sitp, z..., psi, sp)) # FIXME
-        grad[idx_ρ(rwrd)] += dpsi * beta * _dψdθρ(obs, sim)
+        grad[idx_ρ(rwrd)] += dpsi * betaprob * _dψdθρ(obs, sim)
+        grad_discount!(grad, rwrd, beta, VF)
     end
 
-    return beta * vf_sitp(z..., psi, sp)
+    return betaprob * VF
+end
+
+grad_discount!(grad, rwrd, beta, VF) = nothing
+function grad_discount!(grad, rwrd::DrillReward_Scrap_Const_Disc, beta, VF)
+    grad[last(idx_scrap(rwrd))] = beta*VF
 end
 
 
@@ -152,7 +194,7 @@ function full_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, theta, sim
     if dograd
         grad[idx_ρ(rwrd)] += flowdψ(rwrd, d, obs, theta, sim) * _dψdθρ(obs, sim)
     end
-    dynamic_payoff = discounted_dynamic_payoff!(grad, d, obs, sim, dograd)
+    dynamic_payoff = discounted_dynamic_payoff!(grad, d, obs, sim, theta, dograd)
     return static_payoff + dynamic_payoff
 end
 

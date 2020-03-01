@@ -35,7 +35,8 @@ coefnames(::ExtensionCost_Constant) = ["\\alpha_{ext}",]
 # Scrap value
 # -------------------------------------------
 
-export ScrapValue_Zero, ScrapValue_Constant, ScrapValue_Price
+export ScrapValue_Zero, ScrapValue_Constant, ScrapValue_Price,
+    ScrapValue_Constant_Discount
 
 @inline dflow!(::AbstractScrapValue, args...) = nothing
 @inline flowdψ(::AbstractScrapValue, args...) = 0.0
@@ -61,6 +62,24 @@ _nparm(::ScrapValue_Constant) = 1
     return e ? θ[1] : azero(θ)
 end
 coefnames(::ScrapValue_Constant) = ["\\alpha_{scrap}",]
+
+
+"Constant scrap value"
+struct ScrapValue_Constant_Discount <: AbstractScrapValue end
+_nparm(::ScrapValue_Constant_Discount) = 2
+@inline function flow!(grad, x::ScrapValue_Constant_Discount, d, obs, θ, sim, dograd::Bool)
+    e = expires_today(d, obs)
+    if dograd
+        grad[1] = e
+        grad[2] = 0
+    end
+    return e ? θ[1] : azero(θ)
+end
+coefnames(::ScrapValue_Constant_Discount) = ["\\alpha_{scrap}", "\\alpha_{discount}"]
+
+
+const DrillReward_Scrap_Const_Disc = DrillReward{R,C,E,ScrapValue_Constant_Discount} where {R,C,E}
+
 
 
 "Scrap value with price"

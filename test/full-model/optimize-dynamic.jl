@@ -35,7 +35,7 @@ println("print to keep from blowing up")
     for (d,t) in data_theta_pairs
         resetcount!()
 
-        theta_peturb = 0.8 .* t
+        theta_peturb = 0.99 .* t
 
         leo = LocalEstObj(d,theta_peturb)
         reo = RemoteEstObj(leo, M)

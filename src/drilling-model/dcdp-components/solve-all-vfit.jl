@@ -123,11 +123,13 @@ function solve_vf_explore!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dogra
 
         # compute u + βEV(d) ∀ d ∈ actionspace(wp,i)
         update_static_payoffs!(tvw, ddm, θ, i, ichar, dograd)
-        ubV0 .+= discount(ddm) .* EV0_ip
+        ubV0 .+= discount(ddm, i, 0, θ) .* EV0_ip
         ubV1 .+= βEV1 # β already baked in
 
         if dograd
-            dubV0 .+= discount(ddm) .* dEV0_ip
+            dubV0 .+= discount(ddm, i, 0, θ) .* dEV0_ip
+            # dubV0 .+= discount(ddm) .* dEV0_ip
+            dubV_ddiscount!(dubV0, EV0_ip, ddm, i, 0, θ)
             dubV1 .+= βdEV1  # β already baked in
         end
 

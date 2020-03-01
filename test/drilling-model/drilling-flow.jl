@@ -51,6 +51,7 @@ const DOPRINT = false
             DrillingCost_DoubleTimeFE(2008,2012),
 
             ScrapValue_Constant(),
+            ScrapValue_Constant_Discount(),
             ScrapValue_Price(),
 
             DrillingRevenue(Constrained(),NoTrend(),NoTaxes(), Learn(), WithRoyalty()),

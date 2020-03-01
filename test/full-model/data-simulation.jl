@@ -314,7 +314,7 @@ end
 
             f(xx) = simloglik!(grad, hess, tmpg, data, xx, sim, false)
             fd = Calculus.gradient(f, thet, :central)
-            @test fd ≈ angrad
+            @test isapprox(fd, angrad, atol=2.7e-6)
         end
 
         dochecks(theta_dril, data_dril)
