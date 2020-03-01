@@ -30,16 +30,36 @@ using ShaleDrillingLikelihood: state_space_vector,
     _horizon,
     _nSexp,
     s_of_D,
-    post_learning
+    post_learning,
+    discount
+
+using Base.Iterators: flatten
 
 
 @testset "Drilling state space" begin
 
     @testset "sprime of new undrilled" begin
         wp = LeasedProblem(4, 4, 5, 3, 2)
+        @test end_ex0(wp) == 10
+        @test sprime(wp,10,0) == 11
+        @test state_idx(wp, state(wp,11)) == 11
+        @test state_idx(wp, state(wp,10)) == 10
+        @test state_idx(wp, state(wp,16)) == 11
+        @test actionspace(wp,10) == 0:4
         @test actionspace(wp,11) == 0:0
         @test sprime(wp,11,0) == 11
         @test post_learning(wp,11,0) == 16
+        @test actionspace(wp,16) == 0:4
+
+        @test discount(0, wp, 10, 0, 1.0, [0,]) == 0
+        @test discount(0, wp, 10, 1, 2.0, [0,]) == 2
+
+        for i in flatten((1:9, 11:length(wp)))
+            @test discount(0, wp, i, 0, 2.0, [0,]) == 2
+            @test discount(0, wp, i, 1, 2.0, [0,]) == 2
+        end
+
+
     end
 
     @testset "Maxlease and state_if_never_drilled" begin

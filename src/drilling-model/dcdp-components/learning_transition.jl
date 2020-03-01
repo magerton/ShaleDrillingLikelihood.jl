@@ -17,11 +17,11 @@ function _βΠψdθρ!(tmp, ddm, θ)
 
     @inbounds for (j,yj) in enumerate(y)
         if j == 1
-            @. P[:,j] = β * _dcond_probdρ(yj,y,Δ,ρ) * dρdθρ
+            @. P[:,j] = _dcond_probdρ(yj,y,Δ,ρ) * dρdθρ
         elseif j == n
-            @. P[:,j] = -β * _dcond_probdρ(yj,y,-Δ,ρ) * dρdθρ
+            @. P[:,j] = -_dcond_probdρ(yj,y,-Δ,ρ) * dρdθρ
         else
-            @. P[:,j] = β * ( _dcond_probdρ(yj,y,Δ,ρ) - _dcond_probdρ(yj,y,-Δ,ρ) ) * dρdθρ
+            @. P[:,j] = ( _dcond_probdρ(yj,y,Δ,ρ) - _dcond_probdρ(yj,y,-Δ,ρ) ) * dρdθρ
         end
     end
     return P
@@ -43,11 +43,11 @@ function _βΠψ!(tmp, ddm, θ)
 
     @inbounds for (j,yj) in enumerate(y)
         if j == 1
-            @. P[ :,j] = β * normcdf(cond_z(yj, y, Δ, ρ))
+            @. P[ :,j] = normcdf(cond_z(yj, y, Δ, ρ))
         elseif j == n
-            @. P[ :,j] = β * normccdf(cond_z(yj, y, -Δ, ρ))
+            @. P[ :,j] = normccdf(cond_z(yj, y, -Δ, ρ))
         else
-            @. P[ :,j] = β * ( normcdf(cond_z(yj, y, Δ, ρ)) - normcdf(cond_z(yj, y, -Δ, ρ) ))
+            @. P[ :,j] = ( normcdf(cond_z(yj, y, Δ, ρ)) - normcdf(cond_z(yj, y, -Δ, ρ) ))
         end
     end
     return P

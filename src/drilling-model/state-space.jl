@@ -321,6 +321,8 @@ struct state
     d1::Int  # Drilling last period == 1, no drilling last period == 0
 end
 
+state_idx(wp::AbstractUnitProblem, s::state) = state_idx(wp, s.τ1, s.τ0, s.D, s.d1)
+
 # ------------- methods for state ----------
 
 # Pretty print: https://docs.julialang.org/en/latest/manual/types.html#Custom-pretty-printing-1

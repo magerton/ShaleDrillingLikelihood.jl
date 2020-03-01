@@ -101,15 +101,15 @@ function solve_vf_explore!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dogra
     evs = value_function(ddm)
     wp = statespace(ddm)
     dmaxp1 = _dmax(wp)+1
-    exp2lrn = exploratory_learning(wp)
+    exp2lrn = exploratory_learning(wp)[2:end]
 
     # Views of ubV so we can efficiently access them
     tvw = view(t, OneTo(dmaxp1))
 
      ubV0 = view(ubV(tvw),      :, :,    1)
-     ubV1 = view(ubV(tvw),      :, :,    1:dmaxp1)
+     ubV1 = view(ubV(tvw),      :, :,    2:dmaxp1)
     dubV0 = view(dubVperm(tvw), :, :, :, 1)
-    dubV1 = view(dubVperm(tvw), :, :, :, 1:dmaxp1)
+    dubV1 = view(dubVperm(tvw), :, :, :, 2:dmaxp1)
     βEV1  = view( EV(evs),      :, :,    exp2lrn)
     βdEV1 = view(dEV(evs),      :, :, :, exp2lrn)
 
@@ -124,13 +124,13 @@ function solve_vf_explore!(t::DCDPTmpVars, ddm::DDM_AbstractVF, θ, ichar, dogra
         # compute u + βEV(d) ∀ d ∈ actionspace(wp,i)
         update_static_payoffs!(tvw, ddm, θ, i, ichar, dograd)
         ubV0 .+= discount(ddm, i, 0, θ) .* EV0_ip
-        ubV1 .+= βEV1 # β already baked in
+        ubV1 .+= discount(ddm) .* βEV1 # β NOT baked in
 
         if dograd
-            dubV0 .+= discount(ddm, i, 0, θ) .* dEV0_ip
             # dubV0 .+= discount(ddm) .* dEV0_ip
+            dubV0 .+= discount(ddm, i, 0, θ) .* dEV0_ip
             dubV_ddiscount!(dubV0, EV0_ip, ddm, i, 0, θ)
-            dubV1 .+= βdEV1  # β already baked in
+            dubV1 .+= discount(ddm) .* βdEV1  # β NOT baked in
         end
 
         if horzn == :Finite
