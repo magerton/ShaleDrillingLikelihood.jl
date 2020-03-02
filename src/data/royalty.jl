@@ -234,7 +234,8 @@ function DataRoyalty(u::AbstractVector, v::AbstractVector, X::Matrix, theta::Vec
     eps    = randn(nobs)
 
     rstar  = theta[2] .* ψ1 .+ X'*theta[2 .+ (1:k)] .+ eps
-    l = map((r) ->  searchsortedfirst(theta[end-L+2:end], r), rstar)
+    cutoffs = kappa_cumsum_to_level(theta[end-L+2:end])
+    l = map((r) ->  searchsortedfirst(cutoffs, r), rstar)
     data = DataRoyalty(RoyaltyModel(),l,X,rates)
 
     return data
