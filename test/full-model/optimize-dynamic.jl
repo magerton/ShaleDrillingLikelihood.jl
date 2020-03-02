@@ -1,4 +1,5 @@
 module ShaleDrillingLikelihood_OptimizeDynamic
+# using Revise
 
 using ShaleDrillingLikelihood
 using ShaleDrillingLikelihood.SDLParameters
@@ -8,6 +9,15 @@ using Optim: minimizer
 using ShaleDrillingLikelihood: simloglik!, parallel_simloglik!
 
 println("print to keep from blowing up")
+
+# rwrd = DrillReward(
+#     DrillingRevenue(Unconstrained(), NoTrend(), GathProcess(), Learn(), WithRoyalty()),
+#     DrillingCost_constant(),
+#     ExtensionCost_Constant(),
+#     ScrapValue_Zero()
+# )
+# θ_drill = [-6.70387, -1.56538, 1.00494, -2.6653, 0.59405, 0.34476, 0.69659]
+# θ_drill = [-6.70387, -1.56538,          -2.6653, 0.59405, 0.34476, 0.69659]
 
 @testset "simulate all data" begin
 
@@ -19,7 +29,7 @@ println("print to keep from blowing up")
     nz = 21
     nψ = 21
 
-    data_theta_pairs = MakeTestData(; num_i=num_i, nz=nz, nψ=nψ)
+    data_theta_pairs = MakeTestData(; num_i=num_i, nz=nz, nψ=nψ) #, reward=rwrd, θ_drill=θ_drill, anticipate=false)
 
     stopcount!()
 
@@ -35,7 +45,7 @@ println("print to keep from blowing up")
     for (d,t) in data_theta_pairs
         resetcount!()
 
-        theta_peturb = 0.99 .* t
+        theta_peturb = 1.0 .* t
 
         leo = LocalEstObj(d,theta_peturb)
         reo = RemoteEstObj(leo, M)

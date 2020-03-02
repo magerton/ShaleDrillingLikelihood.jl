@@ -159,14 +159,13 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
     nk = length(grad)
     nk == _nparm(rwrd) || throw(DimensionMismatch())
 
-    vf = value_function(mod)
-    vf_sitp = EV_scaled_itp(vf)
-
     psi_unsafe = _ψ(obs, sim)
     psi = clamp_psi(mod, psi_unsafe)
     sp = sprime(statespace(mod), _x(obs), d)
     z = zchars(obs)
 
+    vf = value_function(mod)
+    vf_sitp = EV_scaled_itp(vf)
     VF = vf_sitp(z..., psi, sp)
 
     if dograd
@@ -184,7 +183,7 @@ end
 
 grad_discount!(grad, rwrd, beta, VF) = nothing
 function grad_discount!(grad, rwrd::DrillReward_Scrap_Const_Disc, beta, VF)
-    grad[last(idx_scrap(rwrd))] = beta*VF
+    grad[last(idx_scrap(rwrd))] += beta*VF
 end
 
 

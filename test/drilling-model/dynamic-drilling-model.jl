@@ -1,5 +1,7 @@
 module ShaleDrillingLikelihood_DynamicDrillModelTest
 
+# using Revise
+
 DOBTIME = false
 PRINTSTUFF = false
 DOPROFILE = false
