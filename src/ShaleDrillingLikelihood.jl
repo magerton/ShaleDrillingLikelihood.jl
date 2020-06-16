@@ -37,7 +37,6 @@ export coefnames, print_in_binary_for_copy_paste
 
 # specific functions
 using Printf: @sprintf
-using Distributions: _F1
 using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
 using Dates: Month
