@@ -33,31 +33,9 @@ end
     end
 end
 
-const invsqrthalfπ = 1/sqrthalfπ
-
 # see
 # https://github.com/cossio/TruncatedNormal.jl/blob/fc904152f2da11a257e3ccdd3e49ef118b81d437/notes/normal.pdf
 # https://stats.stackexchange.com/questions/7200/evaluate-definite-interval-of-normal-distribution/7206#7206
-
-# Copied from Distributions b/c of
-#     https://github.com/JuliaStats/Distributions.jl/pull/1058
-# function _F1(x::Real, y::Real; thresh=1e-7)
-#     @assert 0 < thresh < Inf
-#     -Inf < x < Inf && -Inf < y < Inf || throw(DomainError())
-#     ϵ = exp(x^2 - y^2)
-#     if abs(x) > abs(y)
-#         _F1(y,x)
-#     elseif abs(x - y) ≤ thresh
-#         δ = y - x
-#         √π*x + (√π/2 + (-√π*x/6 + (-√π/12 + x*(√π/90 + (√π*x^2)/90)δ)δ)δ)δ
-#     elseif max(x,y) < 0
-#         (1 - ϵ) / (ϵ * erfcx(-y) - erfcx(-x))
-#     elseif min(x,y) > 0
-#         (1 - ϵ) / (erfcx(x) - ϵ * erfcx(y))
-#     else
-#         exp(-x^2) * (1 - ϵ) / (erf(y) - erf(x))
-#     end
-# end
 
 function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/scipy/scipy/blob/a2ffe09aa751749f2372aa13c19c61b2dec5266f/scipy/stats/_continuous_distns.py
@@ -65,8 +43,6 @@ function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/cossio/TruncatedNormal.jl/blob/master/notes/normal.pdf
     a == typemin(a) && return   normpdf(b) / normcdf(b)
     b == typemax(b) && return - normpdf(a) / normccdf(a)
-    # return - _F1(a*invsqrt2, b*invsqrt2) * invsqrthalfπ
-    # b/c of https://github.com/JuliaStats/Distributions.jl/pull/1058
     return - Distributions._tnmom1(a, b)
 end
 
