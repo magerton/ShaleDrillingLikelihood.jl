@@ -37,7 +37,10 @@ export coefnames, print_in_binary_for_copy_paste
 
 # specific functions
 using Printf: @sprintf
-using Distributions: _F1
+# Broken. Need to check out
+# https://github.com/JuliaStats/Distributions.jl/pull/691
+# https://github.com/JuliaStats/Distributions.jl/pull/1058
+using Distributions: _tnmom1
 using StatsBase: countmap, sample
 using Base.Iterators: flatten, product, OneTo
 using Dates: Month

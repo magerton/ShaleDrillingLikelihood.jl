@@ -33,7 +33,7 @@ end
     end
 end
 
-const invsqrthalfπ = 1/sqrthalfπ
+# const invsqrthalfπ = 1/sqrthalfπ
 
 # see
 # https://github.com/cossio/TruncatedNormal.jl/blob/fc904152f2da11a257e3ccdd3e49ef118b81d437/notes/normal.pdf
@@ -45,7 +45,8 @@ function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/cossio/TruncatedNormal.jl/blob/master/notes/normal.pdf
     a == typemin(a) && return   normpdf(b) / normcdf(b)
     b == typemax(b) && return - normpdf(a) / normccdf(a)
-    return - _F1(a*invsqrt2, b*invsqrt2) * invsqrthalfπ
+    # return - _F1(a*invsqrt2, b*invsqrt2) * invsqrthalfπ
+    return _tnmom1(a,b)
 end
 
 
