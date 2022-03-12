@@ -1,9 +1,11 @@
 using Revise
+using Test
 
 module CompileShaleDrillingLikelihood
     using ShaleDrillingLikelihood
 end
 
+@testset "All tests!" begin
 include("utilities/sum-functions.jl")
 include("utilities/threadutils.jl")
 include("utilities/inplace-interpolation.jl")
@@ -39,3 +41,4 @@ include("full-model/data-simulation-comparative-statics.jl")
 include("full-model/data-simulation.jl")
 include("full-model/optimize-static.jl")
 include("full-model/optimize-dynamic.jl")
+end
