@@ -92,6 +92,16 @@ end
 
 gg(x) = mapreduce(exp, +, x)
 
+function ggg(x)
+    n = length(x)
+    s = 0.0
+    for i in 1:n
+        s += exp(x[i])
+    end
+    s
+end
+
+
 z = rand(10^3)
 @testset "summation: getrange" begin
     println("--------")
@@ -114,6 +124,9 @@ z = rand(10^3)
 
     println("mapreduce")
     DOBTIME && @btime gg($z)
+    
+    println("vanilla")
+    DOBTIME && @btime ggg($z)
 
     @test _f ≈ _g
     @test _g ≈ _h2
