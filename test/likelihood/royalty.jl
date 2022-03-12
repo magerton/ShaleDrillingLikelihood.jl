@@ -11,6 +11,7 @@ using Optim
 using Random
 using InteractiveUtils
 using BenchmarkTools
+using Distributions: _tnmom1
 
 using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     idx_royalty_ρ, idx_royalty_ψ, idx_royalty_β, idx_royalty_κ,
@@ -43,6 +44,13 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
 
     X       = randn(k,nobs)
     epsilon = randn(nobs)
+
+    # I forgot a negative sign originally
+    @testset "Check tnmom" begin
+        a,b = (-2,1)
+        dlogdiffcdf = (normpdf(b) - normpdf(a)) / (normcdf(b) - normcdf(a))
+        @test dlogdiffcdf ≈ -_tnmom1(a,b)
+    end
 
     theta0 = [-2.0, 2.0, 2.0, -0.5, 0.5]  # β, κ
     theta = vcat(theta0[1:end-1], sqrt(2*(theta0[end] - theta0[end-1])))
@@ -80,7 +88,6 @@ using ShaleDrillingLikelihood: RoyaltyModelNoHet,
     # test η12s
     η12s = [η12(first(grp), theta, r) for (grp,r) in zip(data, rstar)]
     @test all(x[1] < x[2] for x in η12s )
-
 
     # form functions for stuff
     grad = similar(theta)

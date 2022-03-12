@@ -43,7 +43,7 @@ function dlogcdf_trunc(a::Real, b::Real)
     # https://github.com/cossio/TruncatedNormal.jl/blob/master/notes/normal.pdf
     a == typemin(a) && return   normpdf(b) / normcdf(b)
     b == typemax(b) && return - normpdf(a) / normccdf(a)
-    return _tnmom1(a,b)
+    return -_tnmom1(a,b)
 end
 
 
