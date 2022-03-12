@@ -115,7 +115,7 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
     # Vtmp = [I - T'(V)] \ [V - T(V)]
     # V .= -Vtmp
     # div_and_update_direct!(EV0, t, ddm)
-    div_and_update_indirect!(EV0, t, ddm, vftol; tol=1e-13)
+    div_and_update_indirect!(EV0, t, ddm, vftol; abstol=1e-13)
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
