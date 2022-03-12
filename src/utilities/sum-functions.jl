@@ -140,7 +140,7 @@ function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) whe
         for k in OneTo(maxk)
             qk = uview(qq, :, k)
             xk = uview(xx, :, k)
-            @avx for i in eachindex(lsevec)
+            for i in eachindex(lsevec)
                 tmp = exp(xk[i] - tmpmaxvec[i])
                 lsevec[i] += tmp
                 qk[i] = tmp
@@ -150,7 +150,7 @@ function softmax3!(q::AA, lse::A, tmpmax::A, x::AA, maxk=size(q, ndims(q)) ) whe
         for k in maxk+1:nk
             qk = uview(qq, :, k)
             xk = uview(xx, :, k)
-            @avx for i in eachindex(lsevec)
+            for i in eachindex(lsevec)
                 tmp = exp(xk[i] - tmpmaxvec[i])
                 lsevec[i] += tmp
             end
