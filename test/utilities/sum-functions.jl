@@ -61,7 +61,7 @@ println("printme")
 
 @testset "softmax3! functionw" begin
 
-    ni, nj, nk = (100, 100, 10)
+    ni, nj, nk = 100, 100, 10
     x0 = rand(ni, nj, nk)
     q0 = similar(x0)
 

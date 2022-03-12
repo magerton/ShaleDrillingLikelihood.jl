@@ -3,11 +3,13 @@ module ShaleDrillingLikelihood_Production_Test
 using ShaleDrillingLikelihood
 using Test
 using StatsFuns
-using Calculus
+# using Calculus
+using FiniteDiff: finite_difference_gradient
 using Optim
 using Random
 using LinearAlgebra
 using BenchmarkTools
+using ForwardDiff
 
 using ShaleDrillingLikelihood: _num_x,
     idx_produce_ψ, idx_produce_β, idx_produce_σ2η, idx_produce_σ2u,
@@ -17,6 +19,10 @@ using ShaleDrillingLikelihood: _num_x,
     _x, _y, _xsum, _nu, _i, update_nu!, update_xpnu!, _qm, _psi2,
     SimulationDraws, psi2_wtd_sum_and_sumsq, Observation,
     _nparm, update!
+
+
+fdgradient(f, x0) = finite_difference_gradient(f, x0, Val{:central})
+
 
 println("Starting production likelihood tests")
 
@@ -28,7 +34,7 @@ println("Starting production likelihood tests")
     beta = rand(k)
     sigmas = (0.5, 0.3, 0.4,)
     theta = vcat(sigmas[1], beta, sigmas[2:3]...)
-    num_i = 100
+    num_i = 10_000
     M = 500
 
     data = DataProduce(num_i, 10, 10:20, theta)
@@ -48,11 +54,14 @@ println("Starting production likelihood tests")
     tmpgrad = similar(theta)
     ff(theta)
 
-    fd = Calculus.gradient(ff, theta)
+    fd = fdgradient(ff, theta)
+    # ad = ForwardDiff.gradient(ff, theta)
     fill!(tmpgrad, 0)
     ffgg!(tmpgrad, theta)
-    # @test fd ≈ tmpgrad
-    @test norm(fd .- tmpgrad, Inf) < 2e-5
+    # @test ad ≈ tmpgrad
+    @test norm(fd .- tmpgrad, Inf) < 2e-3
+    # @test norm(ad .- tmpgrad, Inf) < 2e-5
+    @show fd .- tmpgrad
 
     od = OnceDifferentiable(ff, ffgg!, ffgg!, theta)
     res = optimize(od, theta, BFGS(), Optim.Options(time_limit = 40.0))

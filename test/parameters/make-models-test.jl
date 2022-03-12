@@ -5,7 +5,7 @@ using ShaleDrillingLikelihood.SDLParameters
 using Test
 
 @testset "Make Test Datset" begin
-    num_i = 25
+    num_i = 50
     (datasm, thetasm, ), (datalg, thetalg,) = MakeTestData(;num_i=num_i)
 
     @test length.(datasm) == (num_i, 0, 0,)
