@@ -5,6 +5,8 @@ using Test
 using Dates
 using SparseArrays
 
+using Dates: Quarter
+
 using ShaleDrillingLikelihood: condvar,
     lrvar,
     lrmean,

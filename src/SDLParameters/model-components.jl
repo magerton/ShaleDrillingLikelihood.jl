@@ -61,7 +61,7 @@ function TestAR1Process(;rho=0.8, mean=1.33*(1-rho), var=0.265^2*(1-rho^2))
     return AR1process(mean, rho, var)
 end
 
-function TestPriceDates(n=150;start=Date(2003,10), step=Quarter(1))
+function TestPriceDates(n=150;start=Date(2003,10), step=Dates.Quarter(1))
     return range(start; step=step, length=n)
 end
 

@@ -134,7 +134,7 @@ println("print to keep from blowing up")
     # simulate price process
     zprocess = AR1process(zmean, zrho, zvar)
     zvec = simulate(zprocess, num_zt)
-    ztrng = range(Date(2003,10); step=Quarter(1), length=num_zt)
+    ztrng = range(Date(2003,10); step=Dates.Quarter(1), length=num_zt)
     _zchars = ExogTimeVars(tuple.(zvec), ztrng)
 
     # random vars
