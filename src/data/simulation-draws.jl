@@ -61,6 +61,17 @@ end
 
 SimulationDraw(θρ) = SimulationDraw(randn(), randn(), θρ)
 
+
+"""
+SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
+
+`u` and `v` are raw shocks/Halton draws
+`psi1` is correlated shock: `ρ*u + sqrt(1-ρ^2)*v`
+`dpsidrho` is ∂ψ¹/∂ρ 
+`qm` holds log L_{im}
+`am,bm,cm` are for ordered probit with inverse Mills ratio things (pdf/cdf)
+`drillgradm` holds ∂logL(drillchoice|sim_m)/∂θ
+"""
 struct SimulationDraws{T, N, A<:AbstractRealArray{T,N}}
     u::A
     v::A
