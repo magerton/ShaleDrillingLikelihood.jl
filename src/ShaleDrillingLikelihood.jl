@@ -196,7 +196,9 @@ include("utilities/inplace-interpolation.jl")
 include("utilities/delegate-methods.jl")
 include("utilities/helper-macros.jl")
 
-include("time-variables/tvpack.jl")
+# tvpack.jl from new StatsFuns
+# NOTE - might be good to do tests w/ values fm https://www.jstor.org/stable/pdf/2237196.pdf
+# Also, w/ be good to do halfπ instead of 0.5*π   
 include("time-variables/tauchen.jl")
 include("time-variables/time-variable-type.jl")
 include("time-variables/time-series-processes.jl")
