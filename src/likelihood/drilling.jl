@@ -61,6 +61,10 @@ function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
 
+        # y .= alpha*A^{tA}*x + beta*y or alpha*A'x + beta*y
+        # gemv!(tA, alpha, A, x, beta, y)
+        # NOTE - try updating with mul!(C, A, B, α, β) -> C
+        # ABα+Cβ. 
         dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad)
 
     end
