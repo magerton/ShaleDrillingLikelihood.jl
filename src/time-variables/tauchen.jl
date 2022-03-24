@@ -20,8 +20,11 @@ end
 
 x_pm_Δ(x::Number, xspace::AbstractVector) = x .+ plus_minus_dx(x,xspace)
 
+"""
+updates transition matrix `P` given states `S` with conditional mean fct `μ` and var `σ2`
+"""
 function tauchen_1d!(P::AbstractMatrix, S::AbstractVector, μ::Function, σ2::Number)
-    σ2 > 0 || throw(DomainError())
+    σ2 > 0 || throw(DomainError(σ2))
     all(length(S) .== size(P)) || throw(DimensionMismatch())
 
     sigma = sqrt(σ2)
@@ -36,6 +39,9 @@ function tauchen_1d!(P::AbstractMatrix, S::AbstractVector, μ::Function, σ2::Nu
     end
 end
 
+"""
+form transition matrix `P` given states `S` with conditional mean fct `μ` and var `σ2`
+"""
 function tauchen_1d(S::AbstractVector{T}, μ::Function, σ2::Number) where {T<:Real}
     n = length(S)
     P = Matrix{T}(undef,n,n)
@@ -43,6 +49,9 @@ function tauchen_1d(S::AbstractVector{T}, μ::Function, σ2::Number) where {T<:R
     return P
 end
 
+"""
+form transition matrix `P` given states `S` with conditional mean fct `μ` and var `Σ`
+"""
 function tauchen_2d(S::Base.Iterators.ProductIterator, μ::Function, Σ::AbstractMatrix{T}) where {T<:Real}
   n = length(S)
   P = Matrix{T}(undef,n,n)
@@ -50,6 +59,9 @@ function tauchen_2d(S::Base.Iterators.ProductIterator, μ::Function, Σ::Abstrac
   return P
 end
 
+"""
+update transition matrix `P` given 2-dim product iterator of states `S` with conditional mean fct `μ` and var `Σ`
+"""
 function tauchen_2d!(P::AbstractMatrix, S::Base.Iterators.ProductIterator, μ::Function, Σ::AbstractMatrix)
     ndims(S) == 2
     2 == checksquare(Σ) || throw(DimensionMismatch("Σ must be 2x2"))
