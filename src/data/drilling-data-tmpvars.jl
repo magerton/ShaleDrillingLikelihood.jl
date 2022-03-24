@@ -9,11 +9,21 @@
 # also
 # https://github.com/nacs-lab/yyc-data/blob/d082032d075070b133fe909c724ecc405e80526a/lib/NaCsCalc/src/utils.jl#L120-L142
 
+"""
+`DrillingTmpVars` has
+
+    - choice specific VF (usually v_d) `ubv`
+    - ∂v_d/∂θ `dubv`
+    - log likelihood contribution for lease `j` is `llj`
+    - `grad` is a a nθ tmpvar to hold a gradient vector
+    - `gradJ` is a (nθ × J) matrix to hold the score for lease `j` in each col
+
+"""
 struct DrillingTmpVars{T<:AbstractFloat} <: AbstractTmpVars
     ubv::Vector{T}
     dubv::Matrix{T}
     llj::Vector{T}
-    grad::Vector{T}
+    grad::Vector{T} # CUT THIS????
     gradJ::Matrix{T}
     function DrillingTmpVars(ubv, dubv, llj, grad, gradJ)
         length(grad)==size(gradJ,1) == size(dubv,1) || throw(DimensionMismatch())
