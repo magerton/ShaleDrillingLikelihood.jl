@@ -1,3 +1,32 @@
+#= ------------------------------------------------
+
+In general, for each type of data/eqn we have the following structure
+
+- Data specifies
+    + a `model` that tells us about extra parameters, etc
+    + a vector of outcomes `y`
+    + a matrix of explanatory variables `x`
+    + a pre-computed vector of explanatory variables times coef, eg `xbeta` or sums like `sumx`
+    + other information like the `num_choices` for multinomial/ordered probit
+
+- Observation specifies
+    + a `model`
+    + an outcome, `y`
+    + explanatory `x`
+    + possibly pre-computed algebraic operations from bulk linear algebra obs like `xbeta = X*β` or `xpnu`
+    + other info
+
+- Other functions
+    + `extra_parm(data)`: number of extra parameters
+    + _nparm(data)
+    + `idx_MODEL_PARAMETER(data, index)` tells the index of a particular type of parameter given the model
+    + `theta_MODEL_PARAMETER(data, theta, [index])` provides the actual parameters
+    + `kappa_LEVELORCUMSUM_to_CUMSUMORLEVEL(x)` transforms back & forth from ∑ᵢ̃κᵢ² ⟷ κᵢ
+    + functions to simulate data
+    + `coefnames(data)` to generate a list of latex coef names
+
+# ------------------------------------------------ =#
+
 export RoyaltyModelNoHet, RoyaltyModel, ObservationRoyalty, DataRoyalty,
     observed_choices
 
