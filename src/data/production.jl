@@ -1,3 +1,5 @@
+# data for production function estimation
+
 export ProductionModel, ObservationProduce, ObservationGroupProduce, DataProduce
 
 "Production"
@@ -224,6 +226,9 @@ function DataProduce(psi::Vector, maxwells::Int, ntrange::UnitRange, theta::Vect
 end
 
 
+"""
+simulate data with `DataProduce(psi, grouplens, ntrange, theta, ivars)`
+"""
 function DataProduce(psi::Vector, grouplens::Vector, ntrange::UnitRange, theta::Vector, ivars::Union{Number,Vector}=0)
 
     length(psi) == length(grouplens) || throw(DimensionMismatch())
