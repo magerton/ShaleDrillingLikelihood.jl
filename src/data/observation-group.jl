@@ -1,7 +1,8 @@
 export ObservationGrup
 
 """
-Observation Groups help us iterate through a panel
+Observation Groups help us iterate through a panel. They simply augment
+the base dataset `D` with an index `i`
 
 Examples:
 - A vector of production from a well
