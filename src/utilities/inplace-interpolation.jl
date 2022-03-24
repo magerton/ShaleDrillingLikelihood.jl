@@ -1,3 +1,7 @@
+# this set of functions sets up a pre-allocated set of arrays for interpolations
+# we do this so that we can pre-allocate everything for value functions
+# and be able to do interpolation stuff without creating new arrays
+
 # padded coefs
 function padded_coefs(::Type{TC}, A::AbstractArray, it) where {TC}
     indsA = axes(A)
