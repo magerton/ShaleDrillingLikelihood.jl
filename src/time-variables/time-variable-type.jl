@@ -1,3 +1,6 @@
+# `ExogTimeVars` holds a regular time series and can be indexed
+# with either a a `Date` or an `Integer`
+
 export Quarter, ExogTimeVars, _timevars
 
 struct ExogTimeVars{N, ZTup<:NTuple{N,Real}, OR<:OrdinalRange}
@@ -33,7 +36,7 @@ minimum(tv::ExogTimeVars{1}) = minimum(_timevars(tv))
 maximum(tv::ExogTimeVars{1}) = maximum(_timevars(tv))
 
 function DateQuarter(y::Integer, q::Integer)
-    1 <= q <= 4 || throw(DomainError())
+    1 <= q <= 4 || throw(DomainError(q))
     return Date(y, 3*(q-1)+1)
 end
 
@@ -45,6 +48,6 @@ function DateQuarter(yq::Real)
 end
 
 function Quarter(i::Integer)
-    1 <= i <= 4 || throw(DomainError())
+    1 <= i <= 4 || throw(DomainError(i))
     return Month(3*i)
 end
