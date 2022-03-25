@@ -103,6 +103,7 @@ function DCDPTmpVars(nθt, nz, nψ, nd, ztransition::AbstractMatrix{T}) where {T
     )
 end
 
+"adjust dims of tmpvars to accomodate shrinking action space"
 function view(t::DCDPTmpVars, idxd::AbstractVector)
     first(idxd) == 1 || throw(DomainError())
     last(idxd) <= size(ubVfull(t),3) || throw(DomainError())

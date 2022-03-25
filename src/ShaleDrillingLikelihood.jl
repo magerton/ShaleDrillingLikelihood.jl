@@ -223,6 +223,8 @@ THINGS TO DO
     + I solve the VF once for each unit... integration over leases doesn't 
       imply additional VFI/PFI
 - Make sure sumprod! is optimized?
+- use 5 arg mul! instead of gemv!. do this for gemm, too?
+- if extension does not expire, then need to fix 
 
 =#
 
@@ -246,11 +248,11 @@ include("drilling-model/dynamic-drilling-model.jl")    # struct to hold DDM info
 # VF iteration components
 include("drilling-model/dcdp-components/makeIminusTVp.jl")        # PFI operator computation
 include("drilling-model/dcdp-components/learning_transition.jl")  # compute β*dF(ψ¹|ψ⁰) and derivative wrt θρ    
-include("drilling-model/dcdp-components/vfit.jl")                 # 
-include("drilling-model/dcdp-components/solve-all-vfit.jl")
+include("drilling-model/dcdp-components/vfit.jl")                 # solution of VF[:,:,state]
+include("drilling-model/dcdp-components/solve-all-vfit.jl")       # solution of VF over all states... fix terminal value of exploration?
 
 # simulation
-include("drilling-model/data-simulation.jl")
+include("drilling-model/data-simulation.jl")  # given a solved VF & model, 
 
 # Likelihood / solution
 # ------------------------------------
