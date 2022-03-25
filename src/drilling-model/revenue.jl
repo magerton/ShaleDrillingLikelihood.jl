@@ -36,7 +36,8 @@ abstract type AbstractTaxType         <: AbstractModelVariations end
 abstract type AbstractRoyaltyType     <: AbstractModelVariations end
 
 """
-`DrillingRevenue` tells what we've done in terms of
+`DrillingRevenue` gives us flexibility in modifying different parts of a nonlinear 
+reward function and imposing counterfactuals that change the reward function
 
 - Constrained drilling, so that we take coefs for OGIP, ψ, t, D from pdxn and embed them in `constr`
 - Technology (eg, time)
