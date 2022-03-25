@@ -35,7 +35,15 @@ abstract type AbstractTechChange      <: AbstractModelVariations end
 abstract type AbstractTaxType         <: AbstractModelVariations end
 abstract type AbstractRoyaltyType     <: AbstractModelVariations end
 
-# drilling revenue
+"""
+`DrillingRevenue` tells what we've done in terms of
+
+- Constrained drilling, so that we take coefs for OGIP, ψ, t, D from pdxn and embed them in `constr`
+- Technology (eg, time)
+- Taxes (gathering/compression, marginal tax rate, real discount + decline for revenue)
+- learning (for counterfactuals) affects ψ treatment
+- royalty type (so that we can constrain royalty to 0 without changing data)
+"""
 struct DrillingRevenue{
     Cn <: AbstractConstrainedType, Tech <: AbstractTechChange,
     Tax <: AbstractTaxType, Lrn <: AbstractLearningType,
@@ -466,6 +474,9 @@ coefnames(x::DrillingRevenue{Unconstrained, TimeFE}) = vcat(
 # dψ is the same across many functions
 # ----------------------------------------------------------------
 
+"""
+If Q = exp(theta_ψ * ψ + stuff), then ∂rev / ∂ψ = rev*theta_ψ
+"""
 function flowdψ(rev::Real, x::DrillingRevenue, d, obs, θ, sim)
     dψ = rev * theta_ψ(x,θ)
     if _Dgt0(obs)

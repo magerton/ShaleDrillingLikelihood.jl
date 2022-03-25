@@ -1,4 +1,9 @@
-"Reward function for basic drilling model"
+"""
+`DrillReward` defines the reward function for basic drilling model.
+
+It has 4 pieces. The corresponding parameter is
+`theta_drill = [theta_DRILLcost, theta_EXTEND, theta_SCRAP, theta_REVENUE]`
+"""
 struct DrillReward{R<:AbstractDrillingRevenue,C<:AbstractDrillingCost,E<:AbstractExtensionCost,S<:AbstractScrapValue} <: AbstractStaticPayoff
     revenue::R
     drill::C
@@ -24,6 +29,7 @@ cost(   x::DrillReward) = drill(x)
 @inline _nparm_cost_ext_scrap(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x)) + _nparm(scrap(x))
 @inline _nparm_cost_ext(x::DrillReward) = _nparm(cost(x)) + _nparm(extend(x))
 
+# `theta_drill = [theta_cost, theta_extend, theta_scrap, theta_revenue]`
 idx_cost(   x::DrillReward) = OneTo(_nparm(cost(x)))
 idx_extend( x::DrillReward) = OneTo(_nparm(extend(x)))  .+  _nparm(cost(x))
 idx_scrap(  x::DrillReward) = OneTo(_nparm(scrap(x)))   .+ _nparm_cost_ext(x)
@@ -32,11 +38,13 @@ idx_ρ(      x::DrillReward) = _nparm(x) # idx_ρ(revenue(x), idx_revenue(x)
 
 idx_drill_ρ(x::DrillReward) = idx_ρ(x)
 
+# idx_g, idx_ψ, idx_t, idx_D are specific to each `revenue` function
 idx_drill_g(x::DrillReward) = _nparm_cost_ext_scrap(x) + idx_g(revenue(x))
 idx_drill_ψ(x::DrillReward) = _nparm_cost_ext_scrap(x) + idx_ψ(revenue(x))
 idx_drill_t(x::DrillReward) = _nparm_cost_ext_scrap(x) .+ idx_t(revenue(x))
 idx_drill_D(x::DrillReward) = _nparm_cost_ext_scrap(x) .+ idx_D(revenue(x))
 
+# FIXME: define a revenue(d::DataDrill{<:AbstractDynamicDrillModel}) = revenue(reward(_model(d)))
 idx_drill_g(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_g(reward(_model(d)))
 idx_drill_ψ(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_ψ(reward(_model(d)))
 idx_drill_t(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_t(reward(_model(d)))
@@ -56,9 +64,10 @@ function flow!(grad, x::DrillReward, d, obs, θ, sim, dograd)
     e = flow!(vw_extend( x, grad), extend( x), d, obs, vw_extend( x, θ), sim, dograd)
     s = flow!(vw_scrap(  x, grad), scrap(  x), d, obs, vw_scrap(  x, θ), sim, dograd)
     r = flow!(vw_revenue(x, grad), revenue(x), d, obs, vw_revenue(x, θ), sim, dograd)
-    return c+e+s+r
+    return c + e + s + r
 end
 
+"∂flow / ∂ψ for ψ¹ or ψ⁰"
 function flowdψ(x::DrillReward, d, obs, θ, sim)
     T = eltype(θ)
     if d == 0
