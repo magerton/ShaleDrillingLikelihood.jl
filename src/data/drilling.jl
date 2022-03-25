@@ -80,6 +80,34 @@ function DataDrillChecks(j1ptr, j2ptr, tptr, jtstart, jchars, ichars, y, x, zcha
     return true
 end
 
+"""
+    `DataDrillPrimitive` has the following fields
+
+An observation is
+
+- a unit `i`,
+- a set of time perids `j`
+    + Each set of time periods is one of two regimes (implicit index `AbstractDrillRegime`)
+        that designate whether is a lease OR a HBP unit
+    + Leases are `j ∈  j1ptr`
+    + HBP regimes are `j ∈ j2ptr`
+- a period `t` that takes place within `j`
+
+We iterate through 
+    - units `i`, then
+    - regimes (eg, `AbstractRegimeType`s that map to `j1ptr` and `j2ptr`), 
+    - then leases `j`,
+    - then obs `t`
+
+Fields are
+
+- `ichars` is unit-level chars (geology or royalty) (`i`)
+- `j1chars` is a Vector with weights for each lease (`ij`). We have no `j2chars` because these are for units when HBP
+- `x[t]` is a Vector with indices for where the lease/unit is in the state space (for each `ijt`)
+- `y[t]` is a Vector of choices  (for each `ijt`)
+- `zchars[zt]` is a Vector of tuples with time series. zvars for lease j start at zchars[jtstart(data,j)]
+- The state space for leasing/drilling is characterized by `wp<:AbstractStateSpace`
+"""
 struct DataDrillPrimitive{
         R<:AbstractStaticPayoff, ETV<:ExogTimeVars,
         ITup<:Tuple, XT, UP<:AbstractStateSpace
@@ -178,6 +206,13 @@ end
 # What is an observation?
 #------------------------------------------
 
+"""
+an `ObservationDrill` corresponds to indices for
+    
+- unit `i`, 
+- lease `j`,
+- time index `t`, which maps to a time period `zt`
+"""
 struct ObservationDrill{M<:AbstractDrillModel,ITup<:Tuple,ZTup<:Tuple,XT<:Number} <: AbstractObservation
     model::M
     ichars::ITup
