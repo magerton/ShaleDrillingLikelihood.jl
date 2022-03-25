@@ -330,6 +330,12 @@ _d1(s::state) = s.d1
 _τ1(s::state) = s.τ1
 _τ0(s::state) = s.τ0
 _D(s::state) = s.D
+
+"""
+`true` if 0 months left in primary BUT gt 0 months left in 
+the lease extension. This is an indicator variable for whether 
+we incur the cost of signing an extension
+"""
 _sgnext(s::state) = s.τ1 == 0 && s.τ0 > 0
 _τrem(s::state) = max(s.τ1,0) + max(s.τ0,0)
 _τ11(s::state, wp::AbstractUnitProblem) = 2*_τrem(s)/maxlease(wp)-1
@@ -343,6 +349,7 @@ stateinfo(wp::AbstractUnitProblem, st::state) = (_d1(st), _Dgt0(st), _sgnext(st)
 
 @deprecate _sign_lease_extension(sidx::Integer,wp::AbstractUnitProblem) _sgnext(wp,sidx)
 
+"`true` if lease extension / last period expires today"
 @inline expires_today(wp::AbstractUnitProblem, sidx::Integer)             = sidx == end_ex0(wp)
 @inline expires_today(wp::AbstractUnitProblem, sidx::Integer, d::Integer) = expires_today(wp,sidx) && d==0
 @inline expires_today(wp::PerpetualProblem, ::Integer, ::Integer) = false

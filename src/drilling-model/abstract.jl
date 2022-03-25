@@ -7,7 +7,10 @@ export DrillReward,
 # -------------------------------------------
 
 # generic functions to access coefs
+"position of drilling parameters in `theta_full`"
 idx_drill(d) = OneTo(_nparm(d))
+
+"given `theta_full`, get drilling parameters"
 theta_drill(d, theta) = view(theta, idx_drill(d))
 
 # @deprecate length(f::AbstractPayoffFunction) _nparm(f)
@@ -80,6 +83,11 @@ function dflow(x::AbstractPayoffFunction, d, obs, theta, s)
     return grad
 end
 
+"""
+Evaluate static payoff function `x` with choice `d`, 
+explanatory variables/observation `obs`,
+simulation draw `s` and parameters `theta`
+"""
 function flow(x::AbstractPayoffFunction, d, obs, theta, s)
     grad = Vector{eltype(theta)}(undef, 0)
     return flow!(grad, x, d, obs, theta, s, false)
