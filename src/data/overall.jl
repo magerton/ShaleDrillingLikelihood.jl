@@ -23,6 +23,12 @@ function check_coef_restr_in_parm_vec(cf, d::AbstractDataSet)
     return true
 end
 
+"""
+`DataSetofSets` is a tuple of datasets (`data`), and vectors that
+tell us which drilling & pdxn parameters are shared. For example, we might
+have a `theta_produce` and a `theta_drill` that share coefs for `ψ` and `g`, eg
+`[(idx_produce_ψ, idx_drill_ψ,), (idx_produce_g, idx_drill_g)]`
+"""
 struct DataSetofSets{
     D<:Union{AbstractDataDrill,EmptyDataSet},  R<:Union{DataRoyalty,EmptyDataSet}, P<:Union{DataProduce,EmptyDataSet},
     } <: AbstractDataSetofSets
@@ -116,6 +122,17 @@ theta_ρ(data::DataSetofSets{<:AbstractDataDrill}, theta) = theta[_nparm(drill(d
 theta_ρ(data::DataSetofSets{<:EmptyDataSet}, theta) = theta[1]
 
 
+"""
+given a tuple of 3 parameter vectors `thetas`, merge them.
+
+We have
+    - `theta_d`, which ends with the θρ determining ρ
+    - `theta_r`, which starts with the θρ
+    - `theta_p`, which may have a ψ and g (plus other) coefs
+
+We do this so that our sub-model parameter vectors are continuous spaces in memory
+rather than views that aren't regular/strided. This allows for nice BLAS ops
+"""
 function merge_thetas(thetas::NTuple{3,AbstractVector}, data::DataFull)
     length.(thetas) == _nparm.(data) ||
         throw(DimensionMismatch("len thetas = $(length.(thetas)) but nparm = $(_nparm.(data))"))
@@ -140,11 +157,22 @@ function idx_royalty(data::DataFull)
     return (kd-1) .+ idx_royalty(royalty(data))
 end
 
+"return indices of pdxn parameters so that `theta_pdxn = theta_full[idx_produce(d)]`"
 function idx_produce(data::DataFull)
     dd, dr, dp = drill(data), royalty(data), produce(data)
     kd = _nparm(dd)
     kr = _nparm(dr)
+    
+    # thetafull[idx] needs to have the theta_produce
+    # b/c drill & royalty share a parameter, the 
+    # nparm(drill & royalty) = `nparm(drill) + nparm(roy) - 1`
+    # then theta_produce will start after that
     idx = collect((kd+kr-1) .+ idx_produce(dp))
+    
+    # for each pair of shared parameters, we need to 
+    # update the idx[idxp] elt as idxd so it gets to the right
+    # place in thetafull. Then we knock one off the subsequent 
+    # indices into theta_full
     for (idxp, idxd) in coef_links(data)
         idx[idxp] = idxd
         idx[idxp+1:end] .-= 1
