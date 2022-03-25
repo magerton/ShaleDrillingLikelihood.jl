@@ -54,11 +54,11 @@ coefnames(::ScrapValue_Zero) = Vector{String}(undef,0)
 struct ScrapValue_Constant <: AbstractScrapValue end
 _nparm(::ScrapValue_Constant) = 1
 @inline function flow!(grad, x::ScrapValue_Constant, d, obs, θ, sim, dograd::Bool)
-    e = expires_today(d, obs)
+    exp_tod = expires_today(d, obs)
     if dograd
-        grad[1] = e
+        grad[1] = exp_tod
     end
-    return e ? θ[1] : azero(θ)
+    return exp_tod ? θ[1] : azero(θ)
 end
 coefnames(::ScrapValue_Constant) = ["\\alpha_{scrap}",]
 
@@ -67,12 +67,12 @@ coefnames(::ScrapValue_Constant) = ["\\alpha_{scrap}",]
 struct ScrapValue_Price <: AbstractScrapValue end
 _nparm(::ScrapValue_Price) = 2
 @inline function flow!(grad, x::ScrapValue_Price, d, obs, θ, sim, dograd::Bool)
-    e = expires_today(d, obs)
+    exp_tod = expires_today(d, obs)
     p = exp(logprice(obs))
     if dograd
-        grad[1] = e
-        grad[2] = e*p
+        grad[1] = exp_tod
+        grad[2] = exp_tod*p
     end
-    return e ? θ[1] + θ[2]*p : azero(θ)
+    return exp_tod ? θ[1] + θ[2]*p : azero(θ)
 end
 coefnames(::ScrapValue_Price) = ["\\alpha_{scrap,0}", "\\alpha_{scrap,p}"]
