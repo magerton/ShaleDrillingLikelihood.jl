@@ -161,6 +161,11 @@ end
 # which state are we in?
 # ----------------------------------
 
+"""
+Given a problem `wp`, time remaining in primary `t1` and extension `t0`
+as well as number of wells drilled `D` and (possibly) whether we drilled last period `d1`,
+return the position in the leasing/drilling state space
+"""
 function state_idx(wp::LeasedProblemContsDrill, t1::Integer, t0::Integer, D::Integer, d1::Integer)::Int
     t1 >= 0 && t0 ∉ (0,_ext(wp)) && throw(error("Cannot be in primary + extension simultaneously"))
     t1 >= 0               && return end_ex1(wp) - t1
@@ -440,6 +445,19 @@ end
 # sprime
 # ----------------------------------
 
+"""
+To save computation, we integrate over next period's state in 2 stages. First,
+we integrate over Z. Then we have to think about dF(ψ⁰|ψ¹). If we've already
+learned, then we don't have to take this integral. However, if we haven't yet 
+drilled, we do. This helps us think through this.
+
+Given state space `wp`, index `s` and choice `d`, return index of
+
+- if we are pre-learning, the 'learning regime' that integrates over
+   the transition for ψ⁰ conditional on ψ¹
+- if we are in the learning or post-learning stage
+    this is the VF for the 'post-learning' values
+"""
 function sprime(wp::LeasedProblemContsDrill, s::Integer, d::Integer)::Int
     if s <= 0
         throw(DomainError(s, "s <= 0"))
