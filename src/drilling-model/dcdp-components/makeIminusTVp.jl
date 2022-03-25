@@ -12,8 +12,7 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M
 
     @inbounds for j in OneTo(n)
         @simd for i in OneTo(n)
-            x = -ztrans[i,j] * β * q0[j]
-            IminusTVp[i,j] = i==j  ?  1+x  : x
+            IminusTVp[i,j] = (i==j) - ztrans[i,j] * β * q0[j]
         end
     end
 end
@@ -22,6 +21,7 @@ end
 function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M}, q0::AbstractVector) where {T,S,M<:SparseMatrixCSC,PF}
     IminusTVp = IminusTEVp(tmpv)
     ztrans = ztransition(ddm)
+    β = discount(ddm)
 
     n = checksquare(IminusTVp)
     n == length(q0) == checksquare(ztrans) || throw(DimensionMismatch())
@@ -41,9 +41,10 @@ function update_IminusTVp!(tmpv::DCDPTmpVars{T,M}, ddm::DynamicDrillModel{S,PF,M
     fill!(IminusTVp, 0)
     @inbounds for j in OneTo(n)
         @simd for nzi in nzrange(IminusTVp, j)
-            x = -ztrans_vals[nzi] * discount(ddm) * q0[j]
             i = IminusTVp_rows[nzi]
-            IminusTVp_vals[nzi] = i==j  ?  1+x  :  x
+            IminusTVp_vals[nzi] = (i==j) - ztrans_vals[nzi] * β * q0[j]
+            # x = -ztrans_vals[nzi] * β * q0[j]
+            # IminusTVp_vals[nzi] = i==j  ?  1+x  :  x
         end
     end
 
