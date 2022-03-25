@@ -3,7 +3,7 @@ export ValueFunctionArrayOnly,
     EV_scaled_itp,
    dEV_scaled_itp
 
-
+"check if dims(a) = dims(b)[1:end-2, end]"
 function check_a_eq_b_sans_2nd_to_last(a::Tuple, b::Tuple)
    length(b) == length(a)+1 || return false
    b[1:end-2] == a[1:end-1] || return false

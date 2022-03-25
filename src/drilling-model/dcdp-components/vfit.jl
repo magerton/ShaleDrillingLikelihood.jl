@@ -28,6 +28,7 @@ function vfit!(EV0, dEV0, t::DCDPTmpVars, ddm::DynamicDrillModel)
     end
     A_mul_B_md!(EV0, ztransition(ddm), lse(t), 1)
 
+    # dEV[:, ψ, 1:nθ, d] = Π ∑ₖ qₖ[:,ψ] .* ∂ubv/∂θt[:, ψ, 1:nθ, k]
     sumdubV = view(dubVperm(t), :,:,:,1)
     sumprod!(sumdubV, dubVperm(t), q(t))
     A_mul_B_md!(dEV0, ztransition(ddm), sumdubV, 1)

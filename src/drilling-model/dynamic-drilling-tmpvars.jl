@@ -27,19 +27,22 @@ check_rowvals_equal(A, X) = true
 struct DCDPTmpVars{
     T<:Real, SM<:AbstractMatrix{T}, AA3<:AbstractArray3{T}, AA3b<:AbstractArray3{T}, AA4<:AbstractArray4{T}
     } <: AbstractTmpVars
-    ubVfull::AA3
-    dubVfull::AA4
-    dubVfullperm::AA4
-    q::AA3b
-    lse::Matrix{T}
-    tmp::Matrix{T}
-    tmp_cart::Matrix{CartesianIndex{3}}
-    Πψtmp::Matrix{T}
-    IminusTEVp::SM
-    tmpEVj::Vector{T}
+    ubVfull::AA3         # Choice-specific VF        (     nz, nψ, nd)
+    dubVfull::AA4        # Jac of choice-specific VF (nθt, nz, nψ, nd)
+    dubVfullperm::AA4    # Permuted Jac              (nz, nψ, nθt, nd)
+    q::AA3b              # Action probs?             (nz, nψ, nd)
+    lse::Matrix{T}       # Ex-ante VF                (nz, nψ)
+    tmp::Matrix{T}       # Holds max of ex-ante VF?  (nz, nψ)
+    tmp_cart::Matrix{CartesianIndex{3}} # identify max of ex-ante VF?  (nz, nψ)
+    Πψtmp::Matrix{T}     # Psi transition?             (nψ, nψ)
+    IminusTEVp::SM       # Policy fct operator for d=0 (nz, nz)
+    tmpEVj::Vector{T}    # holds EV1 - EV0?
 
+    # tmpvars let us do strided views to solve [I-T'EV] \ dEV separately for each ψⱼ
+    # we have dEV[:, ψ, 1:nθ, d] = Π ∑ₖ qₖ[:,ψ] .* ∂ubv/∂θt[:, ψ, 1:nθ, k]
+    # but (might) need a permutation to do the multiplication efficiently
     ΠsumdubVj::Matrix{T} #  = view(lse(t), :, 1:nk) # Array{T}(nz,nθ)
-    dev0tmpj::Matrix{T}  #  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)
+    dev0tmpj::Matrix{T}  #  = view(tmp(t), :, 1:nk) # Array{T}(nz,nθ)  
 
     function DCDPTmpVars(ubVfull::AA3, dubVfull::AA4, dubVfullperm::AA4, q::AA3b, lse, tmp, tmp_cart, Πψtmp, IminusTEVp::SM, tmpEVj, ΠsumdubVj, dev0tmpj) where {AA3, AA3b, AA4, SM}
         (nθt, nz, nψ, nd) = size(dubVfull)

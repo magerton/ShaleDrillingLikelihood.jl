@@ -227,8 +227,8 @@ include("drilling-model/cost.jl")
 include("drilling-model/revenue.jl")
 
 # dynamic model
-include("drilling-model/dynamic-drilling-tmpvars.jl")
-include("drilling-model/value-function.jl")
+include("drilling-model/dynamic-drilling-tmpvars.jl")  # tmpvars to solve VF
+include("drilling-model/value-function.jl")            # VF arrays w/ in-place interp
 include("drilling-model/dynamic-drilling-model.jl")
 
 # VF iteration components
