@@ -6,7 +6,7 @@ export DynamicDrillModel,
 # Model
 # -----------------------------------------
 
-"Full-blown Dynamic discrete choice model"
+"object holds everything needed to compute & solve DDM, exept θ"
 struct DynamicDrillModel{T<:Real, PF<:DrillReward, AM<:AbstractMatrix{T},
     AUP<:AbstractUnitProblem, TT<:Tuple, AR<:StepRangeLen{T}, VF<:Union{AbstractValueFunction,Nothing}
 } <: AbstractDynamicDrillModel
@@ -146,6 +146,7 @@ function discounted_dynamic_payoff!(grad, d::Integer, obs::ObservationDynamicDri
 end
 
 
+"compute choice-specific VF"
 function full_payoff!(grad, d::Integer, obs::ObservationDynamicDrill, theta, sim, dograd)
     rwrd = reward(_model(obs))
     static_payoff  = flow!(grad, rwrd, d, obs, theta, sim, dograd)
@@ -163,12 +164,14 @@ end
 
 
 
+"start out lease at state s1=1 in `statespace(m)`"
 function initialize_x!(x, m::DynamicDrillModel, lease)
     s1 = 1
     s2 = end_ex1(statespace(m))+1
     x[1] = s1 # sample([s1,s2])
 end
 
+"given choice `d` and the current `state` in `t`, record `x[t+1]`"
 function update_x!(x, t, m::DynamicDrillModel, state, d)
     wp = statespace(m)
     @assert d in actionspace(wp,state)
@@ -179,6 +182,7 @@ function update_x!(x, t, m::DynamicDrillModel, state, d)
 end
 
 
+"sample of `ichars`"
 function ichars_sample(m::DynamicDrillModel, num_i)
     # geo, roy
     dist_geo = Normal(4.67, 0.33)

@@ -214,6 +214,18 @@ include("data/drilling.jl")
 
 include("data/overall.jl")
 
+#=
+THINGS TO DO
+- drop uview / UnsafeArrays
+- make costs be like revenue
+- Think thru how to get NEW pdxn fct & revenue to match
+- is my estimator consistent w/ multiple leases? how bad is integrating over them?
+    + I solve the VF once for each unit... integration over leases doesn't 
+      imply additional VFI/PFI
+- Make sure sumprod! is optimized?
+
+=#
+
 # drilling model
 # ------------------------------------
 include("drilling-model/abstract.jl")
@@ -229,12 +241,12 @@ include("drilling-model/revenue.jl")
 # dynamic model
 include("drilling-model/dynamic-drilling-tmpvars.jl")  # tmpvars to solve VF
 include("drilling-model/value-function.jl")            # VF arrays w/ in-place interp
-include("drilling-model/dynamic-drilling-model.jl")
+include("drilling-model/dynamic-drilling-model.jl")    # struct to hold DDM info, compute choice specific VF
 
 # VF iteration components
-include("drilling-model/dcdp-components/makeIminusTVp.jl")
-include("drilling-model/dcdp-components/learning_transition.jl")
-include("drilling-model/dcdp-components/vfit.jl")
+include("drilling-model/dcdp-components/makeIminusTVp.jl")        # PFI operator computation
+include("drilling-model/dcdp-components/learning_transition.jl")  # compute β*dF(ψ¹|ψ⁰) and derivative wrt θρ    
+include("drilling-model/dcdp-components/vfit.jl")                 # 
 include("drilling-model/dcdp-components/solve-all-vfit.jl")
 
 # simulation

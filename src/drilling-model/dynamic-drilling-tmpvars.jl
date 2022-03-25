@@ -32,7 +32,7 @@ struct DCDPTmpVars{
     dubVfullperm::AA4    # Permuted Jac              (nz, nψ, nθt, nd)
     q::AA3b              # Action probs?             (nz, nψ, nd)
     lse::Matrix{T}       # Ex-ante VF                (nz, nψ)
-    tmp::Matrix{T}       # Holds max of ex-ante VF?  (nz, nψ)
+    tmp::Matrix{T}       # For max(choice-spec VF) & temp EV1 ⟵ Emax(choice-spec VF)  (nz, nψ)
     tmp_cart::Matrix{CartesianIndex{3}} # identify max of ex-ante VF?  (nz, nψ)
     Πψtmp::Matrix{T}     # Psi transition?             (nψ, nψ)
     IminusTEVp::SM       # Policy fct operator for d=0 (nz, nz)

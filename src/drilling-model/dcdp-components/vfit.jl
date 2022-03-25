@@ -7,11 +7,15 @@ const VFTOL = 1e-10
 Given `ubV(t) ≡ u + βV(x')`, update `EV0 ← E[max u + β V(x')]`
 """
 function vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillModel)
+    # lse is ex-ante VF = log∑exp(choice-spec VF)
+    # t.tmp will/should hold max of t.ubV
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(lse(t), q(t), tmp(t), ubV(t))
     else
         maximum!(add_1_dim(lse(t)), ubV(t))
     end
+    
+    # use AxisAlgorithms.A_mul_B_md! b/c EV0 = VF[1:nz, 1:nψ, state]
     A_mul_B_md!(EV0, ztransition(ddm), lse(t), 1)
 end
 
@@ -26,9 +30,12 @@ function vfit!(EV0, dEV0, t::DCDPTmpVars, ddm::DynamicDrillModel)
             setindex!(q(t), 1, i)
         end
     end
+
+    # use AxisAlgorithms.A_mul_B_md! b/c EV0 = VF[1:nz, 1:nψ, state]
     A_mul_B_md!(EV0, ztransition(ddm), lse(t), 1)
 
     # dEV[:, ψ, 1:nθ, d] = Π ∑ₖ qₖ[:,ψ] .* ∂ubv/∂θt[:, ψ, 1:nθ, k]
+    # ok to overwrite 1st col of dubVperm
     sumdubV = view(dubVperm(t), :,:,:,1)
     sumprod!(sumdubV, dubVperm(t), q(t))
     A_mul_B_md!(dEV0, ztransition(ddm), sumdubV, 1)
@@ -41,9 +48,14 @@ function solve_inf_vfit!(EV0, t::DCDPTmpVars, ddm::DynamicDrillModel; maxit=60, 
 
     iter = zero(maxit)
     while true
+        # use tmp(t) as placeholder for EV1
+        # ok b/c max(choice-spec VF) not needed when EV1 ⟵ Πz*log∑exp(choice-spec VF) 
         vfit!(tmp(t), t, ddm)
         bnds = extrema( tmp(t) .- EV0 ) .* beta_1minusbeta(ddm)
+        
+        # NOTE: assumes that static payoff of doing nothing is 0!!!
         ubV(t)[:,:,1] .= discount(ddm) .* (EV0 .= tmp(t))
+        
         iter += 1
         converged = all(abs.(bnds) .< vftol)
         if converged  ||  iter >= maxit
@@ -57,15 +69,17 @@ end
 
 function div_and_update_direct!(EV0, t, ddm)
     J = size(EV0, 2)
-    ΔEV = lse(t)
-    q0 = ubV(t)
+    ΔEV = lse(t) # (nz, nψ)
+    q0 = ubV(t)  # (nz, nψ, nd)
 
+    # Do EV1pfi[:,j] ⟵ [I - T'(EV1vfi[:,j])] \ ( EV0[:,j] - T(EV1vfi[:,j]) )
     for j in OneTo(J)
         q0j  = uview(q0, :, j, 1)
         ΔEVj = uview(ΔEV, :, j)
 
         update_IminusTVp!(t, ddm, q0j)
         fact = lu(IminusTEVp(t))
+        # ldiv!(A, B): Compute A \ B in-place and overwriting B to store the result.
         ldiv!(fact, ΔEVj)  # Vtmp = [I - T'(V)] \ [V - T(V)]
     end
     EV0 .-= ΔEV # update V
@@ -94,11 +108,13 @@ function div_and_update_indirect!(EV0, t, ddm, vftol; kwargs...)
 end
 
 
+"do a policy fct iteration & return McQueen Porteus bounds"
 function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vftol=VFTOL, kwargs...)
 
     ΔEV = lse(t)
     q0 = ubV(t)
 
+    # Do a single VFI
     if anticipate_t1ev(ddm)
         logsumexp_and_softmax!(ΔEV, q0, tmp(t), ubV(t), 1)
     else
@@ -108,15 +124,20 @@ function pfit!(EV0::AbstractMatrix, t::DCDPTmpVars, ddm::DynamicDrillModel; vfto
     A_mul_B_md!(tmp(t), ztransition(ddm), ΔEV, 1)
 
     # compute difference & check bnds
+    # if VFTOL met, then don't do PFI
     bnds = extrema(ΔEV .= EV0 .- tmp(t)) .* -beta_1minusbeta(ddm)
     if all(abs.(bnds) .< vftol)
         copyto!(EV0, tmp(t))
         return bnds
     end
-    # Vtmp = [I - T'(V)] \ [V - T(V)]
-    # V .= -Vtmp
-    # div_and_update_direct!(EV0, t, ddm)
+    
+    # Do PFI
+    #   Vtmp = [I - T'(V)] \ [V - T(V)]
+    #   V .= -Vtmp
+    #   div_and_update_direct!(EV0, t, ddm)
     div_and_update_indirect!(EV0, t, ddm, vftol; abstol=1e-13)
+    
+    # return McQueen-Porteus bounds
     return extrema(ΔEV) .* -beta_1minusbeta(ddm) # get norm
 end
 
@@ -162,22 +183,30 @@ function gradinf!(dEV0::AbstractArray3, t::DCDPTmpVars, ddm::DynamicDrillModel)
     end
 
     # for dubV/dθt
+    # recall that dEV[:, ψ, 1:nθ, state] = Π ∑ₖ qₖ[:,ψ] .* ∂ubv/∂θt[:, ψ, 1:nθ, k]
+    # doing this is okay b/c dEV[:, ψ, 1:nθ, state] is zero when dubV = ∂ubV/∂θ is 
+    # evaluated
     sumprod!(sumdubV, dubVperm(t), ubV(t))
     A_mul_B_md!(ΠsumdubV, ztransition(ddm), sumdubV, 1)
     gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
     # gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=2)
 end
 
+
+"direct inversion of [I-T'(EV)] to solve for dEV/dθ"
 function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
     nz, nψ, nk = size(dEV0)
 
     for j in OneTo(nψ)
-        qj = view(ubV(t), :, j, 1)
+
+        qj = view(ubV(t), :, j, 1)    # qj = Pr(d=0 | ψⱼ) for 1:nz
         update_IminusTVp!(t, ddm, qj)
 
         fact = lu(IminusTEVp(t))
 
         # Note: cannot do this with @view(dEV0[:,j,:])
+        # ΠsumdubV is (1:nz, 1:nψ, 1:nθ)... and we want
+        # to solve dEV0[1:nz, j, 1:nθ] = [I - T'(EV0)] \ Π (∑ₖ qₖ.*∂ubV/∂θ)
         ΠsumdubVj(t) .= view(ΠsumdubV, :, j, :)
         ldiv!(dev0tmpj(t), fact, ΠsumdubVj(t)) # ΠsumdubV[:,j,:])
         dEV0[:,j,:] .= dev0tmpj(t)
@@ -185,6 +214,7 @@ function gradinf_inner_direct!(dEV0, ΠsumdubV, t, ddm)
 end
 
 
+"indirect solution avoids inverting [I-T'(EV)] to solve for dEV/dθ"
 function gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=1)
     nz, nψ, nθt = size(dEV0)
 

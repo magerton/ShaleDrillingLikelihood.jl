@@ -1,6 +1,15 @@
 
 # ------------------------------ matrix updates -------------------------
 
+# recall, cond_z(yj,y,Δ,ρ) = z(ψ2|ψ1)
+# cond_z(x2::Number, x1::Number, Δ::Number, ρ::Number) = (x2 - ρ*x1 + Δ)/sqrt(1-ρ^2)
+
+"""
+update `tmp.Πψtmp` as d(β*Πψ)/dθρ where Πψ is the tauchen approx of the 
+transition matrix for dF(ψ⁰|ψ¹).
+
+Elements are normpdf(zscore) * ∂zscore/∂y * ∂y/∂θ
+"""
 function _βΠψdθρ!(tmp, ddm, θ)
     P = Πψtmp(tmp)
     y = psispace(ddm)
@@ -28,6 +37,10 @@ function _βΠψdθρ!(tmp, ddm, θ)
 end
 
 
+"""
+update `tmp.Πψtmp` as β*Πψ where Πψ is the tauchen approx of the 
+transition matrix for dF(ψ⁰|ψ¹). Is similar to `tauchen_1d!`
+"""
 function _βΠψ!(tmp, ddm, θ)
     P = Πψtmp(tmp)
     y = psispace(ddm)
