@@ -3,7 +3,15 @@ grad_simloglik!(grad, grp::ObservationGroupEmpty, theta, sim) = nothing
 update!(d::Union{EmptyDataSet,ObservationGroupEmpty}, args...) = nothing
 
 
-# SML for unit i
+"""
+    simloglik!(grad, grptup, thetas, idxs, sim, dograd; kwargs...)
+
+Compute simulated likelihood of unit `i`
+
+Given a tuple `grptup` of data-types (eg, royalty, pdxn, drilling), simulation 
+draws `sim`, and parameter vectors `thetas` that we index into using 
+an index from `idxs` that tells which elts of theta correspond to each data type
+"""
 function simloglik!(grad::AbstractVector, grptup::NTuple{N,ObservationGroup},
     thetas, idxs, sim::SimulationDrawsVector, dograd::Bool; kwargs...
 ) where {N}
