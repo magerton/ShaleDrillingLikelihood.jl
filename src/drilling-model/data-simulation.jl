@@ -1,3 +1,7 @@
+"""
+simulates a dataset with `DataDrill`, then goes through lease-picking process
+to over-write leases within unit assuing a random lease w/in that unit has been picked
+"""
 function DataDynamicDrill(
         u, v, _zchars::ExogTimeVars, _ichars::Vector{<:Tuple},
         ddm::DynamicDrillModel, theta;

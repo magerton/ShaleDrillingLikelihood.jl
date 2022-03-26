@@ -252,7 +252,7 @@ include("drilling-model/dcdp-components/vfit.jl")                 # solution of 
 include("drilling-model/dcdp-components/solve-all-vfit.jl")       # solution of VF over all states... fix terminal value of exploration?
 
 # simulation
-include("drilling-model/data-simulation.jl")  # given a solved VF & model, 
+include("drilling-model/data-simulation.jl")  # given a solved VF & model, simulate
 
 # Likelihood / solution
 # ------------------------------------

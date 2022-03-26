@@ -40,6 +40,10 @@ end
 
 abstract type AbstractEstimationObjects end
 
+"""
+for REMOTE worker, holds data, sim draws, and SharedArrays for
+simloglikᵢ and scoreᵢ that get updated
+"""
 struct RemoteEstObj{D<:DataSetofSets} <: AbstractEstimationObjects
     data::D
     llvec::SharedVector{Float64}
@@ -55,6 +59,9 @@ struct RemoteEstObj{D<:DataSetofSets} <: AbstractEstimationObjects
     end
 end
 
+"""
+holds data, theta, grad, hess on MASTER worker
+"""
 struct LocalEstObj{D<:DataSetofSets} <: AbstractEstimationObjects
     data::D
     theta0::Vector{Float64}
@@ -154,6 +161,7 @@ function LocalEstObj(data, theta)
 end
 
 
+"local + remote estimation object"
 struct EstimationWrapper{D} <: AbstractEstimationObjects
     leo::LocalEstObj{D}
     reo::RemoteEstObj{D}
@@ -202,6 +210,7 @@ function update!(ew::EstimationWrapper, theta, dograd)
 end
 
 
+"compute simloglikᵢ on a remote worker"
 @noinline function simloglik!(i, theta, dograd, reo::RemoteEstObj; kwargs...)
 
     check_finite(theta)
@@ -226,7 +235,7 @@ end
 
 end
 
-
+"compute simloglikᵢ on a remote worker, getting global (latent) object"
 simloglik!(i, theta, dograd; kwargs...) =
     simloglik!(i, theta, dograd, get_g_RemoteEstObj(); kwargs...)
 

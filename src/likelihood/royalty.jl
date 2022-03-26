@@ -123,6 +123,12 @@ function simloglik_royalty!(obs::ObservationRoyalty, theta::AbstractVector, sim:
             isfinite(LL) || @warn "LL = $LL not finite. η1, η2 = $eta12 and choice =$l"
             isfinite(F) || F <= 0 || @warn "F = $F not finite or zero"
             LLm[m] += LL
+
+            
+            # η1, η2 .=  (κlo,κhi) .- zm
+            # bqm[m] = normpdf(η2) / normcdf(η2)
+            # aqm[m] = normpdf(η1) / (1-normcdf(η1))
+            # cqm[m]  = - (normpdf(η1) - normpdf(η2)) / (normpdf(η1) - normpef(η2))
             am[m] = normpdf(η1) / F
             bm[m] = normpdf(η2) / F
             cm[m] = dlogcdf_trunc(η1, η2)
