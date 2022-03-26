@@ -40,12 +40,12 @@ import ArgParse: parse_item # SDL
 import ShaleDrillingLikelihood: ichars, zchars,
     DataRoyalty, DataProduce, DataDrillPrimitive, DataDrill
 
-include("thetas.jl")
-include("model-components.jl")
-include("make-models.jl")
-include("grids.jl")
-include("data-import.jl")
-include("argparse.jl")
-include("argparse-simulations.jl")
+include("thetas.jl")           # starting values
+include("model-components.jl") # components to simulate things
+include("make-models.jl")      # generate test data
+include("grids.jl")            # price, cost, year grids
+include("data-import.jl")      # generate problem data from RData
+include("argparse.jl")         # for solving model
+include("argparse-simulations.jl") # for counterfactuals
 
 end

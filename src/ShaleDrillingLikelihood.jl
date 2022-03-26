@@ -272,8 +272,8 @@ include("likelihood/display-results.jl")
 include("SDLParameters/SDLParameters.jl")
 
 # counterfactuals
-include("counterfactuals/shared-simulations.jl")
-include("counterfactuals/objects.jl")
+include("counterfactuals/shared-simulations.jl")     # container for elts of a simulation
+include("counterfactuals/objects.jl")                # 
 include("counterfactuals/sparse-state-transition.jl")
 include("counterfactuals/simulate-lease.jl")
 include("counterfactuals/simulate-unit.jl")
