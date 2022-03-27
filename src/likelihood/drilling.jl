@@ -28,7 +28,16 @@ function loglik_drill_lease!(grad, lease, theta, sim, dtv, dograd)
 
         if dograd
             ubv[dp1] -= 1
-            BLAS.gemv!('N', -1.0, dubv_vw, ubv, 1.0, grad)
+
+            # gemv!(tA, alpha, A, x, beta, y)
+            # NOTE - try updating with mul!(C, A, B, α, β) -> C
+            # ABα+Cβ. 
+            # grad = 1 * gradJ*LLj + 1*grad
+            # dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad)
+
+            # grad .= - dubv_vw *ubv + 1*grad
+            # BLAS.gemv!('N', -1.0, dubv_vw, ubv, 1.0, grad)
+            mul!(grad, dubv_vw, ubv, -1, 1)
         end
     end
 
@@ -60,12 +69,14 @@ function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
-
+        
         # y .= alpha*A^{tA}*x + beta*y or alpha*A'x + beta*y
         # gemv!(tA, alpha, A, x, beta, y)
         # NOTE - try updating with mul!(C, A, B, α, β) -> C
         # ABα+Cβ. 
-        dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad)
+        # grad = 1 * gradJ*LLj + 1*grad
+        # dograd && BLAS.gemv!('N', 1.0, gradJ, LLj, 1.0, grad)
+        dograd && mul!(grad, gradJ, LLj, 1, 1)
 
     end
 
@@ -107,7 +118,10 @@ function grad_simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVect
     llm = _llm(sims)
     gradM = _drillgradm(sims)
 
-    BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad)
+    # grad = 1 * gradJ*LLj + 1*grad
+    # dograd && BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad)
+    # BLAS.gemv!('N', 1.0, gradM, llm, 1.0, grad)
+    mul!(grad, gradM, llm, 1, 1)
 end
 
 
@@ -142,7 +156,8 @@ function simloglik_drill_data!(grad, hess, data, theta, sim::SimulationDrawsMatr
         dohess && fill!(g, 0)
         LL += simloglik_drill_unit!(g, unit, theta, view(sim, i), dograd)
         if dohess
-            BLAS.ger!(1.0, g, g, hess)
+            # BLAS.ger!(1.0, g, g, hess)
+            mul!(hess, g, g', 1, 1)
             grad .+= g
         end
     end

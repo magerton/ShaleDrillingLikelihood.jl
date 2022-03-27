@@ -221,7 +221,6 @@ THINGS TO DO
     + I solve the VF once for each unit... integration over leases doesn't 
       imply additional VFI/PFI
 - Make sure sumprod! is optimized?
-- use 5 arg mul! instead of gemv!. do this for gemm, too?
 - if extension does not expire, then need to fix 
 
 =#
