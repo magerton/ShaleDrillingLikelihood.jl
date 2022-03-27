@@ -192,7 +192,7 @@ SEED = 1234
         first_tptr = _j2ptr[2]
         last_obs = _tptr[first_tptr:end] .- 1
         last_x = x[ last_obs ]
-        return sort(countmap(last_x))
+        return sort(OrderedDict(countmap(last_x)))
     end
 
     # using Juno
