@@ -1,4 +1,4 @@
-function uview_col(x::SparseMatrixCSC, j::Integer)
+function view_col(x::SparseMatrixCSC, j::Integer)
     vals = nonzeros(x)
     rng = nzrange(x, j)
     return view(vals, rng)
@@ -31,7 +31,7 @@ function update_sparse_state_transition!(simtmp::SimulationTmp,
         dp1sp = actions .+ 1
 
         local ubV = view(vdfull(simtmp), dp1sp)
-        local actionprobs = uview_col(P, si)
+        local actionprobs = view_col(P, si)
 
         # if we can't drill
         if end_ex0(wp) < si <= end_lrn(wp) || si == end_inf(wp)

@@ -74,8 +74,8 @@ function div_and_update_direct!(EV0, t, ddm)
 
     # Do EV1pfi[:,j] ⟵ [I - T'(EV1vfi[:,j])] \ ( EV0[:,j] - T(EV1vfi[:,j]) )
     for j in OneTo(J)
-        q0j  = uview(q0, :, j, 1)
-        ΔEVj = uview(ΔEV, :, j)
+        q0j  = view(q0, :, j, 1)
+        ΔEVj = view(ΔEV, :, j)
 
         update_IminusTVp!(t, ddm, q0j)
         fact = lu(IminusTEVp(t))
@@ -93,8 +93,8 @@ function div_and_update_indirect!(EV0, t, ddm, vftol; kwargs...)
     ΔEVjnew = tmpEVj(t)
 
     for j in OneTo(J)
-        q0j  = uview(q0, :, j, 1)
-        ΔEVj = uview(ΔEV, :, j)
+        q0j  = view(q0, :, j, 1)
+        ΔEVj = view(ΔEV, :, j)
         if norm(ΔEVj, Inf) > vftol*1e-2  # b/c if ΔEVj ≈ 0, then we blow up
             fill!(ΔEVjnew, 0)
             update_IminusTVp!(t, ddm, q0j)
@@ -235,8 +235,8 @@ function gradinf_inner_indirect!(dEV0, sumdubV, ΠsumdubV, t, ddm; gradinfmaxit=
         qj = view(ubV(t), :, j, 1)
         update_IminusTVp!(t, ddm, qj)
         for k = OneTo(nθt)
-            dEV0jk = uview(dEV0, :, j, k)
-            ΠsumdubVjk = uview(ΠsumdubV, :, j, k)
+            dEV0jk = view(dEV0, :, j, k)
+            ΠsumdubVjk = view(ΠsumdubV, :, j, k)
             if any(dEV0jk != 0)
                 gmres!(dEV0jk, IminusTEVp(t), ΠsumdubVjk; initially_zero=false)
             end

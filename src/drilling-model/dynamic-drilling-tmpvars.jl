@@ -137,7 +137,7 @@ function update_static_payoffs!(tmpv::DCDPTmpVars, ddm::AbstractDrillModel, θ::
     for dp1 in dp1space(statespace(ddm), sidx)
         @inbounds for (i, (z,ψ)) in enumerate(zψpdct)
             obs = ObservationDrill(ddm, ichars, z, dp1-1, sidx)
-            grad = uview(dubv, :, i, dp1)
+            grad = view(dubv, :, i, dp1)
             ubv[i,dp1] = flow!(grad, obs, θ, ψ, dograd)
         end
     end

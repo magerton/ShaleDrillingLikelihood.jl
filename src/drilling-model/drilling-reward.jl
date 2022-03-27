@@ -50,10 +50,10 @@ idx_drill_ψ(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_ψ(reward(_m
 idx_drill_t(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_t(reward(_model(d)))
 idx_drill_D(d::DataDrill{<:AbstractDynamicDrillModel}) = idx_drill_D(reward(_model(d)))
 
-vw_cost(   x::DrillReward, theta) = uview(theta, idx_cost(x))
-vw_extend( x::DrillReward, theta) = uview(theta, idx_extend(x))
-vw_scrap(  x::DrillReward, theta) = uview(theta, idx_scrap(x))
-vw_revenue(x::DrillReward, theta) = uview(theta, idx_revenue(x))
+vw_cost(   x::DrillReward, theta) = view(theta, idx_cost(x))
+vw_extend( x::DrillReward, theta) = view(theta, idx_extend(x))
+vw_scrap(  x::DrillReward, theta) = view(theta, idx_scrap(x))
+vw_revenue(x::DrillReward, theta) = view(theta, idx_revenue(x))
 
 # -----------------------------------------
 # flow payoffs

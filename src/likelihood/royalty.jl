@@ -221,7 +221,7 @@ function llthreads!(grad, θ, data::DataRoyalty{<:RoyaltyModelNoHet}, dograd::Bo
     update_xbeta!(data, beta)
 
     for i in OneTo(n)
-        gtmp = uview(gradtmp, :, i)
+        gtmp = view(gradtmp, :, i)
         LL[i] = ll_inner!(gtmp, data[i], dograd, θ)
     end
     dograd && sum!(reshape(grad, ncoef, 1), gradtmp)

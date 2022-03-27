@@ -235,7 +235,7 @@ end
 @inline theta_g(x::DrillingRevenue, θ) = θ[idx_g(x)]
 @inline theta_ψ(x::DrillingRevenue, θ) = θ[idx_ψ(x)]
 @inline theta_t(x::DrillingRevenue{Unconstrained}, θ) = θ[idx_t(x)]
-@inline theta_t(x::DrillingRevenue{Unconstrained, TimeFE}, θ) = uview(θ, idx_t(x))
+@inline theta_t(x::DrillingRevenue{Unconstrained, TimeFE}, θ) = view(θ, idx_t(x))
 @inline theta_t(x::DrillingRevenue{Unconstrained, TimeFE}, θ, i) = θ[idx_t(x,i)]
 @inline theta_D(x::DrillingRevenue{Unconstrained, TimeTrendDgt0},θ) = θ[idx_D(x)]
 @inline theta_D(x, θ) = zero(Float64)

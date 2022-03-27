@@ -39,7 +39,7 @@ function simulate_lease!(simprim::SimulationPrimitives,
             @assert 0 <= PrTday <= 1 || PrTday ≈ 1
 
             if PrTday > 0
-                action_probs = uview_col(Pprime(simtmp), si)
+                action_probs = view_col(Pprime(simtmp), si)
                 @assert sum(action_probs) ≈ 1
                 actions = actionspace(wp, si)
                 dmx = _dmax(wp,si)

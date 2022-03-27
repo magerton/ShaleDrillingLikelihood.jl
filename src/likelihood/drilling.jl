@@ -56,7 +56,7 @@ function loglik_drill_unit!(grad, unit, theta, sim, dtv, dograd)
     if nJ > 0
         LLj .= log.(j1chars(InitialDrilling(unit)))
         for (ji,lease) in enumerate(InitialDrilling(unit))
-            gradj = uview(gradJ, :, ji)
+            gradj = view(gradJ, :, ji)
             LLj[ji] += loglik_drill_lease!(gradj, lease, theta, sim, dtv, dograd)
         end
         LL += logsumexp!(LLj)
@@ -97,7 +97,7 @@ function simloglik!(grad, unit::DrillUnit, theta, sims::SimulationDrawsVector, d
 
     @inbounds for m in OneTo(M)
         sims_m = sims[m]        # get 1 particular simulation
-        gradm_i = uview(gradM, :, m)
+        gradm_i = view(gradM, :, m)
         llm[m] = loglik_drill_unit!(gradm_i, unit, theta, sims_m, dtv, dograd)
     end
 end

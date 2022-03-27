@@ -22,7 +22,6 @@ using Optim
 using StatsBase
 using ClusterManagers
 using DataFrames
-using UnsafeArrays
 
 # extend these methods
 import Base: length, size, iterate,
@@ -216,7 +215,6 @@ include("data/overall.jl")
 
 #=
 THINGS TO DO
-- drop uview / UnsafeArrays
 - make costs be like revenue
 - Think thru how to get NEW pdxn fct & revenue to match
 - is my estimator consistent w/ multiple leases? how bad is integrating over them?
