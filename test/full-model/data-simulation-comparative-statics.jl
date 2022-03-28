@@ -16,6 +16,7 @@ using StatsBase
 using Optim
 using CountPlus
 using LinearAlgebra
+using OrderedCollections
 # using Profile
 # using PProf
 # using Juno

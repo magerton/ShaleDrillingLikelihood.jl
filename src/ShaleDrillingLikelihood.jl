@@ -22,6 +22,7 @@ using Optim
 using StatsBase
 using ClusterManagers
 using DataFrames
+using OrderedCollections
 
 # extend these methods
 import Base: length, size, iterate,
