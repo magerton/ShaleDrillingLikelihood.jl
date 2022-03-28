@@ -1,5 +1,6 @@
 export MakeTestData
 
+"Make 2 test datasets: drilling only and the full data (RR + drilling + pdxn)"
 function MakeTestData(;
         nz = 15,
         nψ = 13,
