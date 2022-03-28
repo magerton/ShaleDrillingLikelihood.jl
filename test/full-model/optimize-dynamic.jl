@@ -35,7 +35,7 @@ println("print to keep from blowing up")
     for (d,t) in data_theta_pairs
         resetcount!()
 
-        theta_peturb = 0.8 .* t
+        theta_peturb = 0.95 .* t
 
         leo = LocalEstObj(d,theta_peturb)
         reo = RemoteEstObj(leo, M)
@@ -57,7 +57,7 @@ println("print to keep from blowing up")
 
         resetcount!()
         startcount!([50, 500, 100000,], [1, 5, 100,])
-        opts = Optim.Options(show_trace=true, time_limit=5*60, allow_f_increases=true)
+        opts = Optim.Options(show_trace=true, time_limit=10*60, allow_f_increases=true)
         res = solve_model(ew, theta_peturb; OptimOpts=opts)
         println(res)
         @test minimizer(res) == theta1(leo)
